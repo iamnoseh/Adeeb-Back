@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/Adeeb.Application.Abstractions/Adeeb.Application.Abstractions.csproj" />
+    <Project Path="src/BuildingBlocks/Adeeb.Infrastructure/Adeeb.Infrastructure.csproj" />
+    <Project Path="src/BuildingBlocks/Adeeb.SharedKernel/Adeeb.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/src/Hosts/">
+    <Project Path="src/Hosts/Adeeb.Api/Adeeb.Api.csproj" />
+    <Project Path="src/Hosts/Adeeb.Worker/Adeeb.Worker.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Identity/">
+    <Project Path="src/Modules/Identity/Adeeb.Modules.Identity/Adeeb.Modules.Identity.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Adeeb.ArchitectureTests/Adeeb.ArchitectureTests.csproj" />
+    <Project Path="tests/Adeeb.IntegrationTests/Adeeb.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Modules/">
+    <Project Path="tests/Modules/Adeeb.Identity.Tests/Adeeb.Identity.Tests.csproj" />
+  </Folder>
+</Solution>
