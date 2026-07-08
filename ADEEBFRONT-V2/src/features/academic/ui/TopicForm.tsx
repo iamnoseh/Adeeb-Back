@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
@@ -30,12 +30,10 @@ export function TopicForm({ topicId }: TopicFormProps) {
     queryFn: () => subjectsApi.list({ pageSize: 100 }),
   })
   const topicsQuery = useQuery({
-    queryKey: topicKeys.list({ pageSize: 300 }),
-    queryFn: () => topicsApi.list({ pageSize: 300 }),
+    queryKey: topicId ? topicKeys.detail(topicId) : ['topics', 'new'],
+    queryFn: () => topicsApi.detail(topicId ?? ''),
     enabled: Boolean(topicId),
   })
-
-  const existingTopic = useMemo(() => topicsQuery.data?.items.find((topic) => topic.id === topicId), [topicId, topicsQuery.data])
 
   const form = useForm<TopicFormValues, unknown, TopicFormValues>({
     resolver: zodResolver(createTopicFormSchema(t)) as unknown as Resolver<TopicFormValues>,
@@ -53,6 +51,7 @@ export function TopicForm({ topicId }: TopicFormProps) {
   })
 
   useEffect(() => {
+    const existingTopic = topicsQuery.data
     if (!existingTopic) return
 
     const byLanguage = new Map(existingTopic.translations.map((item) => [item.language, item]))
@@ -67,7 +66,7 @@ export function TopicForm({ topicId }: TopicFormProps) {
       descriptionRu: byLanguage.get(1)?.description ?? '',
       descriptionEn: byLanguage.get(2)?.description ?? '',
     })
-  }, [existingTopic, form])
+  }, [form, topicsQuery.data])
 
   const mutation = useMutation({
     mutationFn: (values: TopicFormValues) => (topicId ? topicsApi.update(topicId, values) : topicsApi.create(values)),

@@ -9,6 +9,7 @@ export type TopicListQuery = AcademicListQuery & {
 export const topicKeys = {
   list: (query: TopicListQuery = {}) => ['topics', 'list', query] as const,
   bySubject: (subjectId: string) => ['topics', 'bySubject', subjectId] as const,
+  detail: (id: string) => ['topics', 'detail', id] as const,
 }
 
 export const topicsApi = {
@@ -21,6 +22,14 @@ export const topicsApi = {
   },
   async publicBySubject(subjectId: string) {
     const response = await httpClient.get<PagedResponse<TopicResponse>>(`/api/v2/subjects/${subjectId}/topics?pageSize=100`)
+    return response.data
+  },
+  async detail(id: string) {
+    const response = await httpClient.get<TopicResponse>(`/api/v2/admin/topics/${id}`)
+    return response.data
+  },
+  async publicDetail(id: string) {
+    const response = await httpClient.get<TopicResponse>(`/api/v2/topics/${id}`)
     return response.data
   },
   async create(values: TopicFormValues) {

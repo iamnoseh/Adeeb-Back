@@ -177,6 +177,17 @@ public sealed class AcademicCatalogService(AcademicCatalogDbContext db, IDateTim
         return Result<PagedResponse<TopicResponse>>.Success(new(items.Select(x => ToTopicResponse(x, language)).ToList(), page, pageSize, total));
     }
 
+    public async Task<Result<TopicResponse>> GetTopicAsync(Guid id, SupportedLanguage language, bool admin, CancellationToken ct)
+    {
+        var topic = await db.Topics.Include(x => x.Translations).AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (topic is null || (!admin && topic.Status != AcademicItemStatus.Active))
+        {
+            return Result<TopicResponse>.Failure(AcademicCatalogErrors.TopicNotFound);
+        }
+
+        return Result<TopicResponse>.Success(ToTopicResponse(topic, language));
+    }
+
     public async Task<Result<TopicResponse>> CreateTopicAsync(TopicUpsertRequest request, SupportedLanguage language, CancellationToken ct)
     {
         var validation = Validation.ValidateTopic(request);

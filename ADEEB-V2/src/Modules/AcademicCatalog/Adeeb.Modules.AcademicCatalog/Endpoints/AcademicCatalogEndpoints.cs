@@ -23,6 +23,10 @@ public static class AcademicCatalogEndpoints
         subjects.MapGet("/{id:guid}/topics", async (Guid id, [AsParameters] AcademicListQuery query, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetTopicsAsync(id, query, CurrentLanguage(), admin: false, ct)).ToHttpResult(context, localizer));
 
+        var topics = app.MapGroup("/api/v2/topics").WithTags("Academic Catalog");
+        topics.MapGet("/{id:guid}", async (Guid id, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
+            (await service.GetTopicAsync(id, CurrentLanguage(), admin: false, ct)).ToHttpResult(context, localizer));
+
         var adminSubjects = app.MapGroup("/api/v2/admin/subjects").WithTags("Academic Catalog Admin").RequireAuthorization("ContentAdmin");
         adminSubjects.MapGet("/", async ([AsParameters] AcademicListQuery query, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetSubjectsAsync(query, CurrentLanguage(), admin: true, ct)).ToHttpResult(context, localizer));
@@ -61,6 +65,8 @@ public static class AcademicCatalogEndpoints
         var adminTopics = app.MapGroup("/api/v2/admin/topics").WithTags("Academic Catalog Admin").RequireAuthorization("ContentAdmin");
         adminTopics.MapGet("/", async (Guid? subjectId, [AsParameters] AcademicListQuery query, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetTopicsAsync(subjectId, query, CurrentLanguage(), admin: true, ct)).ToHttpResult(context, localizer));
+        adminTopics.MapGet("/{id:guid}", async (Guid id, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
+            (await service.GetTopicAsync(id, CurrentLanguage(), admin: true, ct)).ToHttpResult(context, localizer));
         adminTopics.MapPost("/", async (TopicUpsertRequest request, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.CreateTopicAsync(request, CurrentLanguage(), ct)).ToHttpResult(context, localizer));
         adminTopics.MapPut("/{id:guid}", async (Guid id, TopicUpsertRequest request, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
