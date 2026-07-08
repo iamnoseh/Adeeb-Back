@@ -91,7 +91,7 @@ export function TopicForm({ topicId }: TopicFormProps) {
   ]
 
   return (
-    <form className="app-surface grid max-w-5xl gap-6 rounded-[2rem] p-5 md:p-7" onSubmit={(event) => void form.handleSubmit((values: TopicFormValues) => mutation.mutate(values))(event)}>
+    <form className="app-surface mx-auto grid w-full max-w-5xl gap-6 rounded-[2rem] p-5 md:p-7" onSubmit={(event) => void form.handleSubmit((values: TopicFormValues) => mutation.mutate(values))(event)}>
       {formError ? <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-[var(--danger)]">{formError}</div> : null}
 
       <section className="rounded-[1.5rem] bg-[var(--surface-soft)] p-5 ring-1 ring-[var(--border)]">

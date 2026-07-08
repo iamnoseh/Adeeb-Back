@@ -24,7 +24,7 @@ export function AdminLayout() {
 
   return (
     <div className={cn('min-h-screen bg-transparent transition-[grid-template-columns] duration-300 lg:grid', sidebarOpen ? 'lg:grid-cols-[258px_1fr]' : 'lg:grid-cols-[88px_1fr]')}>
-      <aside className="border-b border-white/70 bg-white/78 backdrop-blur-xl lg:sticky lg:top-0 lg:min-h-screen lg:border-b-0 lg:border-r lg:border-white/70">
+      <aside className="border-b border-white/70 bg-white/78 backdrop-blur-xl lg:sticky lg:top-0 lg:h-screen self-start lg:border-b-0 lg:border-r lg:border-white/70">
         <div className={cn('relative flex items-center px-4 py-5', sidebarOpen ? 'justify-center' : 'justify-center')}>
           <NavLink to="/admin" className="flex items-center justify-center text-[var(--text)] no-underline">
             {!sidebarOpen ? (
