@@ -12,7 +12,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\BuildingBlocks\Adeeb.SharedKernel\Adeeb.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\Modules\AcademicCatalog\Adeeb.Modules.AcademicCatalog\Adeeb.Modules.AcademicCatalog.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\Adeeb.Modules.Identity\Adeeb.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\src\Modules\QuestionBank\Adeeb.Modules.QuestionBank\Adeeb.Modules.QuestionBank.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

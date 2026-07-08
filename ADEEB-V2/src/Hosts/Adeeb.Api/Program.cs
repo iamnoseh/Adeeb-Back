@@ -5,9 +5,15 @@ using Adeeb.Api.Documentation;
 using Adeeb.Api.Documentation.Endpoints;
 using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Infrastructure;
+using Adeeb.Modules.AcademicCatalog;
+using Adeeb.Modules.AcademicCatalog.Endpoints;
+using Adeeb.Modules.AcademicCatalog.Infrastructure.Persistence;
 using Adeeb.Modules.Identity;
 using Adeeb.Modules.Identity.Endpoints;
 using Adeeb.Modules.Identity.Infrastructure.Persistence;
+using Adeeb.Modules.QuestionBank;
+using Adeeb.Modules.QuestionBank.Endpoints;
+using Adeeb.Modules.QuestionBank.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
@@ -21,8 +27,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAdeebInfrastructure();
 builder.Services.AddIdentityModule(builder.Configuration);
+builder.Services.AddAcademicCatalogModule(builder.Configuration);
+builder.Services.AddQuestionBankModule(builder.Configuration);
 builder.Services.AddAdeebDocumentation(builder.Configuration);
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ContentAdmin", policy => policy.RequireRole("SuperAdmin", "Admin"));
+});
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -101,6 +112,8 @@ var app = builder.Build();
 app.UseExceptionHandler();
 
 await IdentityDatabaseInitializer.MigrateAsync(app.Services);
+await AcademicCatalogDatabaseInitializer.MigrateAsync(app.Services);
+await QuestionBankDatabaseInitializer.MigrateAsync(app.Services);
 await IdentitySeeder.SeedSuperAdminAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
@@ -117,6 +130,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseRequestLocalization();
+app.UseStaticFiles();
 app.UseAuthentication();
 app.Use(async (context, next) =>
 {
@@ -143,12 +157,16 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" }));
-app.MapGet("/health/ready", async (IdentityDbContext db, CancellationToken ct) =>
-    await db.Database.CanConnectAsync(ct)
+app.MapGet("/health/ready", async (IdentityDbContext identityDb, AcademicCatalogDbContext academicDb, QuestionBankDbContext questionDb, CancellationToken ct) =>
+    await identityDb.Database.CanConnectAsync(ct)
+    && await academicDb.Database.CanConnectAsync(ct)
+    && await questionDb.Database.CanConnectAsync(ct)
         ? Results.Ok(new { status = "ready" })
         : Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "PostgreSQL is not reachable"));
 
 app.MapIdentityEndpoints();
+app.MapAcademicCatalogEndpoints();
+app.MapQuestionBankEndpoints();
 app.MapAdeebDocumentation();
 
 app.Run();

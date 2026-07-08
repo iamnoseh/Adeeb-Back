@@ -66,6 +66,84 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
         }
     };
 
+    private static readonly Dictionary<string, Dictionary<string, string>> ContentMessages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["tg-TJ"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Validation.InvalidStatus"] = "Статус нодуруст аст",
+            ["Validation.InvalidUrl"] = "URL нодуруст аст",
+            ["Validation.DuplicateLanguage"] = "Забон такрор шудааст",
+            ["Academic.SubjectNotFound"] = "Фан ёфт нашуд",
+            ["Academic.TopicNotFound"] = "Мавзӯъ ёфт нашуд",
+            ["Academic.SubjectCodeExists"] = "Рамзи фан аллакай вуҷуд дорад",
+            ["Academic.TopicCodeExists"] = "Рамзи мавзӯъ барои ин фан аллакай вуҷуд дорад",
+            ["Academic.ActiveTranslationsRequired"] = "Барои фаъол кардан тарҷумаҳои тоҷикӣ ва русӣ ҳатмӣ мебошанд",
+            ["QuestionBank.QuestionNotFound"] = "Савол ёфт нашуд",
+            ["QuestionBank.InvalidType"] = "Навъи савол нодуруст аст",
+            ["QuestionBank.InvalidDifficulty"] = "Дараҷаи душворӣ нодуруст аст",
+            ["QuestionBank.ActiveTranslationsRequired"] = "Барои саволи фаъол тарҷумаҳои тоҷикӣ ва русӣ ҳатмӣ мебошанд",
+            ["QuestionBank.SingleChoiceOptionCount"] = "Саволи якҷавоба бояд маҳз 4 вариант дошта бошад",
+            ["QuestionBank.SingleChoiceCorrectCount"] = "Саволи якҷавоба бояд танҳо 1 ҷавоби дуруст дошта бошад",
+            ["QuestionBank.MatchingPairCount"] = "Саволи мувофиқат бояд маҳз 4 ҷуфт дошта бошад",
+            ["QuestionBank.MatchingRightDuplicate"] = "Қиматҳои тарафи рости мувофиқат набояд такрор шаванд",
+            ["QuestionBank.MatchPairRequired"] = "Матни ҷуфти мувофиқат ҳатмӣ аст",
+            ["QuestionBank.AnswerTranslationMissing"] = "Тарҷумаи варианти ҷавоб ҳатмӣ аст",
+            ["QuestionBank.ClosedAnswerCanonicalCount"] = "Саволи ҷавоби пӯшида бояд як ҷавоби дурусти асосӣ дошта бошад",
+            ["QuestionBank.InvalidFormJson"] = "JSON-и form нодуруст аст",
+            ["QuestionBank.InvalidImageType"] = "Навъи расми савол дастгирӣ намешавад",
+            ["QuestionBank.ImageTooLarge"] = "Расми савол аз ҳад калон аст"
+        },
+        ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Validation.InvalidStatus"] = "Статус недействителен",
+            ["Validation.InvalidUrl"] = "URL недействителен",
+            ["Validation.DuplicateLanguage"] = "Язык уже добавлен",
+            ["Academic.SubjectNotFound"] = "Предмет не найден",
+            ["Academic.TopicNotFound"] = "Тема не найдена",
+            ["Academic.SubjectCodeExists"] = "Код предмета уже существует",
+            ["Academic.TopicCodeExists"] = "Код темы для этого предмета уже существует",
+            ["Academic.ActiveTranslationsRequired"] = "Для активации требуются переводы на таджикский и русский языки",
+            ["QuestionBank.QuestionNotFound"] = "Вопрос не найден",
+            ["QuestionBank.InvalidType"] = "Недопустимый тип вопроса",
+            ["QuestionBank.InvalidDifficulty"] = "Недопустимый уровень сложности вопроса",
+            ["QuestionBank.ActiveTranslationsRequired"] = "Для активных вопросов требуются переводы на таджикский и русский языки",
+            ["QuestionBank.SingleChoiceOptionCount"] = "Вопрос с одним вариантом ответа должен содержать ровно 4 варианта",
+            ["QuestionBank.SingleChoiceCorrectCount"] = "Вопрос с одним вариантом ответа должен иметь только 1 правильный ответ",
+            ["QuestionBank.MatchingPairCount"] = "Вопрос на соответствие должен содержать ровно 4 пары",
+            ["QuestionBank.MatchingRightDuplicate"] = "Значения правой стороны соответствия не должны повторяться",
+            ["QuestionBank.MatchPairRequired"] = "Текст пары соответствия обязателен",
+            ["QuestionBank.AnswerTranslationMissing"] = "Перевод варианта ответа обязателен",
+            ["QuestionBank.ClosedAnswerCanonicalCount"] = "Вопрос с закрытым ответом должен иметь один основной правильный ответ",
+            ["QuestionBank.InvalidFormJson"] = "JSON формы недействителен",
+            ["QuestionBank.InvalidImageType"] = "Тип изображения вопроса не поддерживается",
+            ["QuestionBank.ImageTooLarge"] = "Изображение вопроса слишком большое"
+        },
+        ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Validation.InvalidStatus"] = "Status is invalid",
+            ["Validation.InvalidUrl"] = "URL is invalid",
+            ["Validation.DuplicateLanguage"] = "Language already exists",
+            ["Academic.SubjectNotFound"] = "Subject was not found",
+            ["Academic.TopicNotFound"] = "Topic was not found",
+            ["Academic.SubjectCodeExists"] = "Subject code already exists",
+            ["Academic.TopicCodeExists"] = "Topic code already exists for this subject",
+            ["Academic.ActiveTranslationsRequired"] = "Active items require Tajik and Russian translations",
+            ["QuestionBank.QuestionNotFound"] = "Question was not found",
+            ["QuestionBank.InvalidType"] = "Question type is invalid",
+            ["QuestionBank.InvalidDifficulty"] = "Question difficulty level is invalid",
+            ["QuestionBank.ActiveTranslationsRequired"] = "Active questions require Tajik and Russian translations",
+            ["QuestionBank.SingleChoiceOptionCount"] = "Single choice questions must contain exactly 4 options",
+            ["QuestionBank.SingleChoiceCorrectCount"] = "Single choice questions must have exactly 1 correct answer",
+            ["QuestionBank.MatchingPairCount"] = "Matching questions must contain exactly 4 pairs",
+            ["QuestionBank.MatchingRightDuplicate"] = "Matching right-side values must be unique",
+            ["QuestionBank.MatchPairRequired"] = "Matching pair text is required",
+            ["QuestionBank.AnswerTranslationMissing"] = "Answer option translation is required",
+            ["QuestionBank.ClosedAnswerCanonicalCount"] = "Closed answer questions must have one canonical correct answer",
+            ["QuestionBank.InvalidFormJson"] = "Form JSON is invalid",
+            ["QuestionBank.InvalidImageType"] = "Question image type is not supported",
+            ["QuestionBank.ImageTooLarge"] = "Question image is too large"
+        }
+    };
     public string this[string key]
     {
         get
@@ -76,7 +154,17 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
                 return message;
             }
 
-            return Messages["tg-TJ"].TryGetValue(key, out var fallback) ? fallback : key;
+            if (ContentMessages.TryGetValue(culture, out var contentLocalized) && contentLocalized.TryGetValue(key, out var contentMessage))
+            {
+                return contentMessage;
+            }
+
+            if (Messages["tg-TJ"].TryGetValue(key, out var fallback))
+            {
+                return fallback;
+            }
+
+            return ContentMessages["tg-TJ"].TryGetValue(key, out var contentFallback) ? contentFallback : key;
         }
     }
 }

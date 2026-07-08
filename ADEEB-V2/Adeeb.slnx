@@ -10,14 +10,22 @@
     <Project Path="src/Hosts/Adeeb.Worker/Adeeb.Worker.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/AcademicCatalog/">
+    <Project Path="src/Modules/AcademicCatalog/Adeeb.Modules.AcademicCatalog/Adeeb.Modules.AcademicCatalog.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Identity/">
     <Project Path="src/Modules/Identity/Adeeb.Modules.Identity/Adeeb.Modules.Identity.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/QuestionBank/">
+    <Project Path="src/Modules/QuestionBank/Adeeb.Modules.QuestionBank/Adeeb.Modules.QuestionBank.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Adeeb.ArchitectureTests/Adeeb.ArchitectureTests.csproj" />
     <Project Path="tests/Adeeb.IntegrationTests/Adeeb.IntegrationTests.csproj" />
   </Folder>
   <Folder Name="/tests/Modules/">
+    <Project Path="tests/Modules/Adeeb.AcademicCatalog.Tests/Adeeb.AcademicCatalog.Tests.csproj" />
     <Project Path="tests/Modules/Adeeb.Identity.Tests/Adeeb.Identity.Tests.csproj" />
+    <Project Path="tests/Modules/Adeeb.QuestionBank.Tests/Adeeb.QuestionBank.Tests.csproj" />
   </Folder>
 </Solution>
