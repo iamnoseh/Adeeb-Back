@@ -1,5 +1,5 @@
 export const tgTJ = {
-  appName: 'ADEEB Admin',
+  appName: 'Adeeb',
   brandSubtitle: 'Идоракунӣ',
   languageTg: 'Тоҷикӣ',
   languageRu: 'Русский',
@@ -99,7 +99,7 @@ export const tgTJ = {
   saveFailed: 'Сабт анҷом нашуд.',
   questionSaveFailed: 'Савол сабт нашуд.',
   sessionChecking: 'Санҷиши сессия...',
-  loginTitle: 'ADEEB Admin',
+  loginTitle: 'Adeeb',
   loginSubtitle: 'Ба панели идоракунӣ ворид шавед.',
   identifier: 'Email ё рақами телефон',
   password: 'Парол',

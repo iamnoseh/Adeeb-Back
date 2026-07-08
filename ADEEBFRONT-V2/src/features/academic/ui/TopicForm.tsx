@@ -85,10 +85,10 @@ export function TopicForm({ topicId }: TopicFormProps) {
   })
 
   return (
-    <form className="app-surface grid max-w-4xl gap-6 rounded-xl p-5 shadow-sm" onSubmit={(event) => void form.handleSubmit((values: TopicFormValues) => mutation.mutate(values))(event)}>
-      {formError ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-[var(--danger)]">{formError}</div> : null}
+    <form className="app-surface grid max-w-5xl gap-6 rounded-[2rem] p-5 md:p-7" onSubmit={(event) => void form.handleSubmit((values: TopicFormValues) => mutation.mutate(values))(event)}>
+      {formError ? <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-[var(--danger)]">{formError}</div> : null}
 
-      <section className="rounded-lg bg-[var(--surface-muted)] p-4">
+      <section className="rounded-[1.5rem] bg-[var(--surface-soft)] p-5 ring-1 ring-[var(--border)]">
         <h2 className="text-base font-bold">{topicId ? t('editTopic') : t('newTopic')}</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">{t('topicFormIntro')}</p>
       </section>
@@ -125,19 +125,10 @@ export function TopicForm({ topicId }: TopicFormProps) {
         </FormField>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
-        <FormField label={t('status')} error={form.formState.errors.status?.message}>
-          <Select {...form.register('status', { valueAsNumber: true })}>
-            <option value={0}>{t('statusDraft')}</option>
-            <option value={1}>{t('statusActive')}</option>
-            <option value={2}>{t('statusArchived')}</option>
-          </Select>
-        </FormField>
-      </section>
-
+      <input type="hidden" {...form.register('status', { valueAsNumber: true })} />
       <input type="hidden" {...form.register('displayOrder', { valueAsNumber: true })} />
 
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 border-t border-[var(--border)] pt-5">
         <Button type="button" variant="secondary" onClick={() => navigate('/admin/topics')}>
           {t('cancel')}
         </Button>

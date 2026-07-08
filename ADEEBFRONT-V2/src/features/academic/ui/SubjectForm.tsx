@@ -1,4 +1,4 @@
-import { zodResolver } from '@hookform/resolvers/zod'
+﻿import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -11,7 +11,7 @@ import type { SubjectFormValues } from '@/features/academic/model/academic.types
 import { ApiError } from '@/shared/api/problem-details'
 import { Button } from '@/shared/ui/Button'
 import { FormField } from '@/shared/ui/FormField'
-import { Input, Select, Textarea } from '@/shared/ui/Input'
+import { Input, Textarea } from '@/shared/ui/Input'
 
 type SubjectFormProps = {
   subjectId?: string | undefined
@@ -76,20 +76,20 @@ export function SubjectForm({ subjectId }: SubjectFormProps) {
   })
 
   return (
-    <form className="app-surface grid max-w-4xl gap-6 rounded-xl p-5 shadow-sm" onSubmit={(event) => void form.handleSubmit((values: SubjectFormValues) => mutation.mutate(values))(event)}>
-      {formError ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-[var(--danger)]">{formError}</div> : null}
+    <form className="app-surface grid max-w-5xl gap-6 rounded-[2rem] p-5 md:p-7" onSubmit={(event) => void form.handleSubmit((values: SubjectFormValues) => mutation.mutate(values))(event)}>
+      {formError ? <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-[var(--danger)]">{formError}</div> : null}
 
-      <section className="rounded-lg bg-[var(--surface-muted)] p-4">
+      <section className="rounded-[1.5rem] bg-[var(--surface-soft)] p-5 ring-1 ring-[var(--border)]">
         <h2 className="text-base font-bold">{isEdit ? t('editSubject') : t('newSubject')}</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">{t('subjectFormIntro')}</p>
       </section>
 
       <div className="grid gap-4 md:grid-cols-2">
         <FormField label={t('subjectNameTg')} error={form.formState.errors.nameTg?.message}>
-          <Input {...form.register('nameTg')} placeholder="Математика" />
+          <Input {...form.register('nameTg')} />
         </FormField>
         <FormField label={t('subjectNameRu')} error={form.formState.errors.nameRu?.message}>
-          <Input {...form.register('nameRu')} placeholder="Математика" />
+          <Input {...form.register('nameRu')} />
         </FormField>
         <FormField label={t('descriptionTg')}>
           <Textarea rows={3} {...form.register('descriptionTg')} />
@@ -105,20 +105,13 @@ export function SubjectForm({ subjectId }: SubjectFormProps) {
         </FormField>
       </div>
 
-      <FormField label={t('status')}>
-        <Select {...form.register('status', { valueAsNumber: true })}>
-          <option value={0}>{t('statusDraft')}</option>
-          <option value={1}>{t('statusActive')}</option>
-          <option value={2}>{t('statusArchived')}</option>
-        </Select>
-      </FormField>
-
+      <input type="hidden" {...form.register('status', { valueAsNumber: true })} />
       <input type="hidden" {...form.register('displayOrder', { valueAsNumber: true })} />
       <FormField label={isEdit ? t('subjectIconNew') : t('subjectIcon')} error={form.formState.errors.icon?.message?.toString()}>
         <Input type="file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" {...form.register('icon')} />
       </FormField>
 
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 border-t border-[var(--border)] pt-5">
         <Button type="button" variant="secondary" onClick={() => navigate('/admin/subjects')}>
           {t('cancel')}
         </Button>

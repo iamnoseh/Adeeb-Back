@@ -51,20 +51,20 @@ export function LoginForm() {
   return (
     <form className="grid gap-5" onSubmit={(event) => void handleSubmit(onSubmit)(event)}>
       {formError ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-[var(--danger)]">
+        <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-[var(--danger)]">
           {formError}
         </div>
       ) : null}
 
       <FormField label={t('identifier')} error={errors.identifier?.message}>
-        <Input autoComplete="username" placeholder="superadmin@adeeb.tj ё +992..." {...register('identifier')} />
+        <Input autoComplete="username" {...register('identifier')} />
       </FormField>
 
       <FormField label={t('password')} error={errors.password?.message}>
-        <Input autoComplete="current-password" type="password" placeholder={t('password')} {...register('password')} />
+        <Input autoComplete="current-password" type="password" {...register('password')} />
       </FormField>
 
-      <Button type="submit" disabled={isSubmitting} className="w-full">
+      <Button type="submit" disabled={isSubmitting} className="mt-1 w-full">
         <LogIn className="h-4 w-4" aria-hidden />
         {isSubmitting ? t('signingIn') : t('signIn')}
       </Button>

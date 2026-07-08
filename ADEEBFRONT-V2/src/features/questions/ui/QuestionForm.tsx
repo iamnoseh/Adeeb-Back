@@ -118,10 +118,10 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
   })
 
   return (
-    <form className="app-surface grid gap-6 rounded-lg p-5" onSubmit={(event) => void form.handleSubmit((values: QuestionFormValues) => mutation.mutate(values))(event)}>
-      {formError ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-[var(--danger)]">{formError}</div> : null}
+    <form className="app-surface grid gap-6 rounded-[2rem] p-5 md:p-7" onSubmit={(event) => void form.handleSubmit((values: QuestionFormValues) => mutation.mutate(values))(event)}>
+      {formError ? <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-[var(--danger)]">{formError}</div> : null}
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 rounded-[1.5rem] bg-[var(--surface-soft)] p-4 ring-1 ring-[var(--border)] md:grid-cols-3">
         <FormField label={t('parentSubject')} error={form.formState.errors.subjectId?.message}>
           <Select {...form.register('subjectId')}>
             <option value="">{t('chooseSubject')}</option>
@@ -143,7 +143,7 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
         </FormField>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 rounded-[1.5rem] bg-[var(--surface-soft)] p-4 ring-1 ring-[var(--border)] md:grid-cols-3">
         <FormField label={t('type')} error={form.formState.errors.type?.message}>
           <Select {...form.register('type', { valueAsNumber: true })}>
             <option value={1}>{t('typeSingleChoice')}</option>
@@ -183,7 +183,7 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
         <Textarea rows={4} {...form.register('explanation')} />
       </FormField>
 
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 border-t border-[var(--border)] pt-5">
         <Button type="button" variant="secondary" onClick={() => navigate('/admin/questions')}>
           {t('cancel')}
         </Button>
@@ -212,8 +212,8 @@ function SingleChoiceEditor({ form }: QuestionFormInnerProps) {
       </div>
       {answersError ? <p className="text-sm font-semibold text-[var(--danger)]">{answersError}</p> : null}
       {[0, 1, 2, 3].map((index) => (
-        <div key={index} className="grid gap-3 rounded-md border border-[var(--border)] p-3 md:grid-cols-[64px_1fr]">
-          <label className="inline-flex items-center gap-2 text-sm font-bold">
+        <div key={index} className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 md:grid-cols-[74px_1fr]">
+          <label className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-black shadow-sm">
             <input
               type="radio"
               checked={form.watch(`answers.${index}.isCorrect`)}
@@ -244,7 +244,7 @@ function MatchingEditor({ form }: QuestionFormInnerProps) {
       </div>
       {matchingError ? <p className="text-sm font-semibold text-[var(--danger)]">{matchingError}</p> : null}
       {[0, 1, 2, 3].map((index) => (
-        <div key={index} className="grid gap-3 rounded-md border border-[var(--border)] p-3 md:grid-cols-[1fr_1fr]">
+        <div key={index} className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 md:grid-cols-[1fr_1fr]">
           <Input placeholder={`${t('left')} ${index + 1}`} {...form.register(`matchingPairs.${index}.text`)} />
           <Input placeholder={`${t('right')} ${index + 1}`} {...form.register(`matchingPairs.${index}.matchPair`)} />
         </div>
