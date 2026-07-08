@@ -91,9 +91,40 @@ const text = {
   },
 }
 
+const importExtraText = {
+  tg: {
+    detected: 'савол пайдо шуд',
+    extractionFailed: 'Аз ин PDF матн гирифта нашуд. Эҳтимол файл сканшуда ё расмӣ аст.',
+    questionRequired: 'Матни савол ҳатмист.',
+    questionTooLong: 'Матни савол аз ҳад дароз аст.',
+    tooFewOptions: 'Камаш ду вариант лозим аст.',
+    tooManyOptions: 'Вариантҳо аз ҳад зиёданд.',
+    oneCorrectRequired: 'Танҳо як ҷавоби дурустро интихоб кунед.',
+    optionRequired: 'Матни вариант ҳатмист.',
+    optionTooLong: 'Матни вариант аз ҳад дароз аст.',
+    unsupportedFile: 'Танҳо файлҳои .docx ва .pdf дастгирӣ мешаванд.',
+    fileTooLarge: 'Ҳаҷми файл набояд аз 5 MB зиёд бошад.',
+  },
+  ru: {
+    detected: 'вопросов найдено',
+    extractionFailed: 'Из этого PDF не удалось извлечь текст. Возможно, файл является сканом или изображением.',
+    questionRequired: 'Текст вопроса обязателен.',
+    questionTooLong: 'Текст вопроса слишком длинный.',
+    tooFewOptions: 'Нужно минимум два варианта.',
+    tooManyOptions: 'Слишком много вариантов.',
+    oneCorrectRequired: 'Выберите ровно один правильный ответ.',
+    optionRequired: 'Текст варианта обязателен.',
+    optionTooLong: 'Текст варианта слишком длинный.',
+    unsupportedFile: 'Поддерживаются только файлы .docx и .pdf.',
+    fileTooLarge: 'Файл не должен быть больше 5 MB.',
+  },
+}
+
+type ImportLabels = typeof text.tg & typeof importExtraText.tg
+
 export function QuestionImportPage() {
   const { i18n, t } = useTranslation()
-  const labels = i18n.language === 'ru-RU' ? text.ru : text.tg
+  const labels = i18n.language === 'ru-RU' ? { ...text.ru, ...importExtraText.ru } : { ...text.tg, ...importExtraText.tg }
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [subjectId, setSubjectId] = useState('')
@@ -104,7 +135,6 @@ export function QuestionImportPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [questions, setQuestions] = useState<EditableImportedQuestion[]>([])
   const [filter, setFilter] = useState<PreviewFilter>('all')
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const subjectsQuery = useQuery({
     queryKey: subjectKeys.list({ pageSize: 100 }),
@@ -122,19 +152,18 @@ export function QuestionImportPage() {
       setQuestions(toEditableImportQuestions(preview))
       setFilter('all')
       setFormError(null)
-      setSuccessMessage(null)
     },
-    onError: (error: unknown) => setFormError(toImportErrorMessage(error, labels.description)),
+    onError: (error: unknown) => setFormError(toImportErrorMessage(error, labels)),
   })
 
   const confirmMutation = useMutation({
     mutationFn: questionsApi.confirmImport,
-    onSuccess: async (result) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['questions'] })
       await queryClient.invalidateQueries({ queryKey: questionKeys.list({}) })
-      setSuccessMessage(`${result.importedCount} ${labels.imported}`)
+      navigate('/admin/questions')
     },
-    onError: (error: unknown) => setFormError(toImportErrorMessage(error, labels.description)),
+    onError: (error: unknown) => setFormError(toImportErrorMessage(error, labels)),
   })
 
   const subjectOptions = subjectsQuery.data?.items.map((subject) => ({
@@ -175,7 +204,7 @@ export function QuestionImportPage() {
   function chooseFile(nextFile: File | null) {
     const validation = validateImportFile(nextFile)
     setFile(nextFile)
-    setFileError(validation?.message ?? null)
+    setFileError(validation ? toImportIssueMessage(validation, labels) : null)
   }
 
   function onDrop(event: DragEvent<HTMLLabelElement>) {
@@ -216,7 +245,6 @@ export function QuestionImportPage() {
         </div>
 
         {formError ? <IssuePanel tone="danger" message={formError} /> : null}
-        {successMessage ? <IssuePanel tone="success" message={`${successMessage}. ${labels.success}`} /> : null}
 
         <div className="grid gap-4 md:grid-cols-3">
           <FormField label={labels.subject}>
@@ -305,7 +333,7 @@ function ImportSummary({
   summary: { total: number; valid: number; warnings: number; invalid: number }
   filter: PreviewFilter
   setFilter: (filter: PreviewFilter) => void
-  labels: typeof text.tg
+  labels: ImportLabels
 }) {
   const filters: { key: PreviewFilter; label: string; count: number }[] = [
     { key: 'all', label: labels.all, count: summary.total },
@@ -318,7 +346,7 @@ function ImportSummary({
     <div className="app-surface grid gap-4 rounded-[2rem] p-5">
       <div>
         <h2 className="text-xl font-black">{labels.preview}</h2>
-        <p className="text-sm text-[var(--muted)]">{summary.total} questions detected</p>
+        <p className="text-sm text-[var(--muted)]">{summary.total} {labels.detected}</p>
       </div>
       <div className="flex flex-wrap gap-2">
         {filters.map((item) => (
@@ -345,7 +373,7 @@ function ImportedQuestionCard({
 }: {
   index: number
   question: EditableImportedQuestion
-  labels: typeof text.tg
+  labels: ImportLabels
   validation: ReturnType<typeof validateImportedQuestion>
   updateQuestion: (key: string, update: (question: EditableImportedQuestion) => EditableImportedQuestion) => void
 }) {
@@ -378,8 +406,8 @@ function ImportedQuestionCard({
 
       <div className="grid gap-3">
         {question.options.map((option) => (
-          <div key={option.key} className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 md:grid-cols-[110px_1fr_auto]">
-            <label className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-black shadow-sm">
+          <div key={option.key} className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 md:grid-cols-[48px_1fr_auto]">
+            <label className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm" aria-label={`${labels.correct} ${option.label}`}>
               <input
                 type="radio"
                 name={`correct-${question.key}`}
@@ -389,7 +417,6 @@ function ImportedQuestionCard({
                   options: current.options.map((item) => ({ ...item, isCorrect: item.key === option.key })),
                 }))}
               />
-              {labels.correct}
             </label>
             <Input
               value={option.text}
@@ -433,8 +460,8 @@ function ImportedQuestionCard({
         </Button>
       </div>
 
-      {validation.errors.map((issue) => <IssuePanel key={issue.code + issue.message} tone="danger" message={issue.message} />)}
-      {validation.warnings.map((issue) => <IssuePanel key={issue.code + issue.message} tone="warning" message={issue.message} />)}
+      {validation.errors.map((issue) => <IssuePanel key={issue.code + issue.message} tone="danger" message={toImportIssueMessage(issue, labels)} />)}
+      {validation.warnings.map((issue) => <IssuePanel key={issue.code + issue.message} tone="warning" message={toImportIssueMessage(issue, labels)} />)}
     </article>
   )
 }
@@ -455,13 +482,28 @@ function IssuePanel({ tone, message }: { tone: 'danger' | 'warning' | 'success';
   )
 }
 
-function toImportErrorMessage(error: unknown, fallback: string) {
-  if (!(error instanceof ApiError)) return fallback
+function toImportIssueMessage(issue: { code: string; message: string }, labels: ImportLabels) {
+  if (issue.code === 'frontend.question_text_required') return labels.questionRequired
+  if (issue.code === 'frontend.question_text_too_long') return labels.questionTooLong
+  if (issue.code === 'frontend.too_few_options') return labels.tooFewOptions
+  if (issue.code === 'frontend.too_many_options') return labels.tooManyOptions
+  if (issue.code === 'frontend.one_correct_required') return labels.oneCorrectRequired
+  if (issue.code === 'frontend.option_text_required') return labels.optionRequired
+  if (issue.code === 'frontend.option_text_too_long') return labels.optionTooLong
+  if (issue.code === 'frontend.unsupported_file') return labels.unsupportedFile
+  if (issue.code === 'frontend.file_too_large') return labels.fileTooLarge
+  if (issue.code === 'question_import.no_extractable_text') return labels.extractionFailed
+
+  return issue.message
+}
+
+function toImportErrorMessage(error: unknown, labels: ImportLabels) {
+  if (!(error instanceof ApiError)) return labels.extractionFailed
   const code = error.problem?.code
   if (code === 'question_import.no_extractable_text') {
-    return 'Text could not be extracted from this PDF. The file may be scanned or image-based.'
+    return labels.extractionFailed
   }
 
   const validationError = error.problem?.errors ? Object.values(error.problem.errors).flat()[0] : undefined
-  return validationError?.message ?? error.problem?.title ?? error.message
+  return validationError ? toImportIssueMessage(validationError, labels) : error.problem?.title ?? error.message
 }
