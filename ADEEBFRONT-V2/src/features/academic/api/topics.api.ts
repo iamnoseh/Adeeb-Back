@@ -49,7 +49,7 @@ function toTopicRequest(values: TopicFormValues) {
     translations.push({ language: 2, name: values.nameEn, description: values.descriptionEn || null })
   }
 
-    return {
+  return {
     subjectId: values.subjectId,
     code: toCode(values.nameTg || values.nameRu),
     displayOrder: values.displayOrder,
