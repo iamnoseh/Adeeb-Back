@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="Auth.InvalidCredentials" xml:space="preserve"><value>Неверные данные для входа</value></data>
+  <data name="Validation.InvalidEmail" xml:space="preserve"><value>Адрес электронной почты недействителен</value></data>
+</root>

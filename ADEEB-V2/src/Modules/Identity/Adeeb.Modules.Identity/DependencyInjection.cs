@@ -1,0 +1,62 @@
+using System.Text;
+using Adeeb.Modules.Identity.Application;
+using Adeeb.Modules.Identity.Domain.Users;
+using Adeeb.Modules.Identity.Infrastructure.Authentication;
+using Adeeb.Modules.Identity.Infrastructure.Configuration;
+using Adeeb.Modules.Identity.Infrastructure.Passwords;
+using Adeeb.Modules.Identity.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+
+namespace Adeeb.Modules.Identity;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddIdentityModule(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<JwtOptions>()
+            .Bind(configuration.GetSection(JwtOptions.SectionName))
+            .ValidateDataAnnotations()
+            .Validate(x => x.SigningKey.Length >= 32, "JWT signing key must be at least 32 characters.")
+            .ValidateOnStart();
+        services.AddOptions<RefreshTokenOptions>().Bind(configuration.GetSection(RefreshTokenOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<PasswordPolicyOptions>().Bind(configuration.GetSection(PasswordPolicyOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
+
+        var connectionString = configuration.GetConnectionString("Identity")
+            ?? configuration.GetConnectionString("Default")
+            ?? throw new InvalidOperationException("Identity database connection string is required.");
+
+        services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddScoped<PasswordHasher<User>>();
+        services.AddScoped<PasswordPolicy>();
+        services.AddScoped<RefreshTokenGenerator>();
+        services.AddScoped<JwtTokenGenerator>();
+        services.AddScoped<IdentityService>();
+
+        var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
+            ?? throw new InvalidOperationException("JWT configuration is required.");
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.RequireHttpsMetadata = true;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwt.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = jwt.Audience,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromSeconds(30),
+                    NameClaimType = "sub"
+                };
+            });
+
+        return services;
+    }
+}
