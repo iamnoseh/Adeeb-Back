@@ -48,12 +48,12 @@ export function SubjectForm({ subjectId }: SubjectFormProps) {
     if (subjectQuery.data) {
       const byLanguage = new Map(subjectQuery.data.translations.map((item) => [item.language, item]))
       form.reset({
-        nameTg: byLanguage.get(1)?.name ?? '',
-        nameRu: byLanguage.get(2)?.name ?? '',
-        nameEn: byLanguage.get(3)?.name ?? '',
-        descriptionTg: byLanguage.get(1)?.description ?? '',
-        descriptionRu: byLanguage.get(2)?.description ?? '',
-        descriptionEn: byLanguage.get(3)?.description ?? '',
+        nameTg: byLanguage.get(0)?.name ?? '',
+        nameRu: byLanguage.get(1)?.name ?? '',
+        nameEn: byLanguage.get(2)?.name ?? '',
+        descriptionTg: byLanguage.get(0)?.description ?? '',
+        descriptionRu: byLanguage.get(1)?.description ?? '',
+        descriptionEn: byLanguage.get(2)?.description ?? '',
         status: subjectQuery.data.status,
         displayOrder: subjectQuery.data.displayOrder,
       })

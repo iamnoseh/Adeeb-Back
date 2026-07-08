@@ -9,8 +9,8 @@ export function localizedName(translations: LocalizedName[], language: string, f
   const preferred = languageToContentId(language)
   return (
     translations.find((translation) => translation.language === preferred)?.name ||
+    translations.find((translation) => translation.language === 0)?.name ||
     translations.find((translation) => translation.language === 1)?.name ||
-    translations.find((translation) => translation.language === 2)?.name ||
     translations[0]?.name ||
     fallback
   )

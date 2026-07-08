@@ -14,7 +14,7 @@ Also available: `GET /api/v2/admin/subjects`, `GET /api/v2/admin/subjects/{id}`,
 
 ## 2. Purpose
 
-Creates and manages subjects using the IQRA-style admin form shape.
+Creates and manages multilingual subjects using a multipart admin form.
 
 ## 3. Status
 
@@ -38,7 +38,7 @@ Default platform limits.
 
 ## 8. Localization
 
-The submitted `Name` is stored into Tajik, Russian, and English translations for now. Future dedicated multilingual editors can replace this compatibility form.
+Admin clients submit Tajik and Russian content explicitly. Response `name` follows request localization, while `translations` contains all submitted translations.
 
 ## 9. Request Headers
 
@@ -56,7 +56,13 @@ List supports `search`, `status`, `page`, `pageSize`, `sort`.
 
 Create/update form fields:
 
-- `Name`: required subject name.
+- `NameTg`: required Tajik subject name.
+- `NameRu`: required Russian subject name.
+- `NameEn`: optional English subject name.
+- `DescriptionTg`: optional Tajik description.
+- `DescriptionRu`: optional Russian description.
+- `DescriptionEn`: optional English description.
+- `Name`: optional legacy fallback; if sent without `NameTg`/`NameRu`, it is copied into Tajik and Russian for backward compatibility.
 - `Icon`: optional image file.
 - `Status`: numeric, default `1`.
 - `DisplayOrder`: numeric, default `0`.
@@ -83,12 +89,15 @@ Stable ProblemDetails with localized title and validation errors.
 
 ## 17. Frontend Behavior
 
-Swagger and admin clients should submit a form like IQRA:
+Swagger and admin clients should submit a multilingual form:
 
-- `Name = Математика`
+- `NameTg = Математика`
+- `NameRu = Математика`
+- `DescriptionTg = optional`
+- `DescriptionRu = optional`
 - `Icon = selected file`
 - `Status = 1`
-- `DisplayOrder = 1`
+- `DisplayOrder = 0`
 
 ## 18. Retry Policy
 
@@ -108,7 +117,7 @@ Only content administrators may mutate subjects. Uploaded file values are not tr
 
 ## 22. Example Flow
 
-Login as `SuperAdmin`, authorize Swagger with bearer token, open `POST /api/v2/admin/subjects`, fill `Name`, choose `Icon`, and execute.
+Login as `SuperAdmin`, authorize Swagger with bearer token, open `POST /api/v2/admin/subjects`, fill `NameTg` and `NameRu`, optionally choose `Icon`, and execute.
 
 ## 23. Related Endpoints
 
@@ -116,4 +125,4 @@ Login as `SuperAdmin`, authorize Swagger with bearer token, open `POST /api/v2/a
 
 ## 24. Change History
 
-Added after IQRA compatibility review to document `Name/Icon` form-data behavior.
+Updated subject form to support explicit Tajik/Russian translations while preserving legacy `Name` fallback.

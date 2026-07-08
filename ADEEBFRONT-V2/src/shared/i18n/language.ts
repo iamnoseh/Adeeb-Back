@@ -13,5 +13,5 @@ export function setStoredUiLanguage(language: UiLanguage) {
 }
 
 export function languageToContentId(language: string) {
-  return language === 'ru-RU' ? 2 : 1
+  return language === 'ru-RU' ? 1 : 0
 }

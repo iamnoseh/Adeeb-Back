@@ -10,6 +10,7 @@ import { topicKeys, topicsApi } from '@/features/academic/api/topics.api'
 import { createTopicFormSchema } from '@/features/academic/model/academic.schema'
 import type { TopicFormValues } from '@/features/academic/model/academic.types'
 import { ApiError } from '@/shared/api/problem-details'
+import { localizedName } from '@/shared/i18n/localized-content'
 import { Button } from '@/shared/ui/Button'
 import { FormField } from '@/shared/ui/FormField'
 import { Input, Select, Textarea } from '@/shared/ui/Input'
@@ -21,7 +22,7 @@ type TopicFormProps = {
 export function TopicForm({ topicId }: TopicFormProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { t } = useTranslation()
+  const { i18n, t } = useTranslation()
   const [formError, setFormError] = useState<string | null>(null)
 
   const subjectsQuery = useQuery({
@@ -59,12 +60,12 @@ export function TopicForm({ topicId }: TopicFormProps) {
       subjectId: existingTopic.subjectId,
       displayOrder: existingTopic.displayOrder,
       status: existingTopic.status,
-      nameTg: byLanguage.get(1)?.name ?? '',
-      nameRu: byLanguage.get(2)?.name ?? '',
-      nameEn: byLanguage.get(3)?.name ?? '',
-      descriptionTg: byLanguage.get(1)?.description ?? '',
-      descriptionRu: byLanguage.get(2)?.description ?? '',
-      descriptionEn: byLanguage.get(3)?.description ?? '',
+      nameTg: byLanguage.get(0)?.name ?? '',
+      nameRu: byLanguage.get(1)?.name ?? '',
+      nameEn: byLanguage.get(2)?.name ?? '',
+      descriptionTg: byLanguage.get(0)?.description ?? '',
+      descriptionRu: byLanguage.get(1)?.description ?? '',
+      descriptionEn: byLanguage.get(2)?.description ?? '',
     })
   }, [existingTopic, form])
 
@@ -97,7 +98,7 @@ export function TopicForm({ topicId }: TopicFormProps) {
           <Select {...form.register('subjectId')}>
             <option value="">{t('chooseSubject')}</option>
             {subjectsQuery.data?.items.map((subject) => (
-              <option key={subject.id} value={subject.id}>{subject.name}</option>
+              <option key={subject.id} value={subject.id}>{localizedName(subject.translations, i18n.language, subject.name)}</option>
             ))}
           </Select>
         </FormField>

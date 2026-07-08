@@ -1,15 +1,17 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/shared/ui/PageHeader'
 
 export function AdminHomeRoute() {
+  const { t } = useTranslation()
   return (
     <>
-      <PageHeader title="Панели идоракунӣ" description="Аввалин scope: фанҳо, мавзуъҳо ва бонки саволҳо." />
+      <PageHeader title={t('appName')} />
       <div className="grid gap-4 md:grid-cols-3">
         {[
-          { label: 'Фанҳо', to: '/admin/subjects' },
-          { label: 'Мавзуъҳо', to: '/admin/topics' },
-          { label: 'Саволҳо', to: '/admin/questions' },
+          { label: t('navSubjects'), to: '/admin/subjects' },
+          { label: t('navTopics'), to: '/admin/topics' },
+          { label: t('navQuestions'), to: '/admin/questions' },
         ].map(({ label, to }) => (
           <Link key={to} to={to} className="app-surface rounded-lg p-5 text-[var(--text)] no-underline transition hover:-translate-y-0.5 hover:shadow-sm">
             <strong>{label}</strong>

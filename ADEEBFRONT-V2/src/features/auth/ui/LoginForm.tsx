@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { LogIn } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/model/auth-context'
-import { loginSchema, type LoginFormValues } from '@/features/auth/model/auth.schema'
+import { createLoginSchema, type LoginFormValues } from '@/features/auth/model/auth.schema'
 import { ApiError } from '@/shared/api/problem-details'
 import { Button } from '@/shared/ui/Button'
 import { FormField } from '@/shared/ui/FormField'
@@ -13,13 +14,14 @@ import { Input } from '@/shared/ui/Input'
 export function LoginForm() {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { t } = useTranslation()
   const [formError, setFormError] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(createLoginSchema(t)),
     defaultValues: {
       identifier: '',
       password: '',
@@ -42,7 +44,7 @@ export function LoginForm() {
         return
       }
 
-      setFormError('Воридшавӣ анҷом нашуд. Серверро санҷед.')
+      setFormError(t('loginFailed'))
     }
   }
 
@@ -54,17 +56,17 @@ export function LoginForm() {
         </div>
       ) : null}
 
-      <FormField label="Email ё рақами телефон" error={errors.identifier?.message}>
+      <FormField label={t('identifier')} error={errors.identifier?.message}>
         <Input autoComplete="username" placeholder="superadmin@adeeb.tj ё +992..." {...register('identifier')} />
       </FormField>
 
-      <FormField label="Парол" error={errors.password?.message}>
-        <Input autoComplete="current-password" type="password" placeholder="Парол" {...register('password')} />
+      <FormField label={t('password')} error={errors.password?.message}>
+        <Input autoComplete="current-password" type="password" placeholder={t('password')} {...register('password')} />
       </FormField>
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
         <LogIn className="h-4 w-4" aria-hidden />
-        {isSubmitting ? 'Ворид шуда истодааст...' : 'Ворид шудан'}
+        {isSubmitting ? t('signingIn') : t('signIn')}
       </Button>
     </form>
   )

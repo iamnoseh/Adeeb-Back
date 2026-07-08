@@ -41,12 +41,12 @@ export const topicsApi = {
 
 function toTopicRequest(values: TopicFormValues) {
   const translations: TranslationRequest[] = [
-    { language: 1, name: values.nameTg, description: values.descriptionTg || null },
-    { language: 2, name: values.nameRu, description: values.descriptionRu || null },
+    { language: 0, name: values.nameTg, description: values.descriptionTg || null },
+    { language: 1, name: values.nameRu, description: values.descriptionRu || null },
   ]
 
   if (values.nameEn) {
-    translations.push({ language: 3, name: values.nameEn, description: values.descriptionEn || null })
+    translations.push({ language: 2, name: values.nameEn, description: values.descriptionEn || null })
   }
 
     return {

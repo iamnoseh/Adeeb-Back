@@ -2,14 +2,16 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver, type UseFormReturn } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { subjectKeys, subjectsApi } from '@/features/academic/api/subjects.api'
 import { topicKeys, topicsApi } from '@/features/academic/api/topics.api'
 import { questionKeys, questionsApi } from '@/features/questions/api/questions.api'
-import { questionFormSchema } from '@/features/questions/model/question.schema'
+import { createQuestionFormSchema } from '@/features/questions/model/question.schema'
 import type { QuestionFormValues } from '@/features/questions/model/question.types'
 import { ApiError } from '@/shared/api/problem-details'
+import { localizedName } from '@/shared/i18n/localized-content'
 import { Button } from '@/shared/ui/Button'
 import { FormField } from '@/shared/ui/FormField'
 import { Input, Select, Textarea } from '@/shared/ui/Input'
@@ -35,10 +37,11 @@ const defaultMatchingPairs = [
 export function QuestionForm({ questionId }: QuestionFormProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { i18n, t } = useTranslation()
   const [formError, setFormError] = useState<string | null>(null)
 
   const form = useForm<QuestionFormValues, unknown, QuestionFormValues>({
-    resolver: zodResolver(questionFormSchema) as unknown as Resolver<QuestionFormValues>,
+    resolver: zodResolver(createQuestionFormSchema(t)) as unknown as Resolver<QuestionFormValues>,
     defaultValues: {
       subjectId: '',
       topicId: '',
@@ -110,7 +113,7 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
         setFormError(error.problem?.title ?? error.message)
         return
       }
-      setFormError('Савол сабт нашуд.')
+      setFormError(t('questionSaveFailed'))
     },
   })
 
@@ -119,74 +122,74 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
       {formError ? <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-[var(--danger)]">{formError}</div> : null}
 
       <section className="grid gap-4 md:grid-cols-3">
-        <FormField label="Фан" error={form.formState.errors.subjectId?.message}>
+        <FormField label={t('parentSubject')} error={form.formState.errors.subjectId?.message}>
           <Select {...form.register('subjectId')}>
-            <option value="">Фанро интихоб кунед</option>
+            <option value="">{t('chooseSubject')}</option>
             {subjectsQuery.data?.items.map((subject) => (
-              <option key={subject.id} value={subject.id}>{subject.name}</option>
+              <option key={subject.id} value={subject.id}>{localizedName(subject.translations, i18n.language, subject.name)}</option>
             ))}
           </Select>
         </FormField>
-        <FormField label="Мавзуъ">
+        <FormField label={t('topic')}>
           <Select {...form.register('topicId')} disabled={!selectedSubjectId}>
-            <option value="">Бе мавзуъ</option>
+            <option value="">{selectedSubjectId ? t('noTopic') : t('selectSubjectFirst')}</option>
             {topicsQuery.data?.items.map((topic) => (
-              <option key={topic.id} value={topic.id}>{topic.name}</option>
+              <option key={topic.id} value={topic.id}>{localizedName(topic.translations, i18n.language, topic.name)}</option>
             ))}
           </Select>
         </FormField>
-        <FormField label="Расм">
+        <FormField label={t('image')}>
           <Input type="file" accept="image/png,image/jpeg,image/jpg" {...form.register('image')} />
         </FormField>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <FormField label="Type" error={form.formState.errors.type?.message}>
+        <FormField label={t('type')} error={form.formState.errors.type?.message}>
           <Select {...form.register('type', { valueAsNumber: true })}>
-            <option value={1}>Single Choice</option>
-            <option value={2}>Matching</option>
-            <option value={3}>Closed Answer</option>
+            <option value={1}>{t('typeSingleChoice')}</option>
+            <option value={2}>{t('typeMatching')}</option>
+            <option value={3}>{t('typeClosedAnswer')}</option>
           </Select>
         </FormField>
-        <FormField label="Difficulty" error={form.formState.errors.difficulty?.message}>
+        <FormField label={t('difficulty')} error={form.formState.errors.difficulty?.message}>
           <Select {...form.register('difficulty', { valueAsNumber: true })}>
-            <option value={1}>Easy</option>
-            <option value={2}>Medium</option>
-            <option value={3}>Hard</option>
+            <option value={1}>{t('difficultyEasy')}</option>
+            <option value={2}>{t('difficultyMedium')}</option>
+            <option value={3}>{t('difficultyHard')}</option>
           </Select>
         </FormField>
-        <FormField label="Status" error={form.formState.errors.status?.message}>
+        <FormField label={t('status')} error={form.formState.errors.status?.message}>
           <Select {...form.register('status', { valueAsNumber: true })}>
-            <option value={0}>Draft</option>
-            <option value={1}>Active</option>
-            <option value={2}>Archived</option>
+            <option value={0}>{t('statusDraft')}</option>
+            <option value={1}>{t('statusActive')}</option>
+            <option value={2}>{t('statusArchived')}</option>
           </Select>
         </FormField>
       </section>
 
-      <FormField label="Матни савол" error={form.formState.errors.content?.message}>
+      <FormField label={t('questionText')} error={form.formState.errors.content?.message}>
         <Textarea rows={5} {...form.register('content')} />
       </FormField>
 
       {selectedType === 1 ? <SingleChoiceEditor form={form} /> : null}
       {selectedType === 2 ? <MatchingEditor form={form} /> : null}
       {selectedType === 3 ? (
-        <FormField label="Ҷавоби дуруст" error={form.formState.errors.correctAnswer?.message}>
+        <FormField label={t('correctAnswer')} error={form.formState.errors.correctAnswer?.message}>
           <Input {...form.register('correctAnswer')} />
         </FormField>
       ) : null}
 
-      <FormField label="Шарҳ">
+      <FormField label={t('explanation')}>
         <Textarea rows={4} {...form.register('explanation')} />
       </FormField>
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={() => navigate('/admin/questions')}>
-          Бекор
+          {t('cancel')}
         </Button>
         <Button type="submit" disabled={mutation.isPending}>
           <Save className="h-4 w-4" aria-hidden />
-          {mutation.isPending ? 'Сабт...' : 'Сабт кардан'}
+          {mutation.isPending ? t('saving') : t('save')}
         </Button>
       </div>
     </form>
@@ -198,13 +201,14 @@ type QuestionFormInnerProps = {
 }
 
 function SingleChoiceEditor({ form }: QuestionFormInnerProps) {
+  const { t } = useTranslation()
   const answersError = form.formState.errors.answers?.message
 
   return (
     <section className="grid gap-3">
       <div>
-        <h2 className="text-base font-bold">Single Choice</h2>
-        <p className="text-sm text-[var(--muted)]">Ҳамеша 4 вариант ва танҳо 1 ҷавоби дуруст.</p>
+        <h2 className="text-base font-bold">{t('typeSingleChoice')}</h2>
+        <p className="text-sm text-[var(--muted)]">{t('singleChoiceHint')}</p>
       </div>
       {answersError ? <p className="text-sm font-semibold text-[var(--danger)]">{answersError}</p> : null}
       {[0, 1, 2, 3].map((index) => (
@@ -221,7 +225,7 @@ function SingleChoiceEditor({ form }: QuestionFormInnerProps) {
             />
             {String.fromCharCode(65 + index)}
           </label>
-          <Input placeholder={`Вариант ${String.fromCharCode(65 + index)}`} {...form.register(`answers.${index}.text`)} />
+          <Input placeholder={`${t('option')} ${String.fromCharCode(65 + index)}`} {...form.register(`answers.${index}.text`)} />
         </div>
       ))}
     </section>
@@ -229,19 +233,20 @@ function SingleChoiceEditor({ form }: QuestionFormInnerProps) {
 }
 
 function MatchingEditor({ form }: QuestionFormInnerProps) {
+  const { t } = useTranslation()
   const matchingError = form.formState.errors.matchingPairs?.message
 
   return (
     <section className="grid gap-3">
       <div>
-        <h2 className="text-base font-bold">Matching</h2>
-        <p className="text-sm text-[var(--muted)]">4 ҷуфт: қисми чап ва қисми рост.</p>
+        <h2 className="text-base font-bold">{t('typeMatching')}</h2>
+        <p className="text-sm text-[var(--muted)]">{t('matchingHint')}</p>
       </div>
       {matchingError ? <p className="text-sm font-semibold text-[var(--danger)]">{matchingError}</p> : null}
       {[0, 1, 2, 3].map((index) => (
         <div key={index} className="grid gap-3 rounded-md border border-[var(--border)] p-3 md:grid-cols-[1fr_1fr]">
-          <Input placeholder={`Чап ${index + 1}`} {...form.register(`matchingPairs.${index}.text`)} />
-          <Input placeholder={`Рост ${index + 1}`} {...form.register(`matchingPairs.${index}.matchPair`)} />
+          <Input placeholder={`${t('left')} ${index + 1}`} {...form.register(`matchingPairs.${index}.text`)} />
+          <Input placeholder={`${t('right')} ${index + 1}`} {...form.register(`matchingPairs.${index}.matchPair`)} />
         </div>
       ))}
     </section>

@@ -35,4 +35,22 @@ public sealed class AcademicCatalogValidationTests
 
         Assert.True(result.IsSuccess);
     }
+
+    [Fact]
+    public void Active_subject_accepts_distinct_tajik_and_russian_translations()
+    {
+        var request = new SubjectUpsertRequest(
+            "biology",
+            null,
+            0,
+            1,
+            [
+                new TranslationRequest(0, "Биология", null),
+                new TranslationRequest(1, "Биология", null)
+            ]);
+
+        var result = Validation.ValidateSubject(request);
+
+        Assert.True(result.IsSuccess);
+    }
 }

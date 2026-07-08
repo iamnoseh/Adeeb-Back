@@ -1,13 +1,13 @@
-export function questionTypeLabel(type: number) {
-  if (type === 1) return 'Single Choice'
-  if (type === 2) return 'Matching'
-  if (type === 3) return 'Closed Answer'
+export function questionTypeLabel(type: number, t: (key: string) => string) {
+  if (type === 1) return t('typeSingleChoice')
+  if (type === 2) return t('typeMatching')
+  if (type === 3) return t('typeClosedAnswer')
   return 'Unknown'
 }
 
-export function difficultyLabel(difficulty: number) {
-  if (difficulty === 1) return 'Easy'
-  if (difficulty === 2) return 'Medium'
-  if (difficulty === 3) return 'Hard'
+export function difficultyLabel(difficulty: number, t: (key: string) => string) {
+  if (difficulty === 1) return t('difficultyEasy')
+  if (difficulty === 2) return t('difficultyMedium')
+  if (difficulty === 3) return t('difficultyHard')
   return 'Unknown'
 }
