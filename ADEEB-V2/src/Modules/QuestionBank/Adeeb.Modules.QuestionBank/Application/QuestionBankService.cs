@@ -81,11 +81,7 @@ public sealed class QuestionBankService(QuestionBankDbContext db, IAcademicCatal
                 : Result<QuestionResponse>.Failure(validation.Error!);
         }
 
-        var now = clock.UtcNow;
-        ParseEnums(request, out var type, out var difficulty, out var status);
-        var question = new Question(Guid.NewGuid(), request.SubjectId, request.TopicId, request.Topic, type, difficulty, request.ImageUrl, now);
-        question.Update(request.SubjectId, request.TopicId, request.Topic, type, difficulty, status, request.ImageUrl, now);
-        question.ReplaceContent(ToQuestionTranslations(question.Id, request.Translations), ToAnswerOptions(question.Id, request.AnswerOptions));
+        var question = CreateQuestionEntity(request);
         db.Questions.Add(question);
         await db.SaveChangesAsync(ct);
         return Result<QuestionResponse>.Success(ToResponse(question, language));
@@ -149,6 +145,44 @@ public sealed class QuestionBankService(QuestionBankDbContext db, IAcademicCatal
         return Result.Success();
     }
 
+    public async Task<Result<IReadOnlyList<QuestionResponse>>> CreateQuestionsAsync(IReadOnlyList<QuestionUpsertRequest> requests, SupportedLanguage language, CancellationToken ct)
+    {
+        foreach (var request in requests)
+        {
+            var validation = await ValidateRequestAsync(request, ct);
+            if (validation.IsFailure)
+            {
+                return validation.ValidationErrors is not null
+                    ? Result<IReadOnlyList<QuestionResponse>>.ValidationFailure(validation.ValidationErrors)
+                    : Result<IReadOnlyList<QuestionResponse>>.Failure(validation.Error!);
+            }
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var questions = new List<Question>();
+        foreach (var request in requests)
+        {
+            var question = CreateQuestionEntity(request);
+            db.Questions.Add(question);
+            questions.Add(question);
+        }
+
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return Result<IReadOnlyList<QuestionResponse>>.Success(questions.Select(x => ToResponse(x, language)).ToList());
+    }
+
+    public async Task<IReadOnlyList<string>> GetQuestionTextsAsync(Guid subjectId, Guid? topicId, CancellationToken ct)
+    {
+        var query = db.Questions.Include(x => x.Translations).AsNoTracking().Where(x => x.SubjectId == subjectId);
+        if (topicId.HasValue)
+        {
+            query = query.Where(x => x.TopicId == topicId.Value);
+        }
+
+        return await query.SelectMany(x => x.Translations.Select(t => t.Content)).ToListAsync(ct);
+    }
+
     private async Task<Result> ValidateRequestAsync(QuestionUpsertRequest request, CancellationToken ct)
     {
         var validation = Validation.ValidateQuestion(request);
@@ -168,6 +202,16 @@ public sealed class QuestionBankService(QuestionBankDbContext db, IAcademicCatal
         }
 
         return Result.Success();
+    }
+
+    private Question CreateQuestionEntity(QuestionUpsertRequest request)
+    {
+        ParseEnums(request, out var type, out var difficulty, out var status);
+        var now = clock.UtcNow;
+        var question = new Question(Guid.NewGuid(), request.SubjectId, request.TopicId, request.Topic, type, difficulty, request.ImageUrl, now);
+        question.Update(request.SubjectId, request.TopicId, request.Topic, type, difficulty, status, request.ImageUrl, now);
+        question.ReplaceContent(ToQuestionTranslations(question.Id, request.Translations), ToAnswerOptions(question.Id, request.AnswerOptions));
+        return question;
     }
 
     private IQueryable<Question> FullQuery() =>
