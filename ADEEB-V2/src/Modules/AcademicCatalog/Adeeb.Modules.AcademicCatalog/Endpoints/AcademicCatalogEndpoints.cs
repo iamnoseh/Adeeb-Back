@@ -80,18 +80,34 @@ public static class AcademicCatalogEndpoints
 
     private static SubjectUpsertRequest ToSubjectUpsert(SubjectFormRequest form, string? iconUrl)
     {
-        var name = form.Name.Trim();
+        var legacyName = form.Name?.Trim();
+        var nameTg = FirstNonEmpty(form.NameTg, legacyName);
+        var nameRu = FirstNonEmpty(form.NameRu, legacyName);
+        var nameEn = FirstNonEmpty(form.NameEn, legacyName);
+        var translations = new List<TranslationRequest>
+        {
+            new((int)SupportedLanguage.Tajik, nameTg, NullIfWhiteSpace(form.DescriptionTg)),
+            new((int)SupportedLanguage.Russian, nameRu, NullIfWhiteSpace(form.DescriptionRu))
+        };
+
+        if (!string.IsNullOrWhiteSpace(nameEn))
+        {
+            translations.Add(new TranslationRequest((int)SupportedLanguage.English, nameEn.Trim(), NullIfWhiteSpace(form.DescriptionEn)));
+        }
+
         return new SubjectUpsertRequest(
-            ToCode(name),
+            ToCode(nameTg),
             iconUrl,
-            form.DisplayOrder,
-            form.Status,
-            [
-                new TranslationRequest((int)SupportedLanguage.Tajik, name, null),
-                new TranslationRequest((int)SupportedLanguage.Russian, name, null),
-                new TranslationRequest((int)SupportedLanguage.English, name, null)
-            ]);
+            form.DisplayOrder ?? 0,
+            form.Status ?? 1,
+            translations);
     }
+
+    private static string FirstNonEmpty(params string?[] values) =>
+        values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim() ?? string.Empty;
+
+    private static string? NullIfWhiteSpace(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static string ToCode(string value)
     {

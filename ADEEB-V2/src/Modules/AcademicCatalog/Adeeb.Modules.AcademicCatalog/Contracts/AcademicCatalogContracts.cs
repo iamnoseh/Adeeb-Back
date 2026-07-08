@@ -7,10 +7,16 @@ public sealed record SubjectUpsertRequest(string Code, string? IconUrl, int Disp
 public sealed record TopicUpsertRequest(Guid SubjectId, string Code, int DisplayOrder, int Status, IReadOnlyList<TranslationRequest> Translations);
 public sealed class SubjectFormRequest
 {
-    public string Name { get; init; } = string.Empty;
+    public string? Name { get; init; }
+    public string? NameTg { get; init; }
+    public string? NameRu { get; init; }
+    public string? NameEn { get; init; }
+    public string? DescriptionTg { get; init; }
+    public string? DescriptionRu { get; init; }
+    public string? DescriptionEn { get; init; }
     public IFormFile? Icon { get; init; }
-    public int Status { get; init; } = 1;
-    public int DisplayOrder { get; init; }
+    public int? Status { get; init; }
+    public int? DisplayOrder { get; init; }
 }
 public sealed record AcademicListQuery(string? Search, int? Status, int Page = 1, int PageSize = 20, string? Sort = null);
 public sealed record TranslationResponse(int Language, string Name, string? Description);
