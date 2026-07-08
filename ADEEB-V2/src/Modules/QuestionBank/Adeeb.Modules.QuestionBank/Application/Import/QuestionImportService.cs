@@ -257,7 +257,7 @@ public sealed class QuestionImportService(
                 continue;
             }
 
-            questions[i] = questions[i] withWarnings(new("question_import.possible_duplicate_in_database", "Possible duplicate question already exists in database."));
+            questions[i] = questions[i].WithWarnings(new("question_import.possible_duplicate_in_database", "Possible duplicate question already exists in database."));
         }
     }
 
@@ -309,7 +309,7 @@ public sealed class QuestionImportService(
 
 file static class ParsedQuestionExtensions
 {
-    public static ParsedQuestion withWarnings(this ParsedQuestion question, QuestionParseIssue warning)
+    public static ParsedQuestion WithWarnings(this ParsedQuestion question, QuestionParseIssue warning)
     {
         var warnings = question.Warnings.ToList();
         warnings.Add(warning);

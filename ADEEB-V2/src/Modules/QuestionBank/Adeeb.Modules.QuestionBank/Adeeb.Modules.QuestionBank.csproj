@@ -13,7 +13,7 @@
     </PackageReference>
     <PackageReference Include="DocumentFormat.OpenXml" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
-    <PackageReference Include="UglyToad.PdfPig" />
+    <PackageReference Include="PdfPig" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Adeeb.Application.Abstractions\Adeeb.Application.Abstractions.csproj" />
