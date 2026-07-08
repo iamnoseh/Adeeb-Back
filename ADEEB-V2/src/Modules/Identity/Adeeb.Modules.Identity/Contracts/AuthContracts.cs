@@ -6,8 +6,8 @@ public sealed record LoginRequest(string? Identifier, string? Email, string Pass
 public sealed record RefreshTokenRequest(string RefreshToken);
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public sealed record UserResponse(Guid Id, string Email, string? PhoneNumber, string FirstName, string LastName, string PreferredLanguage, string Role);
-public sealed record TokenResponse(string AccessToken, string RefreshToken, DateTimeOffset AccessTokenExpiresAtUtc);
-public sealed record AuthSessionResponse(Guid Id, string DeviceName, string Platform, DateTimeOffset CreatedAtUtc, DateTimeOffset? LastUsedAtUtc, bool IsCurrent);
+public sealed record TokenResponse(string AccessToken, string RefreshToken, DateTimeOffset AccessTokenExpiresAtUtc, DateTimeOffset AccessTokenExpiresAtDushanbe);
+public sealed record AuthSessionResponse(Guid Id, string DeviceName, string Platform, DateTimeOffset CreatedAtUtc, DateTimeOffset CreatedAtDushanbe, DateTimeOffset? LastUsedAtUtc, DateTimeOffset? LastUsedAtDushanbe, bool IsCurrent);
 public sealed record AuthSessionListResponse(IReadOnlyList<AuthSessionResponse> Items);
 public sealed record SessionResponse(Guid Id, string DeviceName);
 public sealed record AuthResponse(UserResponse User, TokenResponse Tokens, SessionResponse Session);

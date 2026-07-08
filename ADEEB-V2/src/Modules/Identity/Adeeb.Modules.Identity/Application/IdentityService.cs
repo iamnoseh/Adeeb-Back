@@ -207,10 +207,21 @@ public sealed class IdentityService(
         var sessions = await db.AuthSessions
             .Where(x => x.UserId == userId.Value && x.RevokedAtUtc == null && x.ExpiresAtUtc > now)
             .OrderByDescending(x => x.LastUsedAtUtc ?? x.CreatedAtUtc)
-            .Select(x => new AuthSessionResponse(x.Id, x.DeviceName, x.Platform, x.CreatedAtUtc, x.LastUsedAtUtc, x.Id == currentSessionId.Value))
             .ToListAsync(cancellationToken);
 
-        return Result<AuthSessionListResponse>.Success(new AuthSessionListResponse(sessions));
+        var response = sessions
+            .Select(x => new AuthSessionResponse(
+                x.Id,
+                x.DeviceName,
+                x.Platform,
+                x.CreatedAtUtc,
+                clock.ToDushanbeTime(x.CreatedAtUtc),
+                x.LastUsedAtUtc,
+                x.LastUsedAtUtc is null ? null : clock.ToDushanbeTime(x.LastUsedAtUtc.Value),
+                x.Id == currentSessionId.Value))
+            .ToList();
+
+        return Result<AuthSessionListResponse>.Success(new AuthSessionListResponse(response));
     }
 
     public async Task<Result> RevokeSessionAsync(ClaimsPrincipal principal, Guid sessionId, CancellationToken cancellationToken)
@@ -300,7 +311,7 @@ public sealed class IdentityService(
         var accessToken = jwtTokenGenerator.Generate(user, session, now);
         return new AuthResponse(
             ToUserResponse(user),
-            new TokenResponse(accessToken.Token, refreshToken, accessToken.ExpiresAtUtc),
+            new TokenResponse(accessToken.Token, refreshToken, accessToken.ExpiresAtUtc, clock.ToDushanbeTime(accessToken.ExpiresAtUtc)),
             new SessionResponse(session.Id, session.DeviceName));
     }
 
