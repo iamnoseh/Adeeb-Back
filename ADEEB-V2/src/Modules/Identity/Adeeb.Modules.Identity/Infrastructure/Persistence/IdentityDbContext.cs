@@ -27,6 +27,9 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.Email).HasMaxLength(320).IsRequired();
         builder.Property(x => x.NormalizedEmail).HasMaxLength(320).IsRequired();
         builder.HasIndex(x => x.NormalizedEmail).IsUnique();
+        builder.Property(x => x.PhoneNumber).HasMaxLength(32);
+        builder.Property(x => x.NormalizedPhoneNumber).HasMaxLength(32);
+        builder.HasIndex(x => x.NormalizedPhoneNumber).IsUnique().HasFilter("normalized_phone_number IS NOT NULL");
         builder.Property(x => x.PasswordHash).HasMaxLength(512).IsRequired();
         builder.Property(x => x.FirstName).HasMaxLength(80).IsRequired();
         builder.Property(x => x.LastName).HasMaxLength(80).IsRequired();

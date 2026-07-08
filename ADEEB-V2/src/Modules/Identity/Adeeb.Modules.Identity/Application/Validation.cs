@@ -7,12 +7,13 @@ using Adeeb.SharedKernel.Results;
 
 namespace Adeeb.Modules.Identity.Application;
 
-internal static class Validation
+public static class Validation
 {
     public static Result ValidateRegister(RegisterRequest request, PasswordPolicy passwordPolicy)
     {
         var errors = new Dictionary<string, IReadOnlyList<Error>>(StringComparer.OrdinalIgnoreCase);
         ValidateEmail(request.Email, errors);
+        ValidateOptionalPhoneNumber(request.PhoneNumber, errors);
         ValidatePassword(request.Password, passwordPolicy, errors);
         ValidateName(request.FirstName, "firstName", errors);
         ValidateName(request.LastName, "lastName", errors);
@@ -24,7 +25,7 @@ internal static class Validation
     public static Result ValidateLogin(LoginRequest request)
     {
         var errors = new Dictionary<string, IReadOnlyList<Error>>(StringComparer.OrdinalIgnoreCase);
-        ValidateEmail(request.Email, errors);
+        ValidateIdentifier(request.Identifier ?? request.Email, errors);
         if (string.IsNullOrWhiteSpace(request.Password))
         {
             errors["password"] = [Error.Validation("auth.password.required", "Validation.Required")];
@@ -60,6 +61,64 @@ internal static class Validation
         {
             errors["email"] = [Error.Validation("auth.email.invalid", "Validation.InvalidEmail")];
         }
+    }
+
+    private static void ValidateIdentifier(string? identifier, Dictionary<string, IReadOnlyList<Error>> errors)
+    {
+        if (string.IsNullOrWhiteSpace(identifier))
+        {
+            errors["identifier"] = [Error.Validation("auth.identifier.required", "Validation.Required")];
+            return;
+        }
+
+        if (identifier.Contains('@', StringComparison.Ordinal))
+        {
+            var emailErrors = new Dictionary<string, IReadOnlyList<Error>>(StringComparer.OrdinalIgnoreCase);
+            ValidateEmail(identifier, emailErrors);
+            if (emailErrors.TryGetValue("email", out var emailError))
+            {
+                errors["identifier"] = emailError;
+            }
+
+            return;
+        }
+
+        if (NormalizePhoneNumber(identifier) is null)
+        {
+            errors["identifier"] = [Error.Validation("auth.identifier.invalid", "Validation.Required")];
+        }
+    }
+
+    private static void ValidateOptionalPhoneNumber(string? phoneNumber, Dictionary<string, IReadOnlyList<Error>> errors)
+    {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            return;
+        }
+
+        if (NormalizePhoneNumber(phoneNumber) is null)
+        {
+            errors["phoneNumber"] = [Error.Validation("auth.phone.invalid", "Validation.Required")];
+        }
+    }
+
+    public static string? NormalizePhoneNumber(string? phoneNumber)
+    {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            return null;
+        }
+
+        var trimmed = phoneNumber.Trim();
+        var startsWithPlus = trimmed.StartsWith('+');
+        var digits = new string(trimmed.Where(char.IsDigit).ToArray());
+
+        if (digits.Length is < 7 or > 15)
+        {
+            return null;
+        }
+
+        return startsWithPlus ? $"+{digits}" : digits;
     }
 
     private static void ValidatePassword(string? password, PasswordPolicy passwordPolicy, Dictionary<string, IReadOnlyList<Error>> errors, string field = "password")

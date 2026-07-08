@@ -42,9 +42,26 @@ public sealed class IdentityService(
             return Result<AuthResponse>.Failure(IdentityErrors.EmailAlreadyExists);
         }
 
+        var normalizedPhoneNumber = Validation.NormalizePhoneNumber(request.PhoneNumber);
+        if (normalizedPhoneNumber is not null &&
+            await db.Users.AnyAsync(x => x.NormalizedPhoneNumber == normalizedPhoneNumber, cancellationToken))
+        {
+            return Result<AuthResponse>.Failure(IdentityErrors.PhoneAlreadyExists);
+        }
+
         SupportedLanguageExtensions.TryParseCulture(request.Language, out var language);
         var now = clock.UtcNow;
-        var user = new User(Guid.NewGuid(), request.Email.Trim(), normalizedEmail, string.Empty, request.FirstName.Trim(), request.LastName.Trim(), language, now);
+        var user = new User(
+            Guid.NewGuid(),
+            request.Email.Trim(),
+            normalizedEmail,
+            request.PhoneNumber?.Trim(),
+            normalizedPhoneNumber,
+            string.Empty,
+            request.FirstName.Trim(),
+            request.LastName.Trim(),
+            language,
+            now);
         user.ChangePassword(passwordHasher.HashPassword(user, request.Password), now);
 
         var (session, rawRefreshToken) = CreateSession(user.Id, Guid.NewGuid(), request.Device, client, now);
@@ -64,8 +81,8 @@ public sealed class IdentityService(
             return Result<AuthResponse>.ValidationFailure(validation.ValidationErrors!);
         }
 
-        var normalizedEmail = NormalizeEmail(request.Email);
-        var user = await db.Users.SingleOrDefaultAsync(x => x.NormalizedEmail == normalizedEmail, cancellationToken);
+        var identifier = request.Identifier ?? request.Email ?? string.Empty;
+        var user = await FindUserByIdentifierAsync(identifier, cancellationToken);
         if (user is null)
         {
             logger.LogWarning("auth.login.failed reason=unknown_user");
@@ -307,7 +324,21 @@ public sealed class IdentityService(
     }
 
     private static UserResponse ToUserResponse(User user) =>
-        new(user.Id, user.Email, user.FirstName, user.LastName, user.PreferredLanguage.ToCultureCode());
+        new(user.Id, user.Email, user.PhoneNumber, user.FirstName, user.LastName, user.PreferredLanguage.ToCultureCode());
+
+    private async Task<User?> FindUserByIdentifierAsync(string identifier, CancellationToken cancellationToken)
+    {
+        if (identifier.Contains('@', StringComparison.Ordinal))
+        {
+            var normalizedEmail = NormalizeEmail(identifier);
+            return await db.Users.SingleOrDefaultAsync(x => x.NormalizedEmail == normalizedEmail, cancellationToken);
+        }
+
+        var normalizedPhone = Validation.NormalizePhoneNumber(identifier);
+        return normalizedPhone is null
+            ? null
+            : await db.Users.SingleOrDefaultAsync(x => x.NormalizedPhoneNumber == normalizedPhone, cancellationToken);
+    }
 
     private async Task RevokeFamilyAsync(Guid userId, Guid familyId, DateTimeOffset now, string reason, CancellationToken cancellationToken)
     {

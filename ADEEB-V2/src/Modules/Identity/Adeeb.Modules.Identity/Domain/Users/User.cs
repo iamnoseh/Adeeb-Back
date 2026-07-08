@@ -11,6 +11,8 @@ public sealed class User : Entity
         Guid id,
         string email,
         string normalizedEmail,
+        string? phoneNumber,
+        string? normalizedPhoneNumber,
         string passwordHash,
         string firstName,
         string lastName,
@@ -20,6 +22,8 @@ public sealed class User : Entity
         Id = id;
         Email = email;
         NormalizedEmail = normalizedEmail;
+        PhoneNumber = phoneNumber;
+        NormalizedPhoneNumber = normalizedPhoneNumber;
         PasswordHash = passwordHash;
         FirstName = firstName;
         LastName = lastName;
@@ -32,6 +36,8 @@ public sealed class User : Entity
 
     public string Email { get; private set; } = string.Empty;
     public string NormalizedEmail { get; private set; } = string.Empty;
+    public string? PhoneNumber { get; private set; }
+    public string? NormalizedPhoneNumber { get; private set; }
     public string PasswordHash { get; private set; } = string.Empty;
     public string FirstName { get; private set; } = string.Empty;
     public string LastName { get; private set; } = string.Empty;
