@@ -1,4 +1,6 @@
 using Adeeb.Modules.QuestionBank.Application;
+using Adeeb.Modules.QuestionBank.Application.Import;
+using Adeeb.Modules.QuestionBank.Infrastructure.DocumentExtraction;
 using Adeeb.Modules.QuestionBank.Infrastructure.Files;
 using Adeeb.Modules.QuestionBank.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +19,17 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException("QuestionBank database connection string is required.");
 
         services.AddDbContext<QuestionBankDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddOptions<QuestionImportOptions>()
+            .Bind(configuration.GetSection(QuestionImportOptions.SectionName))
+            .Validate(options => options.MaxFileSizeBytes > 0, "Question import max file size must be positive.")
+            .Validate(options => options.MaxQuestionsPerImport > 0, "Question import max questions must be positive.")
+            .ValidateOnStart();
         services.AddScoped<QuestionBankService>();
+        services.AddScoped<IQuestionImportService, QuestionImportService>();
+        services.AddSingleton<IQuestionImportTextNormalizer, QuestionImportTextNormalizer>();
+        services.AddSingleton<IQuestionDocumentParser, QuestionDocumentParser>();
+        services.AddSingleton<IDocumentTextExtractor, DocxQuestionTextExtractor>();
+        services.AddSingleton<IDocumentTextExtractor, PdfQuestionTextExtractor>();
         services.AddScoped<QuestionImageStorage>();
         return services;
     }

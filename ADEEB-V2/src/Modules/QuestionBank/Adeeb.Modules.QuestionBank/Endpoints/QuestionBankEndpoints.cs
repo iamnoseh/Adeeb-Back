@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Modules.QuestionBank.Application;
+using Adeeb.Modules.QuestionBank.Application.Import;
 using Adeeb.Modules.QuestionBank.Contracts;
 using Adeeb.Modules.QuestionBank.Infrastructure.Files;
 using Adeeb.SharedKernel.Errors;
@@ -22,6 +23,12 @@ public static class QuestionBankEndpoints
             (await service.GetQuestionsAsync(query, CurrentLanguage(), ct)).ToHttpResult(context, localizer));
         group.MapGet("/{id:guid}", async (Guid id, QuestionBankService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetQuestionAsync(id, CurrentLanguage(), ct)).ToHttpResult(context, localizer));
+        group.MapPost("/import/parse", async ([FromForm] QuestionImportParseFormRequest form, IQuestionImportService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
+            (await service.ParseAsync(form, ct)).ToHttpResult(context, localizer))
+            .Accepts<QuestionImportParseFormRequest>("multipart/form-data")
+            .DisableAntiforgery();
+        group.MapPost("/import/confirm", async (QuestionImportConfirmRequest request, IQuestionImportService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
+            (await service.ConfirmAsync(request, ct)).ToHttpResult(context, localizer));
         group.MapPost("/", async ([FromForm] QuestionFormRequest form, QuestionImageStorage images, QuestionBankService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
         {
             var parsed = ToUpsertRequest(form, imageUrl: null);
