@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Threading.RateLimiting;
+using Adeeb.Api.Documentation;
+using Adeeb.Api.Documentation.Endpoints;
 using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Infrastructure;
 using Adeeb.Modules.Identity;
@@ -19,6 +21,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAdeebInfrastructure();
 builder.Services.AddIdentityModule(builder.Configuration);
+builder.Services.AddAdeebDocumentation(builder.Configuration);
 builder.Services.AddAuthorization();
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
@@ -102,10 +105,13 @@ await IdentitySeeder.SeedSuperAdminAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
+    app.UseSwagger(options =>
+    {
+        options.RouteTemplate = "openapi/{documentName}.json";
+    });
     app.UseSwaggerUI(options =>
     {
-        options.SwaggerEndpoint("/swagger/v2/swagger.json", "ADEEB V2 API");
+        options.SwaggerEndpoint("/openapi/v2.json", "ADEEB V2 API");
         options.RoutePrefix = "swagger";
     });
 }
@@ -143,6 +149,7 @@ app.MapGet("/health/ready", async (IdentityDbContext db, CancellationToken ct) =
         : Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "PostgreSQL is not reachable"));
 
 app.MapIdentityEndpoints();
+app.MapAdeebDocumentation();
 
 app.Run();
 
