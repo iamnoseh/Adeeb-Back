@@ -71,7 +71,16 @@ export function SubjectsPage() {
                   >
                     <Edit className="h-4 w-4" /> {t('edit')}
                   </Link>
-                  <Button variant="danger" className="px-3" onClick={() => void removeMutation.mutate(subject.id)}>
+                  <Button
+                    variant="danger"
+                    className="px-3"
+                    disabled={subject.status === 2}
+                    onClick={() => {
+                      if (window.confirm(t('confirmDelete'))) {
+                        removeMutation.mutate(subject.id)
+                      }
+                    }}
+                  >
                     <Trash2 className="h-4 w-4" /> {t('delete')}
                   </Button>
                 </div>

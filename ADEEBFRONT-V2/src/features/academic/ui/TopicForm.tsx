@@ -125,7 +125,16 @@ export function TopicForm({ topicId }: TopicFormProps) {
         </FormField>
       </section>
 
-      <input type="hidden" {...form.register('status', { valueAsNumber: true })} />
+      <section className="grid gap-4 md:grid-cols-2">
+        <FormField label={t('status')} error={form.formState.errors.status?.message}>
+          <Select {...form.register('status', { valueAsNumber: true })}>
+            <option value={0}>{t('statusDraft')}</option>
+            <option value={1}>{t('statusActive')}</option>
+            <option value={2}>{t('statusArchived')}</option>
+          </Select>
+        </FormField>
+      </section>
+
       <input type="hidden" {...form.register('displayOrder', { valueAsNumber: true })} />
 
       <div className="flex justify-end gap-2">

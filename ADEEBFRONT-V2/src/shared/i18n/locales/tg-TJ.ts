@@ -13,6 +13,7 @@ export const tgTJ = {
   cancel: 'Бекор',
   edit: 'Таҳрир',
   delete: 'Нест кардан',
+  confirmDelete: 'Оё шумо мутмаин ҳастед, ки ин сабтро нест кардан мехоҳед?',
   search: 'Ҷустуҷӯ...',
   allSubjects: 'Ҳамаи фанҳо',
   allTypes: 'Ҳамаи намудҳо',

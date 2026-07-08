@@ -96,7 +96,16 @@ export function QuestionsPage() {
                       <Link className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--text)] no-underline hover:bg-[var(--surface-muted)]" to={`/admin/questions/${question.id}/edit`}>
                         <Edit className="h-4 w-4" /> {t('edit')}
                       </Link>
-                      <Button variant="danger" className="px-3" onClick={() => void removeMutation.mutate(question.id)}>
+                      <Button
+                        variant="danger"
+                        className="px-3"
+                        disabled={question.status === 2}
+                        onClick={() => {
+                          if (window.confirm(t('confirmDelete'))) {
+                            removeMutation.mutate(question.id)
+                          }
+                        }}
+                      >
                         <Trash2 className="h-4 w-4" /> {t('delete')}
                       </Button>
                     </div>

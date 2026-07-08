@@ -13,6 +13,7 @@ export const ruRU = {
   cancel: 'Отмена',
   edit: 'Редактировать',
   delete: 'Удалить',
+  confirmDelete: 'Вы уверены, что хотите удалить эту запись?',
   search: 'Поиск...',
   allSubjects: 'Все предметы',
   allTypes: 'Все типы',
