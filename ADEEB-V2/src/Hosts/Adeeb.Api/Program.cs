@@ -20,6 +20,16 @@ builder.Services.AddAdeebInfrastructure();
 builder.Services.AddIdentityModule(builder.Configuration);
 builder.Services.AddAuthorization();
 builder.Services.AddProblemDetails();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v2", new()
+    {
+        Title = "ADEEB V2 API",
+        Version = "v2",
+        Description = "ADEEB V2 backend foundation and Identity/Auth API."
+    });
+});
 
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
@@ -72,6 +82,16 @@ builder.Services.AddOpenTelemetry()
 var app = builder.Build();
 
 app.UseExceptionHandler();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v2/swagger.json", "ADEEB V2 API");
+        options.RoutePrefix = "swagger";
+    });
+}
 
 app.UseRequestLocalization();
 app.UseAuthentication();
