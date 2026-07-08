@@ -335,13 +335,87 @@ public sealed class IdentityService(
             return device;
         }
 
-        var source = $"{client.IpAddress ?? "unknown"}|{client.UserAgent ?? "unknown"}";
+        var platform = NormalizeHeaderValue(client.DevicePlatform) ?? DetectPlatform(client.UserAgent);
+        var deviceName = NormalizeHeaderValue(client.DeviceName) ?? DetectDeviceName(client.UserAgent, platform);
+        var appVersion = NormalizeHeaderValue(client.AppVersion);
+        var source = NormalizeHeaderValue(client.DeviceId)
+            ?? $"{client.IpAddress ?? "unknown"}|{client.UserAgent ?? "unknown"}|{platform}";
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source))).ToLowerInvariant()[..32];
+
         return new DeviceRequest(
             $"auto-{hash}",
-            "Browser or Swagger",
-            "web",
-            null);
+            deviceName,
+            platform,
+            appVersion);
+    }
+
+    private static string? NormalizeHeaderValue(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string DetectPlatform(string? userAgent)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent))
+        {
+            return "unknown";
+        }
+
+        var ua = userAgent.ToLowerInvariant();
+        if (ua.Contains("android", StringComparison.Ordinal))
+        {
+            return "android";
+        }
+
+        if (ua.Contains("iphone", StringComparison.Ordinal) || ua.Contains("ipad", StringComparison.Ordinal) || ua.Contains("ios", StringComparison.Ordinal))
+        {
+            return "ios";
+        }
+
+        return "web";
+    }
+
+    private static string DetectDeviceName(string? userAgent, string platform)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent))
+        {
+            return platform == "unknown" ? "Unknown device" : $"{platform} client";
+        }
+
+        var ua = userAgent.ToLowerInvariant();
+        var browser = ua switch
+        {
+            var x when x.Contains("edg/", StringComparison.Ordinal) => "Edge",
+            var x when x.Contains("chrome/", StringComparison.Ordinal) => "Chrome",
+            var x when x.Contains("firefox/", StringComparison.Ordinal) => "Firefox",
+            var x when x.Contains("safari/", StringComparison.Ordinal) => "Safari",
+            _ => "Browser"
+        };
+
+        if (ua.Contains("swagger", StringComparison.Ordinal))
+        {
+            return "Swagger UI";
+        }
+
+        if (platform == "android")
+        {
+            return $"{browser} on Android";
+        }
+
+        if (platform == "ios")
+        {
+            return $"{browser} on iOS";
+        }
+
+        if (ua.Contains("windows", StringComparison.Ordinal))
+        {
+            return $"{browser} on Windows";
+        }
+
+        if (ua.Contains("mac os", StringComparison.Ordinal) || ua.Contains("macintosh", StringComparison.Ordinal))
+        {
+            return $"{browser} on macOS";
+        }
+
+        return $"{browser} on Web";
     }
 
     private async Task<User?> FindUserByIdentifierAsync(string identifier, CancellationToken cancellationToken)
@@ -395,4 +469,10 @@ public sealed class IdentityService(
         Guid.TryParse(principal.FindFirstValue("sid"), out var sessionId) ? sessionId : null;
 }
 
-public sealed record ClientContext(string? IpAddress, string? UserAgent);
+public sealed record ClientContext(
+    string? IpAddress,
+    string? UserAgent,
+    string? DeviceId,
+    string? DeviceName,
+    string? DevicePlatform,
+    string? AppVersion);

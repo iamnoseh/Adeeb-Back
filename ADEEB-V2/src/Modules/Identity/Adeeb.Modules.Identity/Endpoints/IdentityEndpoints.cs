@@ -54,5 +54,11 @@ public static class IdentityEndpoints
     }
 
     private static ClientContext ToClientContext(HttpContext context) =>
-        new(context.Connection.RemoteIpAddress?.ToString(), context.Request.Headers.UserAgent.ToString());
+        new(
+            context.Connection.RemoteIpAddress?.ToString(),
+            context.Request.Headers.UserAgent.ToString(),
+            context.Request.Headers["X-Adeeb-Device-Id"].FirstOrDefault(),
+            context.Request.Headers["X-Adeeb-Device-Name"].FirstOrDefault(),
+            context.Request.Headers["X-Adeeb-Platform"].FirstOrDefault(),
+            context.Request.Headers["X-Adeeb-App-Version"].FirstOrDefault());
 }
