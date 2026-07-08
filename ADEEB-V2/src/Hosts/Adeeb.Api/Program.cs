@@ -9,6 +9,7 @@ using Adeeb.Modules.Identity.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -28,6 +29,19 @@ builder.Services.AddSwaggerGen(options =>
         Title = "ADEEB V2 API",
         Version = "v2",
         Description = "ADEEB V2 backend foundation and Identity/Auth API."
+    });
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Paste only the JWT access token. Swagger will send it as: Bearer {token}."
+    });
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document, null)] = []
     });
 });
 
@@ -82,6 +96,9 @@ builder.Services.AddOpenTelemetry()
 var app = builder.Build();
 
 app.UseExceptionHandler();
+
+await IdentityDatabaseInitializer.MigrateAsync(app.Services);
+await IdentitySeeder.SeedSuperAdminAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {

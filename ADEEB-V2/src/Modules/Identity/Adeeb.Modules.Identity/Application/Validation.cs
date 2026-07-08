@@ -155,7 +155,6 @@ public static class Validation
     {
         if (device is null)
         {
-            errors["device"] = [Error.Validation("auth.device.required", "Validation.Required")];
             return;
         }
 

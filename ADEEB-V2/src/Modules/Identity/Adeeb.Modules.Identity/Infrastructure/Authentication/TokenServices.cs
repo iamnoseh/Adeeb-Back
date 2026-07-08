@@ -43,6 +43,7 @@ public sealed class JwtTokenGenerator(IOptions<JwtOptions> options)
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim("sid", session.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            new Claim(ClaimTypes.Role, user.Role.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
         };

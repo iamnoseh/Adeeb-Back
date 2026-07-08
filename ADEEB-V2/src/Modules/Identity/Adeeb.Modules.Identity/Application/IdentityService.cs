@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Identity.Contracts;
@@ -64,7 +66,7 @@ public sealed class IdentityService(
             now);
         user.ChangePassword(passwordHasher.HashPassword(user, request.Password), now);
 
-        var (session, rawRefreshToken) = CreateSession(user.Id, Guid.NewGuid(), request.Device, client, now);
+        var (session, rawRefreshToken) = CreateSession(user.Id, Guid.NewGuid(), ResolveDevice(request.Device, client), client, now);
         db.Users.Add(user);
         db.AuthSessions.Add(session);
         await db.SaveChangesAsync(cancellationToken);
@@ -103,7 +105,7 @@ public sealed class IdentityService(
         }
 
         var now = clock.UtcNow;
-        var (session, rawRefreshToken) = CreateSession(user.Id, Guid.NewGuid(), request.Device, client, now);
+        var (session, rawRefreshToken) = CreateSession(user.Id, Guid.NewGuid(), ResolveDevice(request.Device, client), client, now);
         user.RecordLogin(now);
         db.AuthSessions.Add(session);
         await db.SaveChangesAsync(cancellationToken);
@@ -324,7 +326,23 @@ public sealed class IdentityService(
     }
 
     private static UserResponse ToUserResponse(User user) =>
-        new(user.Id, user.Email, user.PhoneNumber, user.FirstName, user.LastName, user.PreferredLanguage.ToCultureCode());
+        new(user.Id, user.Email, user.PhoneNumber, user.FirstName, user.LastName, user.PreferredLanguage.ToCultureCode(), user.Role.ToString());
+
+    private static DeviceRequest ResolveDevice(DeviceRequest? device, ClientContext client)
+    {
+        if (device is not null)
+        {
+            return device;
+        }
+
+        var source = $"{client.IpAddress ?? "unknown"}|{client.UserAgent ?? "unknown"}";
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(source))).ToLowerInvariant()[..32];
+        return new DeviceRequest(
+            $"auto-{hash}",
+            "Browser or Swagger",
+            "web",
+            null);
+    }
 
     private async Task<User?> FindUserByIdentifierAsync(string identifier, CancellationToken cancellationToken)
     {

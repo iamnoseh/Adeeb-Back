@@ -24,19 +24,23 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
     {
         builder.ToTable("users");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Email).HasMaxLength(320).IsRequired();
-        builder.Property(x => x.NormalizedEmail).HasMaxLength(320).IsRequired();
+        builder.Property(x => x.Id).HasColumnName("id");
+        builder.Property(x => x.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
+        builder.Property(x => x.NormalizedEmail).HasColumnName("normalized_email").HasMaxLength(320).IsRequired();
         builder.HasIndex(x => x.NormalizedEmail).IsUnique();
-        builder.Property(x => x.PhoneNumber).HasMaxLength(32);
-        builder.Property(x => x.NormalizedPhoneNumber).HasMaxLength(32);
+        builder.Property(x => x.PhoneNumber).HasColumnName("phone_number").HasMaxLength(32);
+        builder.Property(x => x.NormalizedPhoneNumber).HasColumnName("normalized_phone_number").HasMaxLength(32);
         builder.HasIndex(x => x.NormalizedPhoneNumber).IsUnique().HasFilter("normalized_phone_number IS NOT NULL");
-        builder.Property(x => x.PasswordHash).HasMaxLength(512).IsRequired();
-        builder.Property(x => x.FirstName).HasMaxLength(80).IsRequired();
-        builder.Property(x => x.LastName).HasMaxLength(80).IsRequired();
-        builder.Property(x => x.PreferredLanguage).HasConversion<string>().HasMaxLength(32).IsRequired();
-        builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsRequired();
-        builder.Property(x => x.CreatedAtUtc).IsRequired();
-        builder.Property(x => x.UpdatedAtUtc).IsRequired();
+        builder.Property(x => x.PasswordHash).HasColumnName("password_hash").HasMaxLength(512).IsRequired();
+        builder.Property(x => x.FirstName).HasColumnName("first_name").HasMaxLength(80).IsRequired();
+        builder.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(80).IsRequired();
+        builder.Property(x => x.PreferredLanguage).HasColumnName("preferred_language").HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.Role).HasColumnName("role").HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(32).IsRequired();
+        builder.Property(x => x.EmailVerified).HasColumnName("email_verified");
+        builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
+        builder.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc").IsRequired();
+        builder.Property(x => x.LastLoginAtUtc).HasColumnName("last_login_at_utc");
     }
 }
 
@@ -46,15 +50,24 @@ internal sealed class AuthSessionConfiguration : IEntityTypeConfiguration<AuthSe
     {
         builder.ToTable("auth_sessions");
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.DeviceId).HasMaxLength(128).IsRequired();
-        builder.Property(x => x.DeviceName).HasMaxLength(120).IsRequired();
-        builder.Property(x => x.Platform).HasMaxLength(40).IsRequired();
-        builder.Property(x => x.AppVersion).HasMaxLength(40);
-        builder.Property(x => x.RefreshTokenHash).HasMaxLength(128).IsRequired();
-        builder.Property(x => x.RevokeReason).HasMaxLength(80);
-        builder.Property(x => x.CreatedByIp).HasMaxLength(64);
-        builder.Property(x => x.LastUsedIp).HasMaxLength(64);
-        builder.Property(x => x.UserAgent).HasMaxLength(512);
+        builder.Property(x => x.Id).HasColumnName("id");
+        builder.Property(x => x.UserId).HasColumnName("user_id");
+        builder.Property(x => x.FamilyId).HasColumnName("family_id");
+        builder.Property(x => x.DeviceId).HasColumnName("device_id").HasMaxLength(128).IsRequired();
+        builder.Property(x => x.DeviceName).HasColumnName("device_name").HasMaxLength(120).IsRequired();
+        builder.Property(x => x.Platform).HasColumnName("platform").HasMaxLength(40).IsRequired();
+        builder.Property(x => x.AppVersion).HasColumnName("app_version").HasMaxLength(40);
+        builder.Property(x => x.RefreshTokenHash).HasColumnName("refresh_token_hash").HasMaxLength(128).IsRequired();
+        builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+        builder.Property(x => x.ExpiresAtUtc).HasColumnName("expires_at_utc");
+        builder.Property(x => x.LastUsedAtUtc).HasColumnName("last_used_at_utc");
+        builder.Property(x => x.RotatedAtUtc).HasColumnName("rotated_at_utc");
+        builder.Property(x => x.RevokedAtUtc).HasColumnName("revoked_at_utc");
+        builder.Property(x => x.RevokeReason).HasColumnName("revoke_reason").HasMaxLength(80);
+        builder.Property(x => x.ReplacedBySessionId).HasColumnName("replaced_by_session_id");
+        builder.Property(x => x.CreatedByIp).HasColumnName("created_by_ip").HasMaxLength(64);
+        builder.Property(x => x.LastUsedIp).HasColumnName("last_used_ip").HasMaxLength(64);
+        builder.Property(x => x.UserAgent).HasColumnName("user_agent").HasMaxLength(512);
         builder.HasIndex(x => x.RefreshTokenHash);
         builder.HasIndex(x => x.FamilyId);
         builder.HasIndex(x => new { x.UserId, x.RevokedAtUtc });

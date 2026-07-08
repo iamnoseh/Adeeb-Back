@@ -17,7 +17,8 @@ public sealed class User : Entity
         string firstName,
         string lastName,
         SupportedLanguage preferredLanguage,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        UserRole role = UserRole.User)
     {
         Id = id;
         Email = email;
@@ -28,6 +29,7 @@ public sealed class User : Entity
         FirstName = firstName;
         LastName = lastName;
         PreferredLanguage = preferredLanguage;
+        Role = role;
         Status = UserStatus.Active;
         EmailVerified = false;
         CreatedAtUtc = now;
@@ -42,6 +44,7 @@ public sealed class User : Entity
     public string FirstName { get; private set; } = string.Empty;
     public string LastName { get; private set; } = string.Empty;
     public SupportedLanguage PreferredLanguage { get; private set; }
+    public UserRole Role { get; private set; }
     public UserStatus Status { get; private set; }
     public bool EmailVerified { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }

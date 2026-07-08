@@ -26,3 +26,15 @@ public sealed class PasswordPolicyOptions
     public bool RequireLowercase { get; init; } = true;
     public bool RequireDigit { get; init; } = true;
 }
+
+public sealed class SeedSuperAdminOptions
+{
+    public const string SectionName = "SeedSuperAdmin";
+    public bool Enabled { get; init; }
+    [Required, EmailAddress] public string Email { get; init; } = string.Empty;
+    public string? PhoneNumber { get; init; }
+    [Required, MinLength(8)] public string Password { get; init; } = string.Empty;
+    [Required] public string FirstName { get; init; } = "Super";
+    [Required] public string LastName { get; init; } = "Admin";
+    public string Language { get; init; } = "tg-TJ";
+}

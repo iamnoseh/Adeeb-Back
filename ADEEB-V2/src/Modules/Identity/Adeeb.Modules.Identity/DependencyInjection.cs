@@ -25,6 +25,10 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddOptions<RefreshTokenOptions>().Bind(configuration.GetSection(RefreshTokenOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<PasswordPolicyOptions>().Bind(configuration.GetSection(PasswordPolicyOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
+        services.AddOptions<SeedSuperAdminOptions>()
+            .Bind(configuration.GetSection(SeedSuperAdminOptions.SectionName))
+            .Validate(x => !x.Enabled || (!string.IsNullOrWhiteSpace(x.Email) && !string.IsNullOrWhiteSpace(x.Password)), "SuperAdmin seed requires email and password when enabled.")
+            .ValidateOnStart();
 
         var connectionString = configuration.GetConnectionString("Identity")
             ?? configuration.GetConnectionString("Default")
@@ -53,7 +57,8 @@ public static class DependencyInjection
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromSeconds(30),
-                    NameClaimType = "sub"
+                    NameClaimType = "sub",
+                    RoleClaimType = System.Security.Claims.ClaimTypes.Role
                 };
             });
 
