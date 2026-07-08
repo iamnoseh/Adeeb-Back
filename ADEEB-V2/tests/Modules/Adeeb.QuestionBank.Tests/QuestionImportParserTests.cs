@@ -1,4 +1,4 @@
-.using Adeeb.Modules.QuestionBank.Application.Import;
+using Adeeb.Modules.QuestionBank.Application.Import;
 
 namespace Adeeb.QuestionBank.Tests;
 
