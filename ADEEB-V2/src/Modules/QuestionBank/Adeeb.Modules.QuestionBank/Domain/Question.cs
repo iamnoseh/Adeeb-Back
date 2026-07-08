@@ -54,10 +54,38 @@ public sealed class Question : Entity
 
     public void ReplaceContent(IEnumerable<QuestionTranslation> translations, IEnumerable<AnswerOption> answerOptions)
     {
-        _translations.Clear();
-        _translations.AddRange(translations);
-        _answerOptions.Clear();
-        _answerOptions.AddRange(answerOptions);
+        foreach (var t in translations)
+        {
+            var existing = _translations.FirstOrDefault(x => x.Language == t.Language);
+            if (existing is not null)
+            {
+                existing.Update(t.Content, t.Explanation);
+            }
+            else
+            {
+                _translations.Add(t);
+            }
+        }
+
+        var newLanguages = translations.Select(x => x.Language).ToHashSet();
+        _translations.RemoveAll(x => !newLanguages.Contains(x.Language));
+
+        foreach (var newOpt in answerOptions)
+        {
+            var existingOpt = _answerOptions.FirstOrDefault(x => x.DisplayOrder == newOpt.DisplayOrder);
+            if (existingOpt is not null)
+            {
+                existingOpt.Update(newOpt.IsCorrect);
+                existingOpt.ReplaceTranslations(newOpt.Translations);
+            }
+            else
+            {
+                _answerOptions.Add(newOpt);
+            }
+        }
+
+        var newDisplayOrders = answerOptions.Select(x => x.DisplayOrder).ToHashSet();
+        _answerOptions.RemoveAll(x => !newDisplayOrders.Contains(x.DisplayOrder));
     }
 
     public void Archive(DateTimeOffset now, string reason)
@@ -90,6 +118,12 @@ public sealed class QuestionTranslation
     public SupportedLanguage Language { get; private set; }
     public string Content { get; private set; } = string.Empty;
     public string? Explanation { get; private set; }
+
+    public void Update(string content, string? explanation)
+    {
+        Content = content.Trim();
+        Explanation = string.IsNullOrWhiteSpace(explanation) ? null : explanation.Trim();
+    }
 }
 
 public sealed class AnswerOption
@@ -112,10 +146,28 @@ public sealed class AnswerOption
     public bool IsCorrect { get; private set; }
     public IReadOnlyCollection<AnswerOptionTranslation> Translations => _translations;
 
+    public void Update(bool isCorrect)
+    {
+        IsCorrect = isCorrect;
+    }
+
     public void ReplaceTranslations(IEnumerable<AnswerOptionTranslation> translations)
     {
-        _translations.Clear();
-        _translations.AddRange(translations);
+        foreach (var t in translations)
+        {
+            var existing = _translations.FirstOrDefault(x => x.Language == t.Language);
+            if (existing is not null)
+            {
+                existing.Update(t.Text, t.MatchPairText);
+            }
+            else
+            {
+                _translations.Add(new AnswerOptionTranslation(Id, t.Language, t.Text, t.MatchPairText));
+            }
+        }
+
+        var newLanguages = translations.Select(x => x.Language).ToHashSet();
+        _translations.RemoveAll(x => !newLanguages.Contains(x.Language));
     }
 }
 
@@ -135,4 +187,10 @@ public sealed class AnswerOptionTranslation
     public SupportedLanguage Language { get; private set; }
     public string Text { get; private set; } = string.Empty;
     public string? MatchPairText { get; private set; }
+
+    public void Update(string text, string? matchPairText)
+    {
+        Text = text.Trim();
+        MatchPairText = string.IsNullOrWhiteSpace(matchPairText) ? null : matchPairText.Trim();
+    }
 }

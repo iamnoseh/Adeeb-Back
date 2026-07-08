@@ -4,12 +4,17 @@ import type { AcademicListQuery, PagedResponse, SubjectFormValues, SubjectRespon
 
 export const subjectKeys = {
   list: (query: AcademicListQuery = {}) => ['subjects', 'list', query] as const,
+  publicList: (query: AcademicListQuery = {}) => ['subjects', 'public-list', query] as const,
   detail: (id: string) => ['subjects', 'detail', id] as const,
 }
 
 export const subjectsApi = {
   async list(query: AcademicListQuery = {}) {
     const response = await httpClient.get<PagedResponse<SubjectResponse>>(`/api/v2/admin/subjects${toQueryString(query)}`)
+    return response.data
+  },
+  async publicList(query: AcademicListQuery = {}) {
+    const response = await httpClient.get<PagedResponse<SubjectResponse>>(`/api/v2/subjects${toQueryString(query)}`)
     return response.data
   },
   async detail(id: string) {

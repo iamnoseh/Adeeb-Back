@@ -60,8 +60,8 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
   const selectedType = form.watch('type')
 
   const subjectsQuery = useQuery({
-    queryKey: subjectKeys.list({ pageSize: 100 }),
-    queryFn: () => subjectsApi.list({ pageSize: 100 }),
+    queryKey: subjectKeys.publicList({ pageSize: 100 }),
+    queryFn: () => subjectsApi.publicList({ pageSize: 100 }),
   })
   const topicsQuery = useQuery({
     queryKey: selectedSubjectId ? topicKeys.bySubject(selectedSubjectId) : ['topics', 'empty'],

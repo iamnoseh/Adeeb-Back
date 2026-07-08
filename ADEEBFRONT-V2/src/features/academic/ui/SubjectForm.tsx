@@ -11,7 +11,7 @@ import type { SubjectFormValues } from '@/features/academic/model/academic.types
 import { ApiError } from '@/shared/api/problem-details'
 import { Button } from '@/shared/ui/Button'
 import { FormField } from '@/shared/ui/FormField'
-import { Input, Textarea } from '@/shared/ui/Input'
+import { Input, Select, Textarea } from '@/shared/ui/Input'
 
 type SubjectFormProps = {
   subjectId?: string | undefined
@@ -105,9 +105,15 @@ export function SubjectForm({ subjectId }: SubjectFormProps) {
         </FormField>
       </div>
 
-      <input type="hidden" {...form.register('status', { valueAsNumber: true })} />
-      <input type="hidden" {...form.register('displayOrder', { valueAsNumber: true })} />
+      <FormField label={t('status')}>
+        <Select {...form.register('status', { valueAsNumber: true })}>
+          <option value={0}>{t('statusDraft')}</option>
+          <option value={1}>{t('statusActive')}</option>
+          <option value={2}>{t('statusArchived')}</option>
+        </Select>
+      </FormField>
 
+      <input type="hidden" {...form.register('displayOrder', { valueAsNumber: true })} />
       <FormField label={isEdit ? t('subjectIconNew') : t('subjectIcon')} error={form.formState.errors.icon?.message?.toString()}>
         <Input type="file" accept="image/png,image/jpeg,image/jpg,image/svg+xml" {...form.register('icon')} />
       </FormField>
