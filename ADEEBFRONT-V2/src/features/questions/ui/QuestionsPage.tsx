@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Edit, ImageIcon, Plus, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Edit, FileUp, ImageIcon, Plus, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { subjectKeys, subjectsApi } from '@/features/academic/api/subjects.api'
@@ -173,10 +173,16 @@ export function QuestionsPage() {
 export function QuestionsPageActions() {
   const { t } = useTranslation()
   return (
-    <Link to="/admin/questions/new" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white no-underline hover:bg-[var(--primary-strong)]">
-      <Plus className="h-4 w-4" />
-      {t('newQuestion')}
-    </Link>
+    <>
+      <Link to="/admin/questions/import" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-white px-4 py-2.5 text-sm font-bold text-[var(--text)] no-underline shadow-sm hover:bg-[var(--surface-soft)]">
+        <FileUp className="h-4 w-4" />
+        Import
+      </Link>
+      <Link to="/admin/questions/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,var(--primary),var(--primary-strong))] px-4 py-2.5 text-sm font-bold text-white no-underline shadow-[0_12px_24px_rgb(47_125_115/0.24)] hover:brightness-105">
+        <Plus className="h-4 w-4" />
+        {t('newQuestion')}
+      </Link>
+    </>
   )
 }
 

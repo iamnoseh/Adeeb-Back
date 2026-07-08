@@ -8,6 +8,7 @@ import { TopicsRoute } from '@/routes/admin/topics/TopicsRoute'
 import { TopicFormRoute } from '@/routes/admin/topics/TopicFormRoute'
 import { QuestionsRoute } from '@/routes/admin/questions/QuestionsRoute'
 import { QuestionFormRoute } from '@/routes/admin/questions/QuestionFormRoute'
+import { QuestionImportRoute } from '@/routes/admin/questions/QuestionImportRoute'
 import { AuthRoute } from '@/features/auth/ui/AuthRoute'
 import { GuestRoute } from '@/features/auth/ui/GuestRoute'
 
@@ -40,6 +41,7 @@ export function AppRouter() {
           <Route path="topics/new" element={<TopicFormRoute />} />
           <Route path="topics/:topicId/edit" element={<TopicFormRoute />} />
           <Route path="questions" element={<QuestionsRoute />} />
+          <Route path="questions/import" element={<QuestionImportRoute />} />
           <Route path="questions/new" element={<QuestionFormRoute />} />
           <Route path="questions/:questionId/edit" element={<QuestionFormRoute />} />
         </Route>

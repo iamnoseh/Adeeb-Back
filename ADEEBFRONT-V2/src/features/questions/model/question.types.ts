@@ -70,3 +70,59 @@ export type QuestionFormValues = {
   correctAnswer: string
   image?: FileList
 }
+
+export type QuestionImportIssue = {
+  code: string
+  message: string
+}
+
+export type QuestionImportPreviewOption = {
+  label: string
+  text: string
+  isCorrect: boolean
+}
+
+export type QuestionImportPreviewQuestion = {
+  clientKey: string
+  questionText: string
+  options: QuestionImportPreviewOption[]
+  isValid: boolean
+  errors: QuestionImportIssue[]
+  warnings: QuestionImportIssue[]
+}
+
+export type QuestionImportPreviewResponse = {
+  fileName: string
+  summary: {
+    totalDetected: number
+    valid: number
+    invalid: number
+    warnings: number
+  }
+  questions: QuestionImportPreviewQuestion[]
+}
+
+export type QuestionImportParseRequest = {
+  subjectId: string
+  topicId?: string | null
+  difficulty: number
+  file: File
+}
+
+export type QuestionImportConfirmRequest = {
+  subjectId: string
+  topicId?: string | null
+  difficulty: number
+  questions: {
+    questionText: string
+    options: {
+      text: string
+      isCorrect: boolean
+    }[]
+  }[]
+}
+
+export type QuestionImportConfirmResponse = {
+  importedCount: number
+  questionIds: string[]
+}

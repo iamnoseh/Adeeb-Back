@@ -1,5 +1,14 @@
 import { httpClient } from '@/shared/api/http-client'
-import type { QuestionFormValues, QuestionListQuery, QuestionListResponse, QuestionResponse } from '@/features/questions/model/question.types'
+import type {
+  QuestionFormValues,
+  QuestionImportConfirmRequest,
+  QuestionImportConfirmResponse,
+  QuestionImportParseRequest,
+  QuestionImportPreviewResponse,
+  QuestionListQuery,
+  QuestionListResponse,
+  QuestionResponse,
+} from '@/features/questions/model/question.types'
 
 export const questionKeys = {
   list: (query: QuestionListQuery = {}) => ['questions', 'list', query] as const,
@@ -28,6 +37,20 @@ export const questionsApi = {
   },
   async remove(id: string) {
     await httpClient.delete(`/api/v2/admin/questions/${id}`)
+  },
+  async parseImport(values: QuestionImportParseRequest) {
+    const body = new FormData()
+    body.append('SubjectId', values.subjectId)
+    if (values.topicId) body.append('TopicId', values.topicId)
+    body.append('Difficulty', String(values.difficulty))
+    body.append('File', values.file)
+
+    const response = await httpClient.post<QuestionImportPreviewResponse>('/api/v2/admin/questions/import/parse', body)
+    return response.data
+  },
+  async confirmImport(values: QuestionImportConfirmRequest) {
+    const response = await httpClient.post<QuestionImportConfirmResponse>('/api/v2/admin/questions/import/confirm', values)
+    return response.data
   },
 }
 
