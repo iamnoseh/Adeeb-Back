@@ -8,7 +8,7 @@ import { StatusBadge } from '@/features/academic/ui/StatusBadge'
 import { TranslationBadges } from '@/features/academic/ui/TranslationBadges'
 import { localizedName } from '@/shared/i18n/localized-content'
 import { Button } from '@/shared/ui/Button'
-import { Select } from '@/shared/ui/Input'
+import { SelectField } from '@/shared/ui/SelectField'
 import { EmptyState, ErrorState } from '@/shared/ui/StateBlock'
 import { Table, TableShell } from '@/shared/ui/Table'
 
@@ -36,18 +36,20 @@ export function TopicsPage() {
   if (topicsQuery.isError) return <ErrorState title={t('topicsLoadFailed')} />
 
   const topics = topicsQuery.data?.items ?? []
+  const subjectOptions = [
+    { value: '', label: t('allSubjects') },
+    ...(subjectsQuery.data?.items.map((subject) => ({
+      value: subject.id,
+      label: localizedName(subject.translations, i18n.language, subject.name),
+    })) ?? []),
+  ]
 
   return (
     <div className="grid gap-4">
       <div className="app-surface rounded-lg p-4">
         <label className="grid max-w-md gap-1.5 text-sm font-semibold">
           <span>{t('filterBySubject')}</span>
-          <Select value={subjectId ?? ''} onChange={(event) => setSearchParams(event.target.value ? { subjectId: event.target.value } : {})}>
-            <option value="">{t('allSubjects')}</option>
-            {subjectsQuery.data?.items.map((subject) => (
-              <option key={subject.id} value={subject.id}>{localizedName(subject.translations, i18n.language, subject.name)}</option>
-            ))}
-          </Select>
+          <SelectField value={subjectId ?? ''} options={subjectOptions} onValueChange={(value) => setSearchParams(value ? { subjectId: value } : {})} />
         </label>
       </div>
 

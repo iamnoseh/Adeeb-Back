@@ -14,7 +14,8 @@ import { ApiError } from '@/shared/api/problem-details'
 import { localizedName } from '@/shared/i18n/localized-content'
 import { Button } from '@/shared/ui/Button'
 import { FormField } from '@/shared/ui/FormField'
-import { Input, Select, Textarea } from '@/shared/ui/Input'
+import { Input, Textarea } from '@/shared/ui/Input'
+import { SelectField } from '@/shared/ui/SelectField'
 
 type QuestionFormProps = {
   questionId?: string | undefined
@@ -116,6 +117,29 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
       setFormError(t('questionSaveFailed'))
     },
   })
+  const subjectOptions = subjectsQuery.data?.items.map((subject) => ({
+    value: subject.id,
+    label: localizedName(subject.translations, i18n.language, subject.name),
+  })) ?? []
+  const topicOptions = topicsQuery.data?.items.map((topic) => ({
+    value: topic.id,
+    label: localizedName(topic.translations, i18n.language, topic.name),
+  })) ?? []
+  const typeOptions = [
+    { value: '1', label: t('typeSingleChoice') },
+    { value: '2', label: t('typeMatching') },
+    { value: '3', label: t('typeClosedAnswer') },
+  ]
+  const difficultyOptions = [
+    { value: '1', label: t('difficultyEasy') },
+    { value: '2', label: t('difficultyMedium') },
+    { value: '3', label: t('difficultyHard') },
+  ]
+  const statusOptions = [
+    { value: '0', label: t('statusDraft') },
+    { value: '1', label: t('statusActive') },
+    { value: '2', label: t('statusArchived') },
+  ]
 
   return (
     <form className="app-surface grid gap-6 rounded-[2rem] p-5 md:p-7" onSubmit={(event) => void form.handleSubmit((values: QuestionFormValues) => mutation.mutate(values))(event)}>
@@ -123,20 +147,24 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
 
       <section className="grid gap-4 rounded-[1.5rem] bg-[var(--surface-soft)] p-4 ring-1 ring-[var(--border)] md:grid-cols-3">
         <FormField label={t('parentSubject')} error={form.formState.errors.subjectId?.message}>
-          <Select {...form.register('subjectId')}>
-            <option value="">{t('chooseSubject')}</option>
-            {subjectsQuery.data?.items.map((subject) => (
-              <option key={subject.id} value={subject.id}>{localizedName(subject.translations, i18n.language, subject.name)}</option>
-            ))}
-          </Select>
+          <SelectField
+            value={selectedSubjectId}
+            options={subjectOptions}
+            placeholder={t('chooseSubject')}
+            onValueChange={(value) => {
+              form.setValue('subjectId', value, { shouldDirty: true, shouldValidate: true })
+              form.setValue('topicId', '', { shouldDirty: true, shouldValidate: true })
+            }}
+          />
         </FormField>
         <FormField label={t('topic')}>
-          <Select {...form.register('topicId')} disabled={!selectedSubjectId}>
-            <option value="">{selectedSubjectId ? t('noTopic') : t('selectSubjectFirst')}</option>
-            {topicsQuery.data?.items.map((topic) => (
-              <option key={topic.id} value={topic.id}>{localizedName(topic.translations, i18n.language, topic.name)}</option>
-            ))}
-          </Select>
+          <SelectField
+            value={form.watch('topicId')}
+            options={[{ value: '', label: t('noTopic') }, ...topicOptions]}
+            placeholder={selectedSubjectId ? t('noTopic') : t('selectSubjectFirst')}
+            disabled={!selectedSubjectId}
+            onValueChange={(value) => form.setValue('topicId', value, { shouldDirty: true, shouldValidate: true })}
+          />
         </FormField>
         <FormField label={t('image')}>
           <Input type="file" accept="image/png,image/jpeg,image/jpg" {...form.register('image')} />
@@ -145,25 +173,25 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
 
       <section className="grid gap-4 rounded-[1.5rem] bg-[var(--surface-soft)] p-4 ring-1 ring-[var(--border)] md:grid-cols-3">
         <FormField label={t('type')} error={form.formState.errors.type?.message}>
-          <Select {...form.register('type', { valueAsNumber: true })}>
-            <option value={1}>{t('typeSingleChoice')}</option>
-            <option value={2}>{t('typeMatching')}</option>
-            <option value={3}>{t('typeClosedAnswer')}</option>
-          </Select>
+          <SelectField
+            value={String(form.watch('type'))}
+            options={typeOptions}
+            onValueChange={(value) => form.setValue('type', Number(value), { shouldDirty: true, shouldValidate: true })}
+          />
         </FormField>
         <FormField label={t('difficulty')} error={form.formState.errors.difficulty?.message}>
-          <Select {...form.register('difficulty', { valueAsNumber: true })}>
-            <option value={1}>{t('difficultyEasy')}</option>
-            <option value={2}>{t('difficultyMedium')}</option>
-            <option value={3}>{t('difficultyHard')}</option>
-          </Select>
+          <SelectField
+            value={String(form.watch('difficulty'))}
+            options={difficultyOptions}
+            onValueChange={(value) => form.setValue('difficulty', Number(value), { shouldDirty: true, shouldValidate: true })}
+          />
         </FormField>
         <FormField label={t('status')} error={form.formState.errors.status?.message}>
-          <Select {...form.register('status', { valueAsNumber: true })}>
-            <option value={0}>{t('statusDraft')}</option>
-            <option value={1}>{t('statusActive')}</option>
-            <option value={2}>{t('statusArchived')}</option>
-          </Select>
+          <SelectField
+            value={String(form.watch('status'))}
+            options={statusOptions}
+            onValueChange={(value) => form.setValue('status', Number(value), { shouldDirty: true, shouldValidate: true })}
+          />
         </FormField>
       </section>
 

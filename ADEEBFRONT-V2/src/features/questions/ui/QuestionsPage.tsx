@@ -10,7 +10,8 @@ import type { QuestionListQuery } from '@/features/questions/model/question.type
 import { appConfig } from '@/shared/config/env'
 import { localizedName } from '@/shared/i18n/localized-content'
 import { Button } from '@/shared/ui/Button'
-import { Input, Select } from '@/shared/ui/Input'
+import { Input } from '@/shared/ui/Input'
+import { SelectField } from '@/shared/ui/SelectField'
 import { EmptyState, ErrorState } from '@/shared/ui/StateBlock'
 import { Table, TableShell } from '@/shared/ui/Table'
 
@@ -55,29 +56,33 @@ export function QuestionsPage() {
   const totalCount = questionsQuery.data?.totalCount ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const subjectsById = new Map((subjectsQuery.data?.items ?? []).map((subject) => [subject.id, subject]))
+  const subjectOptions = [
+    { value: '', label: t('allSubjects') },
+    ...(subjectsQuery.data?.items.map((subject) => ({
+      value: subject.id,
+      label: localizedName(subject.translations, i18n.language, subject.name),
+    })) ?? []),
+  ]
+  const typeOptions = [
+    { value: '', label: t('allTypes') },
+    { value: '1', label: t('typeSingleChoice') },
+    { value: '2', label: t('typeMatching') },
+    { value: '3', label: t('typeClosedAnswer') },
+  ]
+  const difficultyOptions = [
+    { value: '', label: t('allDifficulties') },
+    { value: '1', label: t('difficultyEasy') },
+    { value: '2', label: t('difficultyMedium') },
+    { value: '3', label: t('difficultyHard') },
+  ]
 
   return (
     <div className="grid gap-4">
       <div className="app-surface grid gap-3 rounded-lg p-4 md:grid-cols-4">
         <Input placeholder={t('search')} value={params.get('search') ?? ''} onChange={(event) => updateParam('search', event.target.value)} />
-        <Select value={params.get('subjectId') ?? ''} onChange={(event) => updateParam('subjectId', event.target.value)}>
-          <option value="">{t('allSubjects')}</option>
-          {subjectsQuery.data?.items.map((subject) => (
-            <option key={subject.id} value={subject.id}>{localizedName(subject.translations, i18n.language, subject.name)}</option>
-          ))}
-        </Select>
-        <Select value={params.get('type') ?? ''} onChange={(event) => updateParam('type', event.target.value)}>
-          <option value="">{t('allTypes')}</option>
-          <option value="1">{t('typeSingleChoice')}</option>
-          <option value="2">{t('typeMatching')}</option>
-          <option value="3">{t('typeClosedAnswer')}</option>
-        </Select>
-        <Select value={params.get('difficulty') ?? ''} onChange={(event) => updateParam('difficulty', event.target.value)}>
-          <option value="">{t('allDifficulties')}</option>
-          <option value="1">{t('difficultyEasy')}</option>
-          <option value="2">{t('difficultyMedium')}</option>
-          <option value="3">{t('difficultyHard')}</option>
-        </Select>
+        <SelectField value={params.get('subjectId') ?? ''} options={subjectOptions} onValueChange={(value) => updateParam('subjectId', value)} />
+        <SelectField value={params.get('type') ?? ''} options={typeOptions} onValueChange={(value) => updateParam('type', value)} />
+        <SelectField value={params.get('difficulty') ?? ''} options={difficultyOptions} onValueChange={(value) => updateParam('difficulty', value)} />
       </div>
 
       {questionsQuery.isLoading ? <div className="text-sm text-[var(--muted)]">{t('questionsLoading')}</div> : null}

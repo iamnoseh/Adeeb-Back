@@ -13,7 +13,8 @@ import { ApiError } from '@/shared/api/problem-details'
 import { localizedName } from '@/shared/i18n/localized-content'
 import { Button } from '@/shared/ui/Button'
 import { FormField } from '@/shared/ui/FormField'
-import { Input, Select, Textarea } from '@/shared/ui/Input'
+import { Input, Textarea } from '@/shared/ui/Input'
+import { SelectField } from '@/shared/ui/SelectField'
 
 type TopicFormProps = {
   topicId?: string | undefined
@@ -82,6 +83,12 @@ export function TopicForm({ topicId }: TopicFormProps) {
       setFormError(t('saveFailed'))
     },
   })
+  const subjectOptions = [
+    ...(subjectsQuery.data?.items.map((subject) => ({
+      value: subject.id,
+      label: localizedName(subject.translations, i18n.language, subject.name),
+    })) ?? []),
+  ]
 
   return (
     <form className="app-surface grid max-w-5xl gap-6 rounded-[2rem] p-5 md:p-7" onSubmit={(event) => void form.handleSubmit((values: TopicFormValues) => mutation.mutate(values))(event)}>
@@ -94,12 +101,12 @@ export function TopicForm({ topicId }: TopicFormProps) {
 
       <div className="grid gap-4">
         <FormField label={t('parentSubject')} error={form.formState.errors.subjectId?.message}>
-          <Select {...form.register('subjectId')}>
-            <option value="">{t('chooseSubject')}</option>
-            {subjectsQuery.data?.items.map((subject) => (
-              <option key={subject.id} value={subject.id}>{localizedName(subject.translations, i18n.language, subject.name)}</option>
-            ))}
-          </Select>
+          <SelectField
+            value={form.watch('subjectId')}
+            options={subjectOptions}
+            placeholder={t('chooseSubject')}
+            onValueChange={(value) => form.setValue('subjectId', value, { shouldDirty: true, shouldValidate: true })}
+          />
         </FormField>
       </div>
 

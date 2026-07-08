@@ -25,9 +25,11 @@ export function AdminLayout() {
   return (
     <div className={cn('min-h-screen bg-transparent transition-[grid-template-columns] duration-300 lg:grid', sidebarOpen ? 'lg:grid-cols-[258px_1fr]' : 'lg:grid-cols-[88px_1fr]')}>
       <aside className="border-b border-white/70 bg-white/78 backdrop-blur-xl lg:sticky lg:top-0 lg:min-h-screen lg:border-b-0 lg:border-r lg:border-white/70">
-        <div className={cn('flex items-center gap-3 px-4 py-5', sidebarOpen ? 'justify-between' : 'justify-center')}>
-          <NavLink to="/admin" className={cn('flex items-center text-[var(--text)] no-underline', sidebarOpen ? 'gap-3' : 'justify-center')}>
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[linear-gradient(135deg,var(--primary),#8ab5ad)] text-lg font-black text-white shadow-[0_14px_30px_rgb(47_125_115/0.25)]">A</span>
+        <div className={cn('relative flex items-center px-4 py-5', sidebarOpen ? 'justify-center' : 'justify-center')}>
+          <NavLink to="/admin" className="flex items-center justify-center text-[var(--text)] no-underline">
+            {!sidebarOpen ? (
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[linear-gradient(135deg,var(--primary),#8ab5ad)] text-lg font-black text-white shadow-[0_14px_30px_rgb(47_125_115/0.25)]">A</span>
+            ) : null}
             {sidebarOpen ? (
               <span>
                 <strong className="adeeb-brand block text-2xl leading-none">{t('appName')}</strong>
@@ -37,7 +39,7 @@ export function AdminLayout() {
           {sidebarOpen ? (
             <button
               type="button"
-              className="hidden h-10 w-10 place-items-center rounded-2xl text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text)] lg:grid"
+              className="absolute right-4 hidden h-10 w-10 place-items-center rounded-2xl text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--text)] lg:grid"
               onClick={() => setSidebarOpen(false)}
               aria-label="Collapse sidebar"
             >
