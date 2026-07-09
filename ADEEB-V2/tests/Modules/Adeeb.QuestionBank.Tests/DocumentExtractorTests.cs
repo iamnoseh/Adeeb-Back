@@ -1,3 +1,5 @@
+using Adeeb.Modules.QuestionBank.Application.Import;
+using Adeeb.Modules.QuestionBank.Domain;
 using Adeeb.Modules.QuestionBank.Infrastructure.DocumentExtraction;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -27,6 +29,36 @@ public sealed class DocumentExtractorTests
         Assert.Contains("Саволи тоҷикӣ?", text);
         Assert.Contains("-- А) Ҷавоб", text);
         Assert.True(text.IndexOf("Саволи тоҷикӣ?", StringComparison.Ordinal) < text.IndexOf("-- А) Ҷавоб", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Docx_extractor_output_can_parse_mixed_import_formats()
+    {
+        await using var stream = new MemoryStream();
+        using (var document = WordprocessingDocument.Create(stream, DocumentFormat.OpenXml.WordprocessingDocumentType.Document, true))
+        {
+            var main = document.AddMainDocumentPart();
+            main.Document = new Document(new Body(
+                new Paragraph(new Run(new Text("<<<2 + 5 = ?>>>"))),
+                new Paragraph(new Run(new Text("-- A) 7"))),
+                new Paragraph(),
+                new Paragraph(new Run(new Text("<<<Choose correct item>>>"))),
+                new Paragraph(new Run(new Text("A) Wrong"))),
+                new Paragraph(new Run(new Text("-- B) Correct")))));
+            main.Document.Save();
+        }
+
+        stream.Position = 0;
+        var extractor = new DocxQuestionTextExtractor();
+        var text = await extractor.ExtractTextAsync(stream, CancellationToken.None);
+        var parser = new QuestionDocumentParser(new QuestionImportTextNormalizer());
+
+        var result = parser.Parse(text);
+
+        Assert.Equal(2, result.Questions.Count);
+        Assert.Equal(QuestionType.ClosedAnswer, result.Questions[0].QuestionType);
+        Assert.Equal("7", result.Questions[0].ExpectedAnswer);
+        Assert.Equal(QuestionType.SingleChoice, result.Questions[1].QuestionType);
     }
 
     [Fact]

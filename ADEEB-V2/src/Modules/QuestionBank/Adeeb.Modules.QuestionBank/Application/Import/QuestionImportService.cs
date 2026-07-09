@@ -116,11 +116,21 @@ public sealed class QuestionImportService(
 
         for (var i = 0; i < request.Questions.Count && errors.Count == 0; i++)
         {
+            var confirmQuestion = request.Questions[i];
+            if (confirmQuestion.QuestionType is { } requestedType && !Enum.IsDefined(typeof(Domain.QuestionType), requestedType))
+            {
+                errors[$"questions[{i}].questionType"] = [Error.Validation("question.type.invalid", "QuestionBank.InvalidType")];
+                continue;
+            }
+
+            var questionType = DetectConfirmQuestionType(confirmQuestion);
             var parsed = new ParsedQuestion
             {
                 ClientKey = $"q-{i + 1}",
-                QuestionText = request.Questions[i].QuestionText,
-                Options = request.Questions[i].Options.Select((option, index) => new ParsedOption(((char)('A' + index)).ToString(), option.Text, option.IsCorrect)).ToList()
+                QuestionType = questionType,
+                QuestionText = confirmQuestion.QuestionText,
+                ExpectedAnswer = questionType == Domain.QuestionType.ClosedAnswer ? confirmQuestion.ExpectedAnswer : null,
+                Options = ToParsedOptions(confirmQuestion, questionType)
             };
 
             parsed = ApplyConfiguredValidation(parsed);
@@ -225,6 +235,11 @@ public sealed class QuestionImportService(
             errors.Add(new("question_import.too_many_options", $"Question cannot have more than {options.MaxOptionsPerQuestion} options."));
         }
 
+        if (question.QuestionType == Domain.QuestionType.ClosedAnswer && string.IsNullOrWhiteSpace(question.ExpectedAnswer))
+        {
+            errors.Add(new("question_import.expected_answer_required", "Expected answer text is empty."));
+        }
+
         foreach (var option in question.Options)
         {
             if (option.Text.Length > options.MaxOptionTextLength)
@@ -236,7 +251,9 @@ public sealed class QuestionImportService(
         return new ParsedQuestion
         {
             ClientKey = question.ClientKey,
+            QuestionType = question.QuestionType,
             QuestionText = question.QuestionText,
+            ExpectedAnswer = question.ExpectedAnswer,
             Options = question.Options,
             Errors = errors,
             Warnings = warnings
@@ -265,7 +282,10 @@ public sealed class QuestionImportService(
     {
         var responseQuestions = questions.Select(question => new QuestionImportPreviewQuestionResponse(
             question.ClientKey,
+            (int)question.QuestionType,
+            question.QuestionType.ToString(),
             question.QuestionText,
+            question.ExpectedAnswer,
             question.Options.Select(option => new QuestionImportPreviewOptionResponse(option.Label, option.Text, option.IsCorrect)).ToList(),
             question.IsValid,
             question.Errors.Select(issue => new QuestionImportIssueResponse(issue.Code, issue.Message)).ToList(),
@@ -286,7 +306,7 @@ public sealed class QuestionImportService(
             subjectId,
             topicId,
             null,
-            (int)Domain.QuestionType.SingleChoice,
+            (int)question.QuestionType,
             difficulty,
             (int)Domain.QuestionStatus.Active,
             null,
@@ -295,14 +315,63 @@ public sealed class QuestionImportService(
                 new((int)SupportedLanguage.Russian, question.QuestionText, null),
                 new((int)SupportedLanguage.English, question.QuestionText, null)
             ],
-            question.Options.Select((option, index) => new AnswerOptionRequest(
+            ToAnswerOptions(question));
+
+    private static IReadOnlyList<AnswerOptionRequest> ToAnswerOptions(ParsedQuestion question)
+    {
+        if (question.QuestionType == Domain.QuestionType.ClosedAnswer)
+        {
+            var answer = question.ExpectedAnswer ?? question.Options.FirstOrDefault()?.Text ?? string.Empty;
+            return
+            [
+                new AnswerOptionRequest(
+                    1,
+                    true,
+                    [
+                        new((int)SupportedLanguage.Tajik, answer, null),
+                        new((int)SupportedLanguage.Russian, answer, null),
+                        new((int)SupportedLanguage.English, answer, null)
+                    ])
+            ];
+        }
+
+        return question.Options.Select((option, index) => new AnswerOptionRequest(
                 index + 1,
                 option.IsCorrect,
                 [
                     new((int)SupportedLanguage.Tajik, option.Text, null),
                     new((int)SupportedLanguage.Russian, option.Text, null),
                     new((int)SupportedLanguage.English, option.Text, null)
-                ])).ToList());
+                ])).ToList();
+    }
+
+    private static Domain.QuestionType DetectConfirmQuestionType(QuestionImportConfirmQuestionRequest question)
+    {
+        if (question.QuestionType.HasValue && Enum.IsDefined(typeof(Domain.QuestionType), question.QuestionType.Value))
+        {
+            return (Domain.QuestionType)question.QuestionType.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(question.ExpectedAnswer) && question.Options.Count == 0)
+        {
+            return Domain.QuestionType.ClosedAnswer;
+        }
+
+        return Domain.QuestionType.SingleChoice;
+    }
+
+    private static IReadOnlyList<ParsedOption> ToParsedOptions(QuestionImportConfirmQuestionRequest question, Domain.QuestionType questionType)
+    {
+        if (questionType == Domain.QuestionType.ClosedAnswer)
+        {
+            return
+            [
+                new ParsedOption("A", question.ExpectedAnswer ?? string.Empty, true)
+            ];
+        }
+
+        return question.Options.Select((option, index) => new ParsedOption(((char)('A' + index)).ToString(), option.Text, option.IsCorrect)).ToList();
+    }
 
     private static Error ToValidationError(QuestionParseIssue issue) => Error.Validation(issue.Code, issue.Message);
 }
@@ -316,7 +385,9 @@ file static class ParsedQuestionExtensions
         return new ParsedQuestion
         {
             ClientKey = question.ClientKey,
+            QuestionType = question.QuestionType,
             QuestionText = question.QuestionText,
+            ExpectedAnswer = question.ExpectedAnswer,
             Options = question.Options,
             Errors = question.Errors,
             Warnings = warnings

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Adeeb.Modules.QuestionBank.Domain;
 
 namespace Adeeb.Modules.QuestionBank.Application.Import;
 
@@ -59,12 +60,16 @@ public sealed partial class QuestionDocumentParser(IQuestionImportTextNormalizer
         }
 
         var options = ParseOptions(answerBlock, errors, warnings);
-        ValidateOptions(options, errors, warnings);
+        var questionType = DetectQuestionType(options, errors);
+        var expectedAnswer = questionType == QuestionType.ClosedAnswer ? options.FirstOrDefault()?.Text : null;
+        ValidateOptions(questionType, options, errors, warnings);
 
         return new ParsedQuestion
         {
             ClientKey = $"q-{number}",
+            QuestionType = questionType,
             QuestionText = questionText,
+            ExpectedAnswer = expectedAnswer,
             Options = options,
             Errors = errors,
             Warnings = warnings
@@ -108,7 +113,27 @@ public sealed partial class QuestionDocumentParser(IQuestionImportTextNormalizer
         return options.Select(x => new ParsedOption(x.Label, NormalizeBlockText(x.Text.ToString()), x.IsCorrect)).ToList();
     }
 
-    private static void ValidateOptions(IReadOnlyList<ParsedOption> options, List<QuestionParseIssue> errors, List<QuestionParseIssue> warnings)
+    private static QuestionType DetectQuestionType(IReadOnlyList<ParsedOption> options, List<QuestionParseIssue> errors)
+    {
+        if (options.Count == 1 && options[0].IsCorrect)
+        {
+            return QuestionType.ClosedAnswer;
+        }
+
+        if (options.Count >= 2)
+        {
+            return QuestionType.SingleChoice;
+        }
+
+        if (options.Count == 1)
+        {
+            errors.Add(new("question_import.correct_option_required", "No correct answer was detected."));
+        }
+
+        return QuestionType.SingleChoice;
+    }
+
+    private static void ValidateOptions(QuestionType questionType, IReadOnlyList<ParsedOption> options, List<QuestionParseIssue> errors, List<QuestionParseIssue> warnings)
     {
         if (options.Count == 0)
         {
@@ -116,14 +141,14 @@ public sealed partial class QuestionDocumentParser(IQuestionImportTextNormalizer
             return;
         }
 
-        if (options.Count < 2)
+        if (questionType == QuestionType.ClosedAnswer)
         {
-            errors.Add(new("question_import.too_few_options", "At least two answer options are required."));
-        }
+            if (string.IsNullOrWhiteSpace(options[0].Text))
+            {
+                errors.Add(new("question_import.expected_answer_required", "Expected answer text is empty."));
+            }
 
-        if (options.Count != 4)
-        {
-            warnings.Add(new("question_import.option_count_not_four", $"{options.Count} options were detected. Four options are expected for this import format."));
+            return;
         }
 
         if (options.Count(x => x.IsCorrect) == 0)
@@ -134,6 +159,11 @@ public sealed partial class QuestionDocumentParser(IQuestionImportTextNormalizer
         if (options.Count(x => x.IsCorrect) > 1)
         {
             errors.Add(new("question_import.multiple_correct_options", "Multiple correct answers were detected."));
+        }
+
+        if (options.Count != 4)
+        {
+            warnings.Add(new("question_import.option_count_not_four", $"{options.Count} options were detected. Four options are expected for this import format."));
         }
 
         for (var i = 0; i < options.Count; i++)

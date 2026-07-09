@@ -11,7 +11,7 @@ public sealed class QuestionImportParseFormRequest
 }
 
 public sealed record QuestionImportConfirmRequest(Guid SubjectId, Guid? TopicId, int Difficulty, IReadOnlyList<QuestionImportConfirmQuestionRequest> Questions);
-public sealed record QuestionImportConfirmQuestionRequest(string QuestionText, IReadOnlyList<QuestionImportConfirmOptionRequest> Options);
+public sealed record QuestionImportConfirmQuestionRequest(string QuestionText, IReadOnlyList<QuestionImportConfirmOptionRequest> Options, int? QuestionType = null, string? ExpectedAnswer = null);
 public sealed record QuestionImportConfirmOptionRequest(string Text, bool IsCorrect);
 
 public sealed record QuestionImportPreviewResponse(
@@ -23,7 +23,10 @@ public sealed record QuestionImportSummaryResponse(int TotalDetected, int Valid,
 
 public sealed record QuestionImportPreviewQuestionResponse(
     string ClientKey,
+    int QuestionType,
+    string QuestionTypeName,
     string QuestionText,
+    string? ExpectedAnswer,
     IReadOnlyList<QuestionImportPreviewOptionResponse> Options,
     bool IsValid,
     IReadOnlyList<QuestionImportIssueResponse> Errors,

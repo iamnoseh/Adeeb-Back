@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Question Import lets a content admin parse multiple-choice questions from `.docx` and text-based `.pdf` files. The flow is intentionally split into two calls:
+Question Import lets a content admin parse `SingleChoice` and `ClosedAnswer` questions from `.docx` and text-based `.pdf` files. The flow is intentionally split into two calls:
 
 - parse and preview: extracts and validates questions, but does not write to the database;
 - confirm import: accepts the edited preview payload, revalidates it, and creates real `Question` and `AnswerOption` rows transactionally.
@@ -101,7 +101,10 @@ Response contract:
   "questions": [
     {
       "clientKey": "q-1",
+      "questionType": 1,
+      "questionTypeName": "SingleChoice",
       "questionText": "Question?",
+      "expectedAnswer": null,
       "options": [
         { "label": "A", "text": "Correct", "isCorrect": true },
         { "label": "B", "text": "Wrong", "isCorrect": false }
@@ -143,11 +146,18 @@ Request contract:
   "difficulty": 1,
   "questions": [
     {
+      "questionType": 1,
       "questionText": "Question?",
       "options": [
         { "text": "Correct", "isCorrect": true },
         { "text": "Wrong", "isCorrect": false }
       ]
+    },
+    {
+      "questionType": 3,
+      "questionText": "2 + 5 = ?",
+      "expectedAnswer": "7",
+      "options": []
     }
   ]
 }
@@ -166,6 +176,8 @@ The endpoint revalidates subject, topic, difficulty, question text, options, and
 
 ## 6. Supported Document Syntax
 
+### SingleChoice
+
 ```text
 <<<Савол?>>>
 -- А) Ҷавоби дуруст
@@ -173,6 +185,17 @@ The endpoint revalidates subject, topic, difficulty, question text, options, and
 С) Ҷавоби нодуруст
 Д) Ҷавоби нодуруст
 ```
+
+### Direct / Closed Answer
+
+`ClosedAnswer` uses the existing QuestionBank model: one canonical correct `AnswerOption`. Import stores the same expected answer text across the generated Tajik, Russian, and English answer translations because the uploaded file is one source stream.
+
+```text
+<<<2 + 5 = ?>>>
+-- A) 7
+```
+
+The expected answer is kept as text. Numeric-looking answers such as `-7`, `2.5`, `3,14`, `1/2`, and `2025-2026` are not parsed as numbers.
 
 Accepted label variants include Latin and Cyrillic `A/B/C/D`, `А/Б/С/Д`, and lowercase forms. Accepted separators are `)`, `.`, and `:`.
 
@@ -191,6 +214,10 @@ Correct marker variants:
 - Answer lines after a question belong to the nearest preceding question.
 - A new option starts only when a line matches a supported option-prefix pattern.
 - Non-empty lines after an option starts are treated as continuation lines for that option.
+- Type detection is structural:
+  - exactly one recognized line marked with `--` becomes `ClosedAnswer`;
+  - two or more recognized option lines with exactly one `--` marker become `SingleChoice`.
+- Mixed documents are supported; one upload can contain both `SingleChoice` and `ClosedAnswer` blocks.
 - Malformed documents return structured per-document or per-question issues instead of crashing the import.
 
 ## 8. Validation Rules
@@ -201,6 +228,7 @@ Implemented parser/config validation:
 - at least two options are required;
 - exactly one correct option is required;
 - option text is required;
+- `ClosedAnswer` requires one marked expected answer line and non-empty expected answer text;
 - question text max length is `4000`;
 - option text max length is `1000`;
 - max options per question is `8`;
@@ -241,6 +269,7 @@ Errors use the existing ADEEB `ProblemDetails` contract with stable `code` value
 - `question_import.no_questions_detected`
 - `question_import.missing_closing_marker`
 - `question_import.question_text_required`
+- `question_import.expected_answer_required`
 - `question_import.correct_option_required`
 - `question_import.multiple_correct_options`
 - `question_import.possible_duplicate_in_database`

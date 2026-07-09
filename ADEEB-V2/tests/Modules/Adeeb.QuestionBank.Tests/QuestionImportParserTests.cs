@@ -1,4 +1,5 @@
 using Adeeb.Modules.QuestionBank.Application.Import;
+using Adeeb.Modules.QuestionBank.Domain;
 
 namespace Adeeb.QuestionBank.Tests;
 
@@ -22,6 +23,116 @@ public sealed class QuestionImportParserTests
         Assert.Equal(4, question.Options.Count);
         Assert.Single(question.Options, option => option.IsCorrect);
         Assert.Equal("A", question.Options[0].Label);
+    }
+
+    [Fact]
+    public void Direct_answer_basic_is_detected_as_closed_answer()
+    {
+        var result = parser.Parse("""
+            <<<2 + 5 = ?>>>
+            -- A) 7
+            """);
+
+        var question = Assert.Single(result.Questions);
+        Assert.True(question.IsValid);
+        Assert.Equal(QuestionType.ClosedAnswer, question.QuestionType);
+        Assert.Equal("7", question.ExpectedAnswer);
+        Assert.Single(question.Options);
+    }
+
+    [Fact]
+    public void Direct_answer_cyrillic_label_is_supported()
+    {
+        var result = parser.Parse("<<<2 * 9 = ?>>>\n-- \u0410) 18");
+
+        var question = Assert.Single(result.Questions);
+        Assert.True(question.IsValid);
+        Assert.Equal(QuestionType.ClosedAnswer, question.QuestionType);
+        Assert.Equal("18", question.ExpectedAnswer);
+    }
+
+    [Theory]
+    [InlineData("--A) 7")]
+    [InlineData("-- A) 7")]
+    [InlineData("--  A) 7")]
+    [InlineData("-- A. 7")]
+    [InlineData("-- A: 7")]
+    [InlineData("-- a) 7")]
+    public void Direct_answer_marker_and_label_variants_are_supported(string answerLine)
+    {
+        var result = parser.Parse($"""
+            <<<2 + 5 = ?>>>
+            {answerLine}
+            """);
+
+        var question = Assert.Single(result.Questions);
+        Assert.True(question.IsValid);
+        Assert.Equal(QuestionType.ClosedAnswer, question.QuestionType);
+        Assert.Equal("7", question.ExpectedAnswer);
+    }
+
+    [Fact]
+    public void Direct_answer_multiline_text_is_preserved()
+    {
+        var result = parser.Parse("""
+            <<<Explain shortly>>>
+            -- A) First line
+            second line
+            third line
+            """);
+
+        var question = Assert.Single(result.Questions);
+        Assert.True(question.IsValid);
+        Assert.Equal(QuestionType.ClosedAnswer, question.QuestionType);
+        Assert.Equal("First line\nsecond line\nthird line", question.ExpectedAnswer);
+    }
+
+    [Theory]
+    [InlineData("-- A) -7", "-7")]
+    [InlineData("-- A) 2.5", "2.5")]
+    [InlineData("-- A) 3,14", "3,14")]
+    [InlineData("-- A) 1/2", "1/2")]
+    [InlineData("-- A) 2025-2026", "2025-2026")]
+    [InlineData("-- A) A-B", "A-B")]
+    public void Direct_answer_preserves_numeric_and_punctuation_text(string answerLine, string expected)
+    {
+        var result = parser.Parse($"""
+            <<<Answer?>>>
+            {answerLine}
+            """);
+
+        var question = Assert.Single(result.Questions);
+        Assert.True(question.IsValid);
+        Assert.Equal(QuestionType.ClosedAnswer, question.QuestionType);
+        Assert.Equal(expected, question.ExpectedAnswer);
+    }
+
+    [Fact]
+    public void One_unmarked_answer_is_invalid()
+    {
+        var result = parser.Parse("""
+            <<<Question?>>>
+            A) Answer
+            """);
+
+        var question = Assert.Single(result.Questions);
+        Assert.False(question.IsValid);
+        Assert.Equal(QuestionType.SingleChoice, question.QuestionType);
+        Assert.Contains(question.Errors, issue => issue.Code == "question_import.correct_option_required");
+    }
+
+    [Fact]
+    public void Empty_direct_answer_is_invalid()
+    {
+        var result = parser.Parse("""
+            <<<Question?>>>
+            -- A)
+            """);
+
+        var question = Assert.Single(result.Questions);
+        Assert.False(question.IsValid);
+        Assert.Equal(QuestionType.ClosedAnswer, question.QuestionType);
+        Assert.Contains(question.Errors, issue => issue.Code == "question_import.expected_answer_required");
     }
 
     [Theory]
@@ -131,7 +242,48 @@ public sealed class QuestionImportParserTests
 
         var question = Assert.Single(result.Questions);
         Assert.False(question.IsValid);
+        Assert.Equal(QuestionType.SingleChoice, question.QuestionType);
         Assert.Contains(question.Errors, issue => issue.Code == "question_import.multiple_correct_options");
+    }
+
+    [Fact]
+    public void Two_option_single_choice_remains_single_choice()
+    {
+        var result = parser.Parse("""
+            <<<Question?>>>
+            -- A) Correct
+            B) Wrong
+            """);
+
+        var question = Assert.Single(result.Questions);
+        Assert.True(question.IsValid);
+        Assert.Equal(QuestionType.SingleChoice, question.QuestionType);
+        Assert.Equal(2, question.Options.Count);
+        Assert.Null(question.ExpectedAnswer);
+    }
+
+    [Fact]
+    public void Mixed_document_supports_closed_answer_and_single_choice()
+    {
+        var result = parser.Parse("""
+            <<<2 + 5 = ?>>>
+            -- A) 7
+
+            <<<Capital of Tajikistan?>>>
+            -- A) Dushanbe
+
+            <<<Choose correct item>>>
+            A) Wrong
+            -- B) Correct
+            C) Wrong
+            D) Wrong
+            """);
+
+        Assert.Equal(3, result.Questions.Count);
+        Assert.All(result.Questions, question => Assert.True(question.IsValid));
+        Assert.Equal(QuestionType.ClosedAnswer, result.Questions[0].QuestionType);
+        Assert.Equal(QuestionType.ClosedAnswer, result.Questions[1].QuestionType);
+        Assert.Equal(QuestionType.SingleChoice, result.Questions[2].QuestionType);
     }
 
     [Fact]

@@ -7,7 +7,9 @@ public sealed record ParsedOption(string Label, string Text, bool IsCorrect);
 public sealed class ParsedQuestion
 {
     public string ClientKey { get; init; } = string.Empty;
+    public Domain.QuestionType QuestionType { get; init; } = Domain.QuestionType.SingleChoice;
     public string QuestionText { get; init; } = string.Empty;
+    public string? ExpectedAnswer { get; init; }
     public IReadOnlyList<ParsedOption> Options { get; init; } = [];
     public IReadOnlyList<QuestionParseIssue> Errors { get; init; } = [];
     public IReadOnlyList<QuestionParseIssue> Warnings { get; init; } = [];
