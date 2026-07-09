@@ -95,7 +95,7 @@ internal static class Validation
         switch (type)
         {
             case QuestionType.SingleChoice:
-                if (options.Count < 2)
+                if (options.Count != 4)
                 {
                     errors["answerOptions"] = [Error.Validation("question.single_choice.option_count", "QuestionBank.SingleChoiceOptionCount")];
                 }
@@ -106,7 +106,7 @@ internal static class Validation
                 ValidateOptionTranslations(options, questionLanguages, requireMatchPair: false, errors);
                 break;
             case QuestionType.Matching:
-                if (options.Count < 3)
+                if (options.Count != 4)
                 {
                     errors["answerOptions"] = [Error.Validation("question.matching.pair_count", "QuestionBank.MatchingPairCount")];
                 }

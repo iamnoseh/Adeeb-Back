@@ -6,11 +6,25 @@ namespace Adeeb.QuestionBank.Tests;
 public sealed class QuestionValidationTests
 {
     [Fact]
-    public void Single_choice_requires_at_least_two_options()
+    public void Single_choice_requires_exactly_four_options()
     {
         var request = ValidSingleChoice() with
         {
             AnswerOptions = ValidSingleChoice().AnswerOptions.Take(1).ToList()
+        };
+
+        var result = Validation.ValidateQuestion(request);
+
+        Assert.True(result.IsFailure);
+        Assert.Contains("answerOptions", result.ValidationErrors!.Keys);
+    }
+
+    [Fact]
+    public void Matching_requires_exactly_four_pairs()
+    {
+        var request = ValidMatching() with
+        {
+            AnswerOptions = ValidMatching().AnswerOptions.Take(3).ToList()
         };
 
         var result = Validation.ValidateQuestion(request);

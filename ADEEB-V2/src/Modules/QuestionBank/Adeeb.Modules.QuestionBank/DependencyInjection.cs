@@ -1,4 +1,5 @@
 using Adeeb.Modules.QuestionBank.Application;
+using Adeeb.Modules.QuestionBank.Application.Assessment;
 using Adeeb.Modules.QuestionBank.Application.Import;
 using Adeeb.Modules.QuestionBank.Infrastructure.DocumentExtraction;
 using Adeeb.Modules.QuestionBank.Infrastructure.Files;
@@ -25,6 +26,11 @@ public static class DependencyInjection
             .Validate(options => options.MaxQuestionsPerImport > 0, "Question import max questions must be positive.")
             .ValidateOnStart();
         services.AddScoped<QuestionBankService>();
+        services.AddScoped<IQuestionAnswerEvaluator, SingleChoiceAnswerEvaluator>();
+        services.AddScoped<IQuestionAnswerEvaluator, ClosedAnswerEvaluator>();
+        services.AddScoped<IQuestionAnswerEvaluator, MatchingAnswerEvaluator>();
+        services.AddScoped<IAnswerEvaluationService, AnswerEvaluationService>();
+        services.AddScoped<IAssessmentPresentationRandomizer, AssessmentPresentationRandomizer>();
         services.AddScoped<IQuestionImportService, QuestionImportService>();
         services.AddSingleton<IQuestionImportTextNormalizer, QuestionImportTextNormalizer>();
         services.AddSingleton<IQuestionDocumentParser, QuestionDocumentParser>();
