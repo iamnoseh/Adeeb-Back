@@ -1,3 +1,11 @@
+---
+id: QuestionBank.QuestionImport
+title: Question Import API
+method: POST
+route: /api/v2/admin/questions/import/parse
+status: active
+---
+
 # Question Import
 
 ## 1. Overview
@@ -287,7 +295,7 @@ Confirm import validates all questions first, then opens one EF transaction thro
 - no AI parser;
 - no persistent import sessions;
 - no automatic topic or difficulty detection;
-- currently imports `SingleChoice` only.
+- currently imports `SingleChoice` and `ClosedAnswer`; `Matching` import is not supported yet.
 
 ## 16. Future Extensions
 
