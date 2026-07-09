@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { subjectKeys, subjectsApi } from '@/features/academic/api/subjects.api'
 import { topicKeys, topicsApi } from '@/features/academic/api/topics.api'
 import { questionsApi, questionKeys } from '@/features/questions/api/questions.api'
+import { questionTypeLabel } from '@/features/questions/lib/question-labels'
 import {
   buildConfirmImportRequest,
   type EditableImportedQuestion,
@@ -14,6 +15,7 @@ import {
   validateImportedQuestion,
   validateImportFile,
 } from '@/features/questions/model/question-import'
+import { QuestionTypeValue } from '@/features/questions/model/question.types'
 import { ApiError } from '@/shared/api/problem-details'
 import { localizedName } from '@/shared/i18n/localized-content'
 import { Badge } from '@/shared/ui/Badge'
@@ -104,6 +106,11 @@ const importExtraText = {
     optionTooLong: 'Матни вариант аз ҳад дароз аст.',
     unsupportedFile: 'Танҳо файлҳои .docx ва .pdf дастгирӣ мешаванд.',
     fileTooLarge: 'Ҳаҷми файл набояд аз 5 MB зиёд бошад.',
+    expectedAnswer: 'Ҷавоби дуруст',
+    expectedAnswerRequired: 'Ҷавоби дурустро ворид кунед.',
+    expectedAnswerTooLong: 'Ҷавоби дуруст аз ҳад дароз аст.',
+    singleChoiceCount: 'Як ҷавоб',
+    closedAnswerCount: 'Ҷавоби матнӣ',
   },
   ru: {
     detected: 'вопросов найдено',
@@ -117,6 +124,11 @@ const importExtraText = {
     optionTooLong: 'Текст варианта слишком длинный.',
     unsupportedFile: 'Поддерживаются только файлы .docx и .pdf.',
     fileTooLarge: 'Файл не должен быть больше 5 MB.',
+    expectedAnswer: 'Правильный ответ',
+    expectedAnswerRequired: 'Введите правильный ответ.',
+    expectedAnswerTooLong: 'Правильный ответ слишком длинный.',
+    singleChoiceCount: 'Один вариант',
+    closedAnswerCount: 'Текстовый ответ',
   },
 }
 
@@ -190,6 +202,8 @@ export function QuestionImportPage() {
     valid: activeQuestions.filter((question) => validationByKey.get(question.key)?.isValid).length,
     warnings: activeQuestions.filter((question) => (validationByKey.get(question.key)?.warnings.length ?? 0) > 0).length,
     invalid: activeQuestions.filter((question) => !(validationByKey.get(question.key)?.isValid)).length,
+    singleChoice: activeQuestions.filter((question) => question.questionType === QuestionTypeValue.SingleChoice).length,
+    closedAnswer: activeQuestions.filter((question) => question.questionType === QuestionTypeValue.ClosedAnswer).length,
   }
   const visibleQuestions = activeQuestions.filter((question) => {
     const validation = validationByKey.get(question.key)
@@ -330,7 +344,7 @@ function ImportSummary({
   setFilter,
   labels,
 }: {
-  summary: { total: number; valid: number; warnings: number; invalid: number }
+  summary: { total: number; valid: number; warnings: number; invalid: number; singleChoice: number; closedAnswer: number }
   filter: PreviewFilter
   setFilter: (filter: PreviewFilter) => void
   labels: ImportLabels
@@ -347,6 +361,9 @@ function ImportSummary({
       <div>
         <h2 className="text-xl font-black">{labels.preview}</h2>
         <p className="text-sm text-[var(--muted)]">{summary.total} {labels.detected}</p>
+        <p className="mt-1 text-xs font-bold text-[var(--muted)]">
+          {labels.singleChoiceCount}: {summary.singleChoice} · {labels.closedAnswerCount}: {summary.closedAnswer}
+        </p>
       </div>
       <div className="flex flex-wrap gap-2">
         {filters.map((item) => (
@@ -385,6 +402,7 @@ function ImportedQuestionCard({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[var(--surface-muted)] font-black">{String(index).padStart(2, '0')}</span>
+          <Badge tone="neutral">{questionTypeLabel(question.questionType, (key) => labelsFromQuestionTypeKey(key, labels))}</Badge>
           <Badge tone={statusTone}>{statusLabel}</Badge>
         </div>
         <Button
@@ -404,61 +422,70 @@ function ImportedQuestionCard({
         />
       </FormField>
 
-      <div className="grid gap-3">
-        {question.options.map((option) => (
-          <div key={option.key} className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 md:grid-cols-[48px_1fr_auto]">
-            <label className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm" aria-label={`${labels.correct} ${option.label}`}>
-              <input
-                type="radio"
-                name={`correct-${question.key}`}
-                checked={option.isCorrect}
-                onChange={() => updateQuestion(question.key, (current) => ({
+      {question.questionType === QuestionTypeValue.ClosedAnswer ? (
+        <FormField label={labels.expectedAnswer}>
+          <Textarea
+            value={question.expectedAnswer}
+            onChange={(event) => updateQuestion(question.key, (current) => ({ ...current, expectedAnswer: event.target.value }))}
+          />
+        </FormField>
+      ) : (
+        <div className="grid gap-3">
+          {question.options.map((option) => (
+            <div key={option.key} className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 md:grid-cols-[48px_1fr_auto]">
+              <label className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm" aria-label={`${labels.correct} ${option.label}`}>
+                <input
+                  type="radio"
+                  name={`correct-${question.key}`}
+                  checked={option.isCorrect}
+                  onChange={() => updateQuestion(question.key, (current) => ({
+                    ...current,
+                    options: current.options.map((item) => ({ ...item, isCorrect: item.key === option.key })),
+                  }))}
+                />
+              </label>
+              <Input
+                value={option.text}
+                onChange={(event) => updateQuestion(question.key, (current) => ({
                   ...current,
-                  options: current.options.map((item) => ({ ...item, isCorrect: item.key === option.key })),
+                  options: current.options.map((item) => (item.key === option.key ? { ...item, text: event.target.value } : item)),
                 }))}
               />
-            </label>
-            <Input
-              value={option.text}
-              onChange={(event) => updateQuestion(question.key, (current) => ({
-                ...current,
-                options: current.options.map((item) => (item.key === option.key ? { ...item, text: event.target.value } : item)),
-              }))}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={question.options.length <= 2}
-              onClick={() => updateQuestion(question.key, (current) => ({
-                ...current,
-                options: current.options.filter((item) => item.key !== option.key),
-              }))}
-            >
-              <Trash2 className="h-4 w-4" aria-hidden />
-            </Button>
-          </div>
-        ))}
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={question.options.length >= questionImportLimits.maxOptionsPerQuestion}
-          onClick={() => updateQuestion(question.key, (current) => ({
-            ...current,
-            options: [
-              ...current.options,
-              {
-                key: `${current.key}-new-${Date.now()}`,
-                label: String.fromCharCode(65 + current.options.length),
-                text: '',
-                isCorrect: false,
-              },
-            ],
-          }))}
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-          {labels.addOption}
-        </Button>
-      </div>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={question.options.length <= 2}
+                onClick={() => updateQuestion(question.key, (current) => ({
+                  ...current,
+                  options: current.options.filter((item) => item.key !== option.key),
+                }))}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={question.options.length >= questionImportLimits.maxOptionsPerQuestion}
+            onClick={() => updateQuestion(question.key, (current) => ({
+              ...current,
+              options: [
+                ...current.options,
+                {
+                  key: `${current.key}-new-${Date.now()}`,
+                  label: String.fromCharCode(65 + current.options.length),
+                  text: '',
+                  isCorrect: false,
+                },
+              ],
+            }))}
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            {labels.addOption}
+          </Button>
+        </div>
+      )}
 
       {validation.errors.map((issue) => <IssuePanel key={issue.code + issue.message} tone="danger" message={toImportIssueMessage(issue, labels)} />)}
       {validation.warnings.map((issue) => <IssuePanel key={issue.code + issue.message} tone="warning" message={toImportIssueMessage(issue, labels)} />)}
@@ -490,6 +517,8 @@ function toImportIssueMessage(issue: { code: string; message: string }, labels: 
   if (issue.code === 'frontend.one_correct_required') return labels.oneCorrectRequired
   if (issue.code === 'frontend.option_text_required') return labels.optionRequired
   if (issue.code === 'frontend.option_text_too_long') return labels.optionTooLong
+  if (issue.code === 'frontend.expected_answer_required' || issue.code === 'question_import.expected_answer_required') return labels.expectedAnswerRequired
+  if (issue.code === 'frontend.expected_answer_too_long') return labels.expectedAnswerTooLong
   if (issue.code === 'frontend.unsupported_file') return labels.unsupportedFile
   if (issue.code === 'frontend.file_too_large') return labels.fileTooLarge
   if (issue.code === 'question_import.no_extractable_text') return labels.extractionFailed
@@ -506,4 +535,10 @@ function toImportErrorMessage(error: unknown, labels: ImportLabels) {
 
   const validationError = error.problem?.errors ? Object.values(error.problem.errors).flat()[0] : undefined
   return validationError ? toImportIssueMessage(validationError, labels) : error.problem?.title ?? error.message
+}
+
+function labelsFromQuestionTypeKey(key: string, labels: ImportLabels) {
+  if (key === 'typeSingleChoice') return labels.singleChoiceCount
+  if (key === 'typeClosedAnswer') return labels.closedAnswerCount
+  return key
 }

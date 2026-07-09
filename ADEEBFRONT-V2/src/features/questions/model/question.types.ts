@@ -71,6 +71,14 @@ export type QuestionFormValues = {
   image?: FileList
 }
 
+export const QuestionTypeValue = {
+  SingleChoice: 1,
+  Matching: 2,
+  ClosedAnswer: 3,
+} as const
+
+export type QuestionTypeValue = (typeof QuestionTypeValue)[keyof typeof QuestionTypeValue]
+
 export type QuestionImportIssue = {
   code: string
   message: string
@@ -84,7 +92,10 @@ export type QuestionImportPreviewOption = {
 
 export type QuestionImportPreviewQuestion = {
   clientKey: string
+  questionType?: number
+  questionTypeName?: string
   questionText: string
+  expectedAnswer?: string | null
   options: QuestionImportPreviewOption[]
   isValid: boolean
   errors: QuestionImportIssue[]
@@ -114,7 +125,9 @@ export type QuestionImportConfirmRequest = {
   topicId?: string | null
   difficulty: number
   questions: {
+    questionType: number
     questionText: string
+    expectedAnswer?: string | null
     options: {
       text: string
       isCorrect: boolean

@@ -3,6 +3,7 @@ import type {
   QuestionImportIssue,
   QuestionImportPreviewResponse,
 } from '@/features/questions/model/question.types'
+import { QuestionTypeValue } from '@/features/questions/model/question.types'
 
 export const questionImportLimits = {
   maxFileSizeBytes: 5 * 1024 * 1024,
@@ -20,7 +21,10 @@ export type EditableImportedOption = {
 
 export type EditableImportedQuestion = {
   key: string
+  questionType: QuestionTypeValue
+  questionTypeName: string
   questionText: string
+  expectedAnswer: string
   options: EditableImportedOption[]
   serverErrors: QuestionImportIssue[]
   serverWarnings: QuestionImportIssue[]
@@ -34,19 +38,25 @@ export type ImportValidationResult = {
 }
 
 export function toEditableImportQuestions(preview: QuestionImportPreviewResponse): EditableImportedQuestion[] {
-  return preview.questions.map((question) => ({
-    key: question.clientKey,
-    questionText: question.questionText,
-    options: question.options.map((option, index) => ({
-      key: `${question.clientKey}-${option.label || index}`,
-      label: option.label || String.fromCharCode(65 + index),
-      text: option.text,
-      isCorrect: option.isCorrect,
-    })),
-    serverErrors: question.errors,
-    serverWarnings: question.warnings,
-    removed: false,
-  }))
+  return preview.questions.map((question) => {
+    const questionType = toImportQuestionType(question.questionType)
+    return {
+      key: question.clientKey,
+      questionType,
+      questionTypeName: question.questionTypeName ?? (questionType === QuestionTypeValue.ClosedAnswer ? 'ClosedAnswer' : 'SingleChoice'),
+      questionText: question.questionText,
+      expectedAnswer: question.expectedAnswer ?? '',
+      options: question.options.map((option, index) => ({
+        key: `${question.clientKey}-${option.label || index}`,
+        label: option.label || String.fromCharCode(65 + index),
+        text: option.text,
+        isCorrect: option.isCorrect,
+      })),
+      serverErrors: question.errors,
+      serverWarnings: question.warnings,
+      removed: false,
+    }
+  })
 }
 
 export function validateImportedQuestion(question: EditableImportedQuestion): ImportValidationResult {
@@ -61,25 +71,35 @@ export function validateImportedQuestion(question: EditableImportedQuestion): Im
     errors.push({ code: 'frontend.question_text_too_long', message: `Question text cannot exceed ${questionImportLimits.maxQuestionTextLength} characters.` })
   }
 
-  if (question.options.length < 2) {
-    errors.push({ code: 'frontend.too_few_options', message: 'At least two options are required.' })
-  }
-
-  if (question.options.length > questionImportLimits.maxOptionsPerQuestion) {
-    errors.push({ code: 'frontend.too_many_options', message: `No more than ${questionImportLimits.maxOptionsPerQuestion} options are allowed.` })
-  }
-
-  if (question.options.filter((option) => option.isCorrect).length !== 1) {
-    errors.push({ code: 'frontend.one_correct_required', message: 'Exactly one correct answer is required.' })
-  }
-
-  for (const option of question.options) {
-    if (!option.text.trim()) {
-      errors.push({ code: 'frontend.option_text_required', message: `Option ${option.label} text is required.` })
+  if (question.questionType === QuestionTypeValue.ClosedAnswer) {
+    if (!question.expectedAnswer.trim()) {
+      errors.push({ code: 'frontend.expected_answer_required', message: 'Expected answer is required.' })
     }
 
-    if (option.text.length > questionImportLimits.maxOptionTextLength) {
-      errors.push({ code: 'frontend.option_text_too_long', message: `Option ${option.label} cannot exceed ${questionImportLimits.maxOptionTextLength} characters.` })
+    if (question.expectedAnswer.length > questionImportLimits.maxOptionTextLength) {
+      errors.push({ code: 'frontend.expected_answer_too_long', message: `Expected answer cannot exceed ${questionImportLimits.maxOptionTextLength} characters.` })
+    }
+  } else {
+    if (question.options.length < 2) {
+      errors.push({ code: 'frontend.too_few_options', message: 'At least two options are required.' })
+    }
+
+    if (question.options.length > questionImportLimits.maxOptionsPerQuestion) {
+      errors.push({ code: 'frontend.too_many_options', message: `No more than ${questionImportLimits.maxOptionsPerQuestion} options are allowed.` })
+    }
+
+    if (question.options.filter((option) => option.isCorrect).length !== 1) {
+      errors.push({ code: 'frontend.one_correct_required', message: 'Exactly one correct answer is required.' })
+    }
+
+    for (const option of question.options) {
+      if (!option.text.trim()) {
+        errors.push({ code: 'frontend.option_text_required', message: `Option ${option.label} text is required.` })
+      }
+
+      if (option.text.length > questionImportLimits.maxOptionTextLength) {
+        errors.push({ code: 'frontend.option_text_too_long', message: `Option ${option.label} cannot exceed ${questionImportLimits.maxOptionTextLength} characters.` })
+      }
     }
   }
 
@@ -98,13 +118,22 @@ export function buildConfirmImportRequest(
     difficulty,
     questions: questions
       .filter((question) => !question.removed)
-      .map((question) => ({
-        questionText: question.questionText.trim(),
-        options: question.options.map((option) => ({
-          text: option.text.trim(),
-          isCorrect: option.isCorrect,
-        })),
-      })),
+      .map((question) => question.questionType === QuestionTypeValue.ClosedAnswer
+        ? {
+            questionType: QuestionTypeValue.ClosedAnswer,
+            questionText: question.questionText.trim(),
+            expectedAnswer: question.expectedAnswer.trim(),
+            options: [],
+          }
+        : {
+            questionType: QuestionTypeValue.SingleChoice,
+            questionText: question.questionText.trim(),
+            expectedAnswer: null,
+            options: question.options.map((option) => ({
+              text: option.text.trim(),
+              isCorrect: option.isCorrect,
+            })),
+          }),
   }
 }
 
@@ -123,4 +152,9 @@ export function validateImportFile(file: File | null): QuestionImportIssue | nul
   }
 
   return null
+}
+
+function toImportQuestionType(value: number | undefined): QuestionTypeValue {
+  if (value === QuestionTypeValue.ClosedAnswer) return QuestionTypeValue.ClosedAnswer
+  return QuestionTypeValue.SingleChoice
 }

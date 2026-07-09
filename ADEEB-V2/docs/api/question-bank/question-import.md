@@ -288,7 +288,17 @@ Errors use the existing ADEEB `ProblemDetails` contract with stable `code` value
 
 Confirm import validates all questions first, then opens one EF transaction through `QuestionBankService.CreateQuestionsAsync`. If any insert or save fails, the whole import rolls back.
 
-## 15. Known Limitations
+## 15. Frontend Behavior
+
+The ADEEB Admin import page renders one unified mixed preview list.
+
+- `SingleChoice` questions show the existing option editor and one correct-answer radio selection.
+- `ClosedAnswer` questions show a question text editor and one expected-answer text editor.
+- `ClosedAnswer` confirm payload sends `questionType: 3`, `expectedAnswer`, and `options: []`.
+- Mixed batches are submitted to the same confirm endpoint in one request.
+- Local validation can unblock editable parser issues after the admin fixes the text, while duplicate warnings remain visible.
+
+## 16. Known Limitations
 
 - no OCR;
 - no scanned/image-only PDF support;
@@ -297,7 +307,7 @@ Confirm import validates all questions first, then opens one EF transaction thro
 - no automatic topic or difficulty detection;
 - currently imports `SingleChoice` and `ClosedAnswer`; `Matching` import is not supported yet.
 
-## 16. Future Extensions
+## 17. Future Extensions
 
 Future ideas only:
 
