@@ -25,28 +25,36 @@ internal static class Validation
             AddError("subjectId", Error.Validation("question.subject_id.required", "Validation.Required"));
         }
 
-        if (!Enum.IsDefined(typeof(QuestionType), request.Type))
+        QuestionType? type = null;
+        if (Enum.IsDefined(typeof(QuestionType), request.Type))
+        {
+            type = (QuestionType)request.Type;
+        }
+        else
         {
             AddError("type", Error.Validation("question.type.invalid", "QuestionBank.InvalidType"));
         }
-        var type = (QuestionType)request.Type;
 
         if (!Enum.IsDefined(typeof(DifficultyLevel), request.Difficulty))
         {
             AddError("difficulty", Error.Validation("question.difficulty.invalid", "QuestionBank.InvalidDifficulty"));
         }
 
-        if (!Enum.IsDefined(typeof(QuestionStatus), request.Status))
+        QuestionStatus? status = null;
+        if (Enum.IsDefined(typeof(QuestionStatus), request.Status))
+        {
+            status = (QuestionStatus)request.Status;
+        }
+        else
         {
             AddError("status", Error.Validation("question.status.invalid", "Validation.InvalidStatus"));
         }
-        var status = (QuestionStatus)request.Status;
 
-        ValidateQuestionTranslations(request.Translations, status, AddError);
-        
-        if (Enum.IsDefined(typeof(QuestionType), request.Type))
+        var validLanguages = ValidateQuestionTranslations(request.Translations, status, AddError);
+
+        if (type.HasValue)
         {
-            ValidateAnswerOptions(type, request.AnswerOptions, request.Translations?.Select(x => x.Language).ToHashSet() ?? [], AddError);
+            ValidateAnswerOptions(type.Value, request.AnswerOptions, validLanguages, AddError);
         }
 
         return errors.Count == 0 ? Result.Success() : Result.ValidationFailure(errors.ToDictionary(k => k.Key, v => (IReadOnlyList<Error>)v.Value));
@@ -64,15 +72,15 @@ internal static class Validation
         return true;
     }
 
-    private static void ValidateQuestionTranslations(IReadOnlyList<QuestionTranslationRequest>? translations, QuestionStatus status, Action<string, Error> addError)
+    private static HashSet<SupportedLanguage> ValidateQuestionTranslations(IReadOnlyList<QuestionTranslationRequest>? translations, QuestionStatus? status, Action<string, Error> addError)
     {
+        var languages = new HashSet<SupportedLanguage>();
         if (translations is null || translations.Count == 0)
         {
             addError("translations", Error.Validation("question.translations.required", "Validation.Required"));
-            return;
+            return languages;
         }
 
-        var languages = new HashSet<SupportedLanguage>();
         for (var i = 0; i < translations.Count; i++)
         {
             var item = translations[i];
@@ -97,9 +105,11 @@ internal static class Validation
         {
             addError("translations", Error.Validation("question.active_translations.required", "QuestionBank.ActiveTranslationsRequired"));
         }
+
+        return languages;
     }
 
-    private static void ValidateAnswerOptions(QuestionType type, IReadOnlyList<AnswerOptionRequest>? options, HashSet<int> questionLanguages, Action<string, Error> addError)
+    private static void ValidateAnswerOptions(QuestionType type, IReadOnlyList<AnswerOptionRequest>? options, HashSet<SupportedLanguage> questionLanguages, Action<string, Error> addError)
     {
         options ??= [];
         switch (type)
@@ -123,7 +133,8 @@ internal static class Validation
                 ValidateOptionTranslations(options, questionLanguages, requireMatchPair: true, addError);
                 foreach (var language in questionLanguages)
                 {
-                    var rights = options.SelectMany(o => o.Translations.Where(t => t.Language == language))
+                    var languageValue = (int)language;
+                    var rights = options.SelectMany(o => o.Translations.Where(t => t.Language == languageValue))
                                         .Select(t => t.MatchPairText)
                                         .Where(text => !string.IsNullOrWhiteSpace(text))
                                         .Select(Normalize)
@@ -144,13 +155,14 @@ internal static class Validation
         }
     }
 
-    private static void ValidateOptionTranslations(IReadOnlyList<AnswerOptionRequest> options, HashSet<int> questionLanguages, bool requireMatchPair, Action<string, Error> addError)
+    private static void ValidateOptionTranslations(IReadOnlyList<AnswerOptionRequest> options, HashSet<SupportedLanguage> questionLanguages, bool requireMatchPair, Action<string, Error> addError)
     {
         for (var i = 0; i < options.Count; i++)
         {
             foreach (var language in questionLanguages)
             {
-                var translation = options[i].Translations.SingleOrDefault(x => x.Language == language);
+                var languageValue = (int)language;
+                var translation = options[i].Translations.SingleOrDefault(x => x.Language == languageValue);
                 if (translation is null)
                 {
                     addError($"answerOptions[{i}].translations", Error.Validation("question.answer_translation.missing", "QuestionBank.AnswerTranslationMissing"));

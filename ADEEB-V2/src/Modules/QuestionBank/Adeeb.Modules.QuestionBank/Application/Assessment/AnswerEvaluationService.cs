@@ -1,5 +1,6 @@
 using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Modules.QuestionBank.Domain;
+using Microsoft.Extensions.Hosting;
 
 namespace Adeeb.Modules.QuestionBank.Application.Assessment;
 
@@ -20,21 +21,53 @@ internal sealed class AnswerEvaluationService : IAnswerEvaluationService
 
     public AnswerEvaluationService(IEnumerable<IQuestionAnswerEvaluator> evaluators)
     {
-        var dict = new Dictionary<QuestionType, IQuestionAnswerEvaluator>();
-        foreach (var evaluator in evaluators)
-        {
-            if (!dict.TryAdd(evaluator.QuestionType, evaluator))
-            {
-                throw new InvalidOperationException($"Duplicate evaluator registered for question type: {evaluator.QuestionType}");
-            }
-        }
-        _evaluators = dict;
+        _evaluators = AnswerEvaluatorRegistration.ValidateAndIndex(evaluators);
     }
 
     public AnswerEvaluationResult Evaluate(Question question, AnswerEvaluationInput input, SupportedLanguage language) =>
         _evaluators.TryGetValue(question.Type, out var evaluator)
             ? evaluator.Evaluate(question, input, language)
             : throw new InvalidOperationException($"No evaluator found for question type: {question.Type}");
+}
+
+internal sealed class AnswerEvaluatorStartupValidator(IEnumerable<IQuestionAnswerEvaluator> evaluators) : IHostedService
+{
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        _ = AnswerEvaluatorRegistration.ValidateAndIndex(evaluators);
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
+internal static class AnswerEvaluatorRegistration
+{
+    private static readonly QuestionType[] EvaluatableTypes =
+    [
+        QuestionType.SingleChoice,
+        QuestionType.Matching,
+        QuestionType.ClosedAnswer
+    ];
+
+    public static IReadOnlyDictionary<QuestionType, IQuestionAnswerEvaluator> ValidateAndIndex(IEnumerable<IQuestionAnswerEvaluator> evaluators)
+    {
+        var grouped = evaluators.GroupBy(x => x.QuestionType).ToDictionary(x => x.Key, x => x.ToList());
+        foreach (var type in EvaluatableTypes)
+        {
+            if (!grouped.TryGetValue(type, out var registered) || registered.Count == 0)
+            {
+                throw new InvalidOperationException($"Missing evaluator for QuestionType.{type}");
+            }
+
+            if (registered.Count > 1)
+            {
+                throw new InvalidOperationException($"Duplicate evaluators for QuestionType.{type}");
+            }
+        }
+
+        return grouped.ToDictionary(x => x.Key, x => (IQuestionAnswerEvaluator)x.Value.Single());
+    }
 }
 
 internal sealed class SingleChoiceAnswerEvaluator : IQuestionAnswerEvaluator

@@ -15,17 +15,18 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAdeebInfrastructure();
 builder.Services.AddProxyConfiguration(builder.Configuration);
 builder.Services.AddAdeebLocalization();
-builder.Services.AddAdeebRateLimiting();
+builder.Services.AddAdeebRateLimiting(builder.Environment);
 builder.Services.AddAdeebSwagger();
 builder.Services.AddAdeebOpenTelemetry();
 builder.Services.AddAdeebHealthChecks(builder.Configuration);
-builder.Services.Configure<DatabaseInitializationOptions>(builder.Configuration.GetSection("DatabaseInitialization"));
+builder.Services.AddDatabaseInitializationOptions(builder.Configuration);
 
 builder.Services.AddIdentityModule(builder.Configuration);
 builder.Services.AddAcademicCatalogModule(builder.Configuration);
@@ -41,6 +42,8 @@ var app = builder.Build();
 
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
+app.UseAuthentication();
+app.UseRequestLocalization();
 
 var dbInitOptions = app.Services.GetRequiredService<IOptions<DatabaseInitializationOptions>>().Value;
 if (dbInitOptions.AutoMigrate)
@@ -48,11 +51,11 @@ if (dbInitOptions.AutoMigrate)
     await IdentityDatabaseInitializer.MigrateAsync(app.Services);
     await AcademicCatalogDatabaseInitializer.MigrateAsync(app.Services);
     await QuestionBankDatabaseInitializer.MigrateAsync(app.Services);
-    
-    if (dbInitOptions.Seed)
-    {
-        await IdentitySeeder.SeedSuperAdminAsync(app.Services);
-    }
+}
+
+if (dbInitOptions.Seed)
+{
+    await IdentitySeeder.SeedSuperAdminAsync(app.Services);
 }
 
 if (app.Environment.IsDevelopment())
@@ -68,25 +71,48 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseRequestLocalization();
 app.UseStaticFiles();
-app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
-    Predicate = r => r.Name.Contains("live")
+    Predicate = _ => false
 });
 app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
-    Predicate = r => r.Tags.Contains("ready")
+    Predicate = r => r.Tags.Contains("ready"),
+    ResultStatusCodes =
+    {
+        [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy] = StatusCodes.Status200OK,
+        [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable,
+        [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
+    }
 });
 
 app.MapIdentityEndpoints();
 app.MapAcademicCatalogEndpoints();
 app.MapQuestionBankEndpoints();
 app.MapAdeebDocumentation();
+
+if (app.Environment.IsEnvironment("Testing"))
+{
+    app.MapGet("/__test/culture", (HttpContext context) => Results.Json(new
+    {
+        culture = CultureInfo.CurrentCulture.Name,
+        uiCulture = CultureInfo.CurrentUICulture.Name,
+        langClaim = context.User.FindFirst("lang")?.Value,
+        sub = context.User.FindFirst("sub")?.Value
+    }));
+
+    app.MapPost("/__test/rate-limit-auth", (HttpContext context) => Results.Json(new
+    {
+        sub = context.User.FindFirst("sub")?.Value,
+        remoteIp = context.Connection.RemoteIpAddress?.ToString()
+    }))
+    .RequireAuthorization()
+    .RequireRateLimiting("auth-change-password");
+}
 
 app.Run();
 

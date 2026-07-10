@@ -13,7 +13,7 @@ public static class OpenTelemetryExtensions
             .WithTracing(tracing => tracing
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation());
-                
+
         return services;
     }
 }

@@ -45,6 +45,13 @@ public static class Validation
         return errors.Count == 0 ? Result.Success() : Result.ValidationFailure(errors);
     }
 
+    public static Result ValidateChangePreferredLanguage(ChangePreferredLanguageRequest request)
+    {
+        var errors = new Dictionary<string, IReadOnlyList<Error>>(StringComparer.OrdinalIgnoreCase);
+        ValidateLanguage(request.Language, errors);
+        return errors.Count == 0 ? Result.Success() : Result.ValidationFailure(errors);
+    }
+
     private static void ValidateEmail(string? email, Dictionary<string, IReadOnlyList<Error>> errors)
     {
         if (string.IsNullOrWhiteSpace(email))

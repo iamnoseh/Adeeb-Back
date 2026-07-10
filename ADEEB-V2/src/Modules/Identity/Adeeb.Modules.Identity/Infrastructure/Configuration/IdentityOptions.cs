@@ -4,11 +4,30 @@ namespace Adeeb.Modules.Identity.Infrastructure.Configuration;
 
 public sealed class JwtOptions
 {
+    private static readonly string[] DisallowedSigningKeys =
+    [
+        "replace-with-a-secure-32-byte-minimum-secret",
+        "your-256-bit-secret",
+        "your-super-secret-key",
+        "development-secret",
+        "default-secret"
+    ];
+
     public const string SectionName = "Jwt";
     [Required] public string Issuer { get; init; } = string.Empty;
     [Required] public string Audience { get; init; } = string.Empty;
     [Required, MinLength(32)] public string SigningKey { get; init; } = string.Empty;
     [Range(1, 60)] public int AccessTokenMinutes { get; init; } = 10;
+
+    public static bool IsAllowedSigningKey(string? signingKey)
+    {
+        if (string.IsNullOrWhiteSpace(signingKey) || signingKey.Length < 32)
+        {
+            return false;
+        }
+
+        return !DisallowedSigningKeys.Any(x => string.Equals(x, signingKey.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
 }
 
 public sealed class RefreshTokenOptions

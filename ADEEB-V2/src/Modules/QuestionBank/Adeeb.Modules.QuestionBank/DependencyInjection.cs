@@ -16,8 +16,11 @@ public static class DependencyInjection
     {
         var connectionString = configuration.GetConnectionString("QuestionBank")
             ?? configuration.GetConnectionString("Default")
-            ?? configuration.GetConnectionString("Identity")
-            ?? throw new InvalidOperationException("QuestionBank database connection string is required.");
+            ?? configuration.GetConnectionString("Identity");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("QuestionBank database connection string is required.");
+        }
 
         services.AddDbContext<QuestionBankDbContext>(options => options.UseNpgsql(connectionString));
         services.AddOptions<QuestionImportOptions>()
@@ -26,10 +29,11 @@ public static class DependencyInjection
             .Validate(options => options.MaxQuestionsPerImport > 0, "Question import max questions must be positive.")
             .ValidateOnStart();
         services.AddScoped<QuestionBankService>();
-        services.AddScoped<IQuestionAnswerEvaluator, SingleChoiceAnswerEvaluator>();
-        services.AddScoped<IQuestionAnswerEvaluator, ClosedAnswerEvaluator>();
-        services.AddScoped<IQuestionAnswerEvaluator, MatchingAnswerEvaluator>();
+        services.AddSingleton<IQuestionAnswerEvaluator, SingleChoiceAnswerEvaluator>();
+        services.AddSingleton<IQuestionAnswerEvaluator, ClosedAnswerEvaluator>();
+        services.AddSingleton<IQuestionAnswerEvaluator, MatchingAnswerEvaluator>();
         services.AddScoped<IAnswerEvaluationService, AnswerEvaluationService>();
+        services.AddHostedService<AnswerEvaluatorStartupValidator>();
         services.AddScoped<IAssessmentPresentationRandomizer, AssessmentPresentationRandomizer>();
         services.AddScoped<IQuestionImportService, QuestionImportService>();
         services.AddSingleton<IQuestionImportTextNormalizer, QuestionImportTextNormalizer>();

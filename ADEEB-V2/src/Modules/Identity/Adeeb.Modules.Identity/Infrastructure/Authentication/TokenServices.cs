@@ -13,7 +13,18 @@ namespace Adeeb.Modules.Identity.Infrastructure.Authentication;
 
 public sealed record AccessTokenResult(string Token, DateTimeOffset ExpiresAtUtc);
 
-public sealed class RefreshTokenGenerator(IOptions<RefreshTokenOptions> options)
+public interface IRefreshTokenGenerator
+{
+    string Generate();
+    string Hash(string token);
+}
+
+public interface IAccessTokenGenerator
+{
+    AccessTokenResult Generate(User user, AuthSession session, DateTimeOffset now);
+}
+
+public sealed class RefreshTokenGenerator(IOptions<RefreshTokenOptions> options) : IRefreshTokenGenerator
 {
     private readonly RefreshTokenOptions _options = options.Value;
 
@@ -30,7 +41,7 @@ public sealed class RefreshTokenGenerator(IOptions<RefreshTokenOptions> options)
     }
 }
 
-public sealed class JwtTokenGenerator(IOptions<JwtOptions> options)
+public sealed class JwtTokenGenerator(IOptions<JwtOptions> options) : IAccessTokenGenerator
 {
     private readonly JwtOptions _options = options.Value;
 

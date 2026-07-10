@@ -22,6 +22,7 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(JwtOptions.SectionName))
             .ValidateDataAnnotations()
             .Validate(x => x.SigningKey.Length >= 32, "JWT signing key must be at least 32 characters.")
+            .Validate(x => JwtOptions.IsAllowedSigningKey(x.SigningKey), "JWT signing key must not use a committed placeholder or obvious default value.")
             .ValidateOnStart();
         services.AddOptions<RefreshTokenOptions>().Bind(configuration.GetSection(RefreshTokenOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<PasswordPolicyOptions>().Bind(configuration.GetSection(PasswordPolicyOptions.SectionName)).ValidateDataAnnotations().ValidateOnStart();
@@ -31,18 +32,25 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         var connectionString = configuration.GetConnectionString("Identity")
-            ?? configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Identity database connection string is required.");
+            ?? configuration.GetConnectionString("Default");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("Identity database connection string is required.");
+        }
 
         services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<PasswordHasher<User>>();
         services.AddScoped<PasswordPolicy>();
-        services.AddScoped<RefreshTokenGenerator>();
-        services.AddScoped<JwtTokenGenerator>();
+        services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
+        services.AddScoped<IAccessTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IdentityService>();
 
         var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
             ?? throw new InvalidOperationException("JWT configuration is required.");
+        if (!JwtOptions.IsAllowedSigningKey(jwt.SigningKey))
+        {
+            throw new InvalidOperationException("JWT signing key must not use a committed placeholder or obvious default value.");
+        }
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {

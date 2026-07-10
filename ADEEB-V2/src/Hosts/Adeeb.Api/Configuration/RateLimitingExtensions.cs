@@ -3,12 +3,13 @@ using Adeeb.Application.Abstractions.Localization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Adeeb.Api.Configuration;
 
 public static class RateLimitingExtensions
 {
-    public static IServiceCollection AddAdeebRateLimiting(this IServiceCollection services)
+    public static IServiceCollection AddAdeebRateLimiting(this IServiceCollection services, IHostEnvironment environment)
     {
         services.AddRateLimiter(options =>
         {
@@ -28,7 +29,8 @@ public static class RateLimitingExtensions
             };
 
             options.AddPolicy("auth-login", http => Fixed(http, "login", 5, TimeSpan.FromMinutes(1)));
-            options.AddPolicy("auth-register", http => Fixed(http, "register", 3, TimeSpan.FromMinutes(5)));
+            var registerPermits = environment.IsEnvironment("Testing") ? 100 : 3;
+            options.AddPolicy("auth-register", http => Fixed(http, "register", registerPermits, TimeSpan.FromMinutes(5)));
             options.AddPolicy("auth-refresh", http => Fixed(http, "refresh", 20, TimeSpan.FromMinutes(1)));
             options.AddPolicy("auth-change-password", http => Fixed(http, "change-password", 3, TimeSpan.FromMinutes(10)));
         });

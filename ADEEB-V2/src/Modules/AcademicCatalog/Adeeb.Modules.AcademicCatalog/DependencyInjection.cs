@@ -14,8 +14,11 @@ public static class DependencyInjection
     {
         var connectionString = configuration.GetConnectionString("AcademicCatalog")
             ?? configuration.GetConnectionString("Default")
-            ?? configuration.GetConnectionString("Identity")
-            ?? throw new InvalidOperationException("AcademicCatalog database connection string is required.");
+            ?? configuration.GetConnectionString("Identity");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("AcademicCatalog database connection string is required.");
+        }
 
         services.AddDbContext<AcademicCatalogDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<AcademicCatalogService>();

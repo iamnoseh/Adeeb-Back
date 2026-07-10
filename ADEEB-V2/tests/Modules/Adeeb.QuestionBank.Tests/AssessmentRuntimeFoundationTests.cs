@@ -69,6 +69,28 @@ public sealed class AssessmentRuntimeFoundationTests
     }
 
     [Fact]
+    public void Concealed_feedback_returns_unknown_correctness_not_false()
+    {
+        var correct = new AnswerEvaluationResult(true, true);
+        var wrong = new AnswerEvaluationResult(true, false);
+
+        Assert.Null(correct.ToStudentFeedback(AssessmentFeedbackPolicy.ConcealCorrectness).IsCorrect);
+        Assert.Null(wrong.ToStudentFeedback(AssessmentFeedbackPolicy.ConcealCorrectness).IsCorrect);
+        Assert.True(correct.ToStudentFeedback(AssessmentFeedbackPolicy.RevealCorrectness).IsCorrect);
+        Assert.False(wrong.ToStudentFeedback(AssessmentFeedbackPolicy.RevealCorrectness).IsCorrect);
+    }
+
+    [Fact]
+    public void Student_feedback_contract_does_not_expose_internal_answer_fields()
+    {
+        var names = typeof(StudentAnswerFeedback).GetProperties().Select(x => x.Name).ToHashSet(StringComparer.Ordinal);
+
+        Assert.DoesNotContain("CorrectOptionId", names);
+        Assert.DoesNotContain("SubmittedAnswerText", names);
+        Assert.DoesNotContain("NormalizedSubmittedAnswer", names);
+    }
+
+    [Fact]
     public void Matching_evaluates_supported_pairs_by_option_identity()
     {
         var question = MatchingQuestion();
@@ -83,6 +105,37 @@ public sealed class AssessmentRuntimeFoundationTests
         Assert.True(result.IsCorrect);
         Assert.Equal(4, result.CorrectPairsCount);
         Assert.Equal(4, result.TotalPairsCount);
+    }
+
+    [Theory]
+    [InlineData("  one   two  ", "one two")]
+    [InlineData("Cafe\u0301", "Caf\u00e9")]
+    public void ClosedAnswer_normalizes_unicode_and_whitespace(string submitted, string canonical)
+    {
+        var question = ClosedAnswerQuestion(canonical);
+        var service = CreateEvaluationService();
+
+        var result = service.Evaluate(question, new AnswerEvaluationInput(TextResponse: submitted), SupportedLanguage.Tajik);
+
+        Assert.True(result.IsCorrect);
+    }
+
+    [Fact]
+    public void Evaluator_registration_fails_for_missing_and_duplicate_evaluators()
+    {
+        var duplicate = Assert.Throws<InvalidOperationException>(() => AnswerEvaluatorRegistration.ValidateAndIndex([
+            new SingleChoiceAnswerEvaluator(),
+            new SingleChoiceAnswerEvaluator(),
+            new ClosedAnswerEvaluator(),
+            new MatchingAnswerEvaluator()
+        ]));
+        Assert.Contains("Duplicate evaluators for QuestionType.SingleChoice", duplicate.Message);
+
+        var missing = Assert.Throws<InvalidOperationException>(() => AnswerEvaluatorRegistration.ValidateAndIndex([
+            new SingleChoiceAnswerEvaluator(),
+            new ClosedAnswerEvaluator()
+        ]));
+        Assert.Contains("Missing evaluator for QuestionType.Matching", missing.Message);
     }
 
     [Fact]

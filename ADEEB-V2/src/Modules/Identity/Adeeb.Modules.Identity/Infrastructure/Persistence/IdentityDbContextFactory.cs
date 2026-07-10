@@ -7,8 +7,11 @@ public sealed class IdentityDbContextFactory : IDesignTimeDbContextFactory<Ident
 {
     public IdentityDbContext CreateDbContext(string[] args)
     {
+        var connectionString = Environment.GetEnvironmentVariable("ADEEB_IDENTITY_MIGRATIONS_CONNECTION")
+            ?? "Host=localhost;Port=5432;Database=adeeb_v2;Username=postgres";
+
         var options = new DbContextOptionsBuilder<IdentityDbContext>()
-            .UseNpgsql("Host=localhost;Port=5432;Database=adeeb_v2;Username=postgres;Password=postgres")
+            .UseNpgsql(connectionString)
             .Options;
 
         return new IdentityDbContext(options);

@@ -64,7 +64,7 @@ public sealed class QuestionValidationTests
         var result = Validation.ValidateQuestion(request);
 
         Assert.True(result.IsFailure);
-        Assert.Contains("answerOptions.0.matchPairText", result.ValidationErrors!.Keys);
+        Assert.Contains("answerOptions.Tajik.matchPairText", result.ValidationErrors!.Keys);
     }
 
     [Fact]
@@ -79,6 +79,44 @@ public sealed class QuestionValidationTests
 
         Assert.True(result.IsFailure);
         Assert.Contains("answerOptions", result.ValidationErrors!.Keys);
+    }
+
+    [Fact]
+    public void Invalid_language_does_not_create_fake_missing_answer_translation_error()
+    {
+        var request = ValidSingleChoice() with
+        {
+            Translations =
+            [
+                new QuestionTranslationRequest(0, "Question?", null),
+                new QuestionTranslationRequest(999, "Invalid?", null)
+            ]
+        };
+
+        var result = Validation.ValidateQuestion(request);
+
+        Assert.True(result.IsFailure);
+        Assert.Contains("translations[1].language", result.ValidationErrors!.Keys);
+        Assert.DoesNotContain(result.ValidationErrors.Keys, key => key.StartsWith("answerOptions", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Invalid_type_and_status_do_not_drive_dependent_validation()
+    {
+        var request = ValidSingleChoice() with
+        {
+            Type = 999,
+            Status = 999,
+            AnswerOptions = []
+        };
+
+        var result = Validation.ValidateQuestion(request);
+
+        Assert.True(result.IsFailure);
+        Assert.Contains("type", result.ValidationErrors!.Keys);
+        Assert.Contains("status", result.ValidationErrors.Keys);
+        Assert.DoesNotContain("answerOptions", result.ValidationErrors.Keys);
+        Assert.DoesNotContain("translations", result.ValidationErrors.Keys);
     }
 
     private static QuestionUpsertRequest ValidSingleChoice() =>

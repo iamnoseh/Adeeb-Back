@@ -22,8 +22,8 @@ public sealed class IdentityService(
     IdentityDbContext db,
     PasswordHasher<User> passwordHasher,
     PasswordPolicy passwordPolicy,
-    RefreshTokenGenerator refreshTokenGenerator,
-    JwtTokenGenerator jwtTokenGenerator,
+    IRefreshTokenGenerator refreshTokenGenerator,
+    IAccessTokenGenerator jwtTokenGenerator,
     IDateTimeProvider clock,
     IOptions<RefreshTokenOptions> refreshOptions,
     ILogger<IdentityService> logger)
@@ -69,16 +69,16 @@ public sealed class IdentityService(
         var (session, rawRefreshToken) = CreateSession(user.Id, Guid.NewGuid(), ResolveDevice(request.Device, client), client, now);
         db.Users.Add(user);
         db.AuthSessions.Add(session);
-        
+
         try
         {
             await db.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException ex) when (PostgresExceptionHelper.IsUniqueViolation(ex, "ix_users_normalized_email"))
+        catch (DbUpdateException ex) when (PostgresExceptionHelper.IsUniqueViolation(ex, UserDatabaseConstraints.NormalizedEmailUnique))
         {
             return Result<AuthResponse>.Failure(IdentityErrors.EmailAlreadyExists);
         }
-        catch (DbUpdateException ex) when (PostgresExceptionHelper.IsUniqueViolation(ex, "ix_users_normalized_phone_number"))
+        catch (DbUpdateException ex) when (PostgresExceptionHelper.IsUniqueViolation(ex, UserDatabaseConstraints.NormalizedPhoneNumberUnique))
         {
             return Result<AuthResponse>.Failure(IdentityErrors.PhoneAlreadyExists);
         }
@@ -272,6 +272,32 @@ public sealed class IdentityService(
         return user is null
             ? Result<UserResponse>.Failure(IdentityErrors.InvalidCredentials)
             : Result<UserResponse>.Success(ToUserResponse(user));
+    }
+
+    public async Task<Result<UserResponse>> ChangePreferredLanguageAsync(ClaimsPrincipal principal, ChangePreferredLanguageRequest request, CancellationToken cancellationToken)
+    {
+        var validation = Validation.ValidateChangePreferredLanguage(request);
+        if (validation.IsFailure)
+        {
+            return Result<UserResponse>.ValidationFailure(validation.ValidationErrors!);
+        }
+
+        var userId = GetUserId(principal);
+        if (userId is null)
+        {
+            return Result<UserResponse>.Failure(IdentityErrors.InvalidCredentials);
+        }
+
+        var user = await db.Users.SingleOrDefaultAsync(x => x.Id == userId.Value, cancellationToken);
+        if (user is null)
+        {
+            return Result<UserResponse>.Failure(IdentityErrors.InvalidCredentials);
+        }
+
+        SupportedLanguageExtensions.TryParseCulture(request.Language, out var language);
+        user.ChangePreferredLanguage(language, clock.UtcNow);
+        await db.SaveChangesAsync(cancellationToken);
+        return Result<UserResponse>.Success(ToUserResponse(user));
     }
 
     public async Task<Result> ChangePasswordAsync(ClaimsPrincipal principal, ChangePasswordRequest request, CancellationToken cancellationToken)

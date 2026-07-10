@@ -19,7 +19,10 @@ public sealed class DependencyRulesTests
                 "Microsoft.EntityFrameworkCore",
                 "Microsoft.AspNetCore",
                 "Npgsql",
-                "Adeeb.Modules.Identity.Infrastructure")
+                "System.IdentityModel.Tokens.Jwt",
+                "Adeeb.Modules.Identity.Infrastructure",
+                "Adeeb.Modules.AcademicCatalog.Infrastructure",
+                "Adeeb.Modules.QuestionBank.Infrastructure")
             .GetResult();
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
@@ -34,7 +37,9 @@ public sealed class DependencyRulesTests
                 "Microsoft.EntityFrameworkCore",
                 "Microsoft.AspNetCore",
                 "Npgsql",
-                "Adeeb.Modules.Identity.Infrastructure")
+                "Adeeb.Modules.Identity",
+                "Adeeb.Modules.AcademicCatalog",
+                "Adeeb.Modules.QuestionBank")
             .GetResult();
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
@@ -47,7 +52,14 @@ public sealed class DependencyRulesTests
             .That()
             .ResideInNamespaceMatching(@"Adeeb\.Modules\.AcademicCatalog\.Domain.*")
             .ShouldNot()
-            .HaveDependencyOnAny("Microsoft.EntityFrameworkCore", "Microsoft.AspNetCore", "Npgsql", "Adeeb.Modules.AcademicCatalog.Infrastructure")
+            .HaveDependencyOnAny(
+                "Microsoft.EntityFrameworkCore",
+                "Microsoft.AspNetCore",
+                "Npgsql",
+                "System.IdentityModel.Tokens.Jwt",
+                "Adeeb.Modules.AcademicCatalog.Infrastructure",
+                "Adeeb.Modules.Identity.Infrastructure",
+                "Adeeb.Modules.QuestionBank.Infrastructure")
             .GetResult();
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
@@ -60,7 +72,14 @@ public sealed class DependencyRulesTests
             .That()
             .ResideInNamespaceMatching(@"Adeeb\.Modules\.QuestionBank\.Domain.*")
             .ShouldNot()
-            .HaveDependencyOnAny("Microsoft.EntityFrameworkCore", "Microsoft.AspNetCore", "Npgsql", "Adeeb.Modules.QuestionBank.Infrastructure")
+            .HaveDependencyOnAny(
+                "Microsoft.EntityFrameworkCore",
+                "Microsoft.AspNetCore",
+                "Npgsql",
+                "System.IdentityModel.Tokens.Jwt",
+                "Adeeb.Modules.QuestionBank.Infrastructure",
+                "Adeeb.Modules.Identity.Infrastructure",
+                "Adeeb.Modules.AcademicCatalog.Infrastructure")
             .GetResult();
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));

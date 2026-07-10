@@ -50,6 +50,10 @@ public static class IdentityEndpoints
             .RequireAuthorization()
             .RequireRateLimiting("auth-change-password");
 
+        group.MapPut("/me/language", async (ChangePreferredLanguageRequest request, IdentityService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
+            (await service.ChangePreferredLanguageAsync(context.User, request, ct)).ToHttpResult(context, localizer))
+            .RequireAuthorization();
+
         return app;
     }
 

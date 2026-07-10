@@ -5,6 +5,7 @@ public sealed record RegisterRequest(string Email, string? PhoneNumber, string P
 public sealed record LoginRequest(string? Identifier, string? Email, string Password, DeviceRequest? Device);
 public sealed record RefreshTokenRequest(string RefreshToken);
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+public sealed record ChangePreferredLanguageRequest(string Language);
 public sealed record UserResponse(Guid Id, string Email, string? PhoneNumber, string FirstName, string LastName, string PreferredLanguage, string Role);
 public sealed record TokenResponse(string AccessToken, string RefreshToken, DateTimeOffset AccessTokenExpiresAtUtc, DateTimeOffset AccessTokenExpiresAtDushanbe);
 public sealed record AuthSessionResponse(Guid Id, string DeviceName, string Platform, DateTimeOffset CreatedAtUtc, DateTimeOffset CreatedAtDushanbe, DateTimeOffset? LastUsedAtUtc, DateTimeOffset? LastUsedAtDushanbe, bool IsCurrent);

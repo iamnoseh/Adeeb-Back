@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.RegularExpressions;
 using Adeeb.Application.Abstractions.Localization;
 
 namespace Adeeb.Modules.QuestionBank.Application.Assessment;
@@ -9,13 +11,13 @@ public sealed record AnswerEvaluationInput(
 
 public enum AssessmentFeedbackPolicy
 {
-    Reveal,
-    Conceal
+    RevealCorrectness,
+    ConcealCorrectness
 }
 
 public sealed record StudentAnswerFeedback(
     bool IsAnswered,
-    bool IsCorrect,
+    bool? IsCorrect,
     int? CorrectPairsCount = null,
     int? TotalPairsCount = null);
 
@@ -31,8 +33,8 @@ public sealed record AnswerEvaluationResult(
     public StudentAnswerFeedback ToStudentFeedback(AssessmentFeedbackPolicy policy) =>
         new(
             IsAnswered,
-            policy == AssessmentFeedbackPolicy.Reveal && IsCorrect,
-            policy == AssessmentFeedbackPolicy.Reveal ? CorrectPairsCount : null,
+            policy == AssessmentFeedbackPolicy.RevealCorrectness ? IsCorrect : null,
+            policy == AssessmentFeedbackPolicy.RevealCorrectness ? CorrectPairsCount : null,
             TotalPairsCount);
 }
 
@@ -64,9 +66,22 @@ public sealed record PresentedMatchingRightOption(Guid SourceOptionId, string Te
 
 internal static class AssessmentText
 {
-    public static string NormalizeClosedAnswer(string? value) => value?.Trim() ?? string.Empty;
+    private static readonly Regex Whitespace = new(@"\s+", RegexOptions.Compiled);
 
-    public static string NormalizeMatchingText(string? value) => value?.Trim() ?? string.Empty;
+    public static string NormalizeClosedAnswer(string? value) => NormalizeText(value);
+
+    public static string NormalizeMatchingText(string? value) => NormalizeText(value);
+
+    private static string NormalizeText(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var normalized = value.Normalize(NormalizationForm.FormC).Trim();
+        return Whitespace.Replace(normalized, " ");
+    }
 
     public static string TextFor(
         IEnumerable<Domain.AnswerOptionTranslation> translations,

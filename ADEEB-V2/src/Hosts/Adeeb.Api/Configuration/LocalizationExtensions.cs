@@ -20,13 +20,15 @@ public static class LocalizationExtensions
             [
                 new CustomRequestCultureProvider(context =>
                 {
-                    var value = context.Request.Headers["X-Adeeb-Language"].FirstOrDefault();
-                    if (string.IsNullOrEmpty(value))
+                    var headerValue = context.Request.Headers["X-Adeeb-Language"].FirstOrDefault();
+                    if (SupportedLanguageExtensions.TryParseCulture(headerValue, out var headerLanguage))
                     {
-                        value = context.User.FindFirst("lang")?.Value;
+                        return Task.FromResult<ProviderCultureResult?>(new ProviderCultureResult(headerLanguage.ToCultureCode()));
                     }
-                    return SupportedLanguageExtensions.TryParseCulture(value, out var language)
-                        ? Task.FromResult<ProviderCultureResult?>(new ProviderCultureResult(language.ToCultureCode()))
+
+                    var claimValue = context.User.FindFirst("lang")?.Value;
+                    return SupportedLanguageExtensions.TryParseCulture(claimValue, out var claimLanguage)
+                        ? Task.FromResult<ProviderCultureResult?>(new ProviderCultureResult(claimLanguage.ToCultureCode()))
                         : Task.FromResult<ProviderCultureResult?>(null);
                 }),
                 new AcceptLanguageHeaderRequestCultureProvider()

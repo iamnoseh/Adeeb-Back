@@ -63,6 +63,12 @@ public sealed class User : Entity
         UpdatedAtUtc = now;
     }
 
+    public void ChangePreferredLanguage(SupportedLanguage language, DateTimeOffset now)
+    {
+        PreferredLanguage = language;
+        UpdatedAtUtc = now;
+    }
+
     public void SetStatus(UserStatus status, DateTimeOffset now)
     {
         Status = status;

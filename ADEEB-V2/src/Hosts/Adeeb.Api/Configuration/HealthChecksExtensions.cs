@@ -8,10 +8,23 @@ public static class HealthChecksExtensions
     public static IServiceCollection AddAdeebHealthChecks(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHealthChecks()
-            .AddNpgSql(configuration.GetConnectionString("Identity") ?? string.Empty, name: "identity-db", tags: ["db", "ready"])
-            .AddNpgSql(configuration.GetConnectionString("AcademicCatalog") ?? string.Empty, name: "academic-db", tags: ["db", "ready"])
-            .AddNpgSql(configuration.GetConnectionString("QuestionBank") ?? string.Empty, name: "question-db", tags: ["db", "ready"]);
+            .AddNpgSql(RequiredConnectionString(configuration, "Identity"), name: "identity-db", tags: ["db", "ready"])
+            .AddNpgSql(RequiredConnectionString(configuration, "AcademicCatalog"), name: "academic-db", tags: ["db", "ready"])
+            .AddNpgSql(RequiredConnectionString(configuration, "QuestionBank"), name: "question-db", tags: ["db", "ready"]);
 
         return services;
+    }
+
+    private static string RequiredConnectionString(IConfiguration configuration, string name)
+    {
+        var value = configuration.GetConnectionString(name)
+            ?? configuration.GetConnectionString("Default");
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"{name} database connection string is required.");
+        }
+
+        return value;
     }
 }

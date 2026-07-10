@@ -27,10 +27,10 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.Id).HasColumnName("id");
         builder.Property(x => x.Email).HasColumnName("email").HasMaxLength(320).IsRequired();
         builder.Property(x => x.NormalizedEmail).HasColumnName("normalized_email").HasMaxLength(320).IsRequired();
-        builder.HasIndex(x => x.NormalizedEmail).IsUnique();
+        builder.HasIndex(x => x.NormalizedEmail).IsUnique().HasDatabaseName(UserDatabaseConstraints.NormalizedEmailUnique);
         builder.Property(x => x.PhoneNumber).HasColumnName("phone_number").HasMaxLength(32);
         builder.Property(x => x.NormalizedPhoneNumber).HasColumnName("normalized_phone_number").HasMaxLength(32);
-        builder.HasIndex(x => x.NormalizedPhoneNumber).IsUnique().HasFilter("normalized_phone_number IS NOT NULL");
+        builder.HasIndex(x => x.NormalizedPhoneNumber).IsUnique().HasDatabaseName(UserDatabaseConstraints.NormalizedPhoneNumberUnique).HasFilter("normalized_phone_number IS NOT NULL");
         builder.Property(x => x.PasswordHash).HasColumnName("password_hash").HasMaxLength(512).IsRequired();
         builder.Property(x => x.FirstName).HasColumnName("first_name").HasMaxLength(80).IsRequired();
         builder.Property(x => x.LastName).HasColumnName("last_name").HasMaxLength(80).IsRequired();
