@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Modules.Identity.Domain.Sessions;
 using Adeeb.Modules.Identity.Domain.Users;
 using Adeeb.Modules.Identity.Infrastructure.Configuration;
@@ -42,6 +43,7 @@ public sealed class JwtTokenGenerator(IOptions<JwtOptions> options)
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim("sid", session.Id.ToString()),
+            new Claim("lang", user.PreferredLanguage.ToCultureCode()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),

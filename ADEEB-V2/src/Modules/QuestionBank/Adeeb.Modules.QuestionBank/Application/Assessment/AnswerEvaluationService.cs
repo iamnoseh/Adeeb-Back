@@ -14,15 +14,27 @@ internal interface IQuestionAnswerEvaluator
     AnswerEvaluationResult Evaluate(Question question, AnswerEvaluationInput input, SupportedLanguage language);
 }
 
-internal sealed class AnswerEvaluationService(IEnumerable<IQuestionAnswerEvaluator> evaluators) : IAnswerEvaluationService
+internal sealed class AnswerEvaluationService : IAnswerEvaluationService
 {
-    private readonly IReadOnlyDictionary<QuestionType, IQuestionAnswerEvaluator> _evaluators =
-        evaluators.ToDictionary(x => x.QuestionType);
+    private readonly IReadOnlyDictionary<QuestionType, IQuestionAnswerEvaluator> _evaluators;
+
+    public AnswerEvaluationService(IEnumerable<IQuestionAnswerEvaluator> evaluators)
+    {
+        var dict = new Dictionary<QuestionType, IQuestionAnswerEvaluator>();
+        foreach (var evaluator in evaluators)
+        {
+            if (!dict.TryAdd(evaluator.QuestionType, evaluator))
+            {
+                throw new InvalidOperationException($"Duplicate evaluator registered for question type: {evaluator.QuestionType}");
+            }
+        }
+        _evaluators = dict;
+    }
 
     public AnswerEvaluationResult Evaluate(Question question, AnswerEvaluationInput input, SupportedLanguage language) =>
         _evaluators.TryGetValue(question.Type, out var evaluator)
             ? evaluator.Evaluate(question, input, language)
-            : new AnswerEvaluationResult(IsAnswered: false, IsCorrect: false);
+            : throw new InvalidOperationException($"No evaluator found for question type: {question.Type}");
 }
 
 internal sealed class SingleChoiceAnswerEvaluator : IQuestionAnswerEvaluator

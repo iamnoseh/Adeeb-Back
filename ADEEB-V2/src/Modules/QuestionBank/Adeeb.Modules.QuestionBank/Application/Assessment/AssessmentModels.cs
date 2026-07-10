@@ -7,6 +7,18 @@ public sealed record AnswerEvaluationInput(
     string? TextResponse = null,
     IReadOnlyDictionary<Guid, string>? MatchingPairs = null);
 
+public enum AssessmentFeedbackPolicy
+{
+    Reveal,
+    Conceal
+}
+
+public sealed record StudentAnswerFeedback(
+    bool IsAnswered,
+    bool IsCorrect,
+    int? CorrectPairsCount = null,
+    int? TotalPairsCount = null);
+
 public sealed record AnswerEvaluationResult(
     bool IsAnswered,
     bool IsCorrect,
@@ -14,7 +26,15 @@ public sealed record AnswerEvaluationResult(
     string? SubmittedAnswerText = null,
     string? NormalizedSubmittedAnswer = null,
     int? CorrectPairsCount = null,
-    int? TotalPairsCount = null);
+    int? TotalPairsCount = null)
+{
+    public StudentAnswerFeedback ToStudentFeedback(AssessmentFeedbackPolicy policy) =>
+        new(
+            IsAnswered,
+            policy == AssessmentFeedbackPolicy.Reveal && IsCorrect,
+            policy == AssessmentFeedbackPolicy.Reveal ? CorrectPairsCount : null,
+            TotalPairsCount);
+}
 
 public sealed record AssessmentPresentationSnapshot(
     int Version,

@@ -76,4 +76,37 @@ public sealed class DependencyRulesTests
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
     }
+
+    [Fact]
+    public void Identity_module_must_not_depend_on_other_modules()
+    {
+        var result = Types.InAssembly(typeof(User).Assembly)
+            .ShouldNot()
+            .HaveDependencyOnAny("Adeeb.Modules.AcademicCatalog", "Adeeb.Modules.QuestionBank")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void AcademicCatalog_module_must_not_depend_on_other_modules()
+    {
+        var result = Types.InAssembly(typeof(Subject).Assembly)
+            .ShouldNot()
+            .HaveDependencyOnAny("Adeeb.Modules.Identity", "Adeeb.Modules.QuestionBank")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void QuestionBank_module_must_not_depend_on_Identity_module()
+    {
+        var result = Types.InAssembly(typeof(Question).Assembly)
+            .ShouldNot()
+            .HaveDependencyOn("Adeeb.Modules.Identity")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
 }

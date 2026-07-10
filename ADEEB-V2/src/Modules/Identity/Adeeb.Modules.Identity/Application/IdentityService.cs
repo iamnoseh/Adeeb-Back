@@ -69,8 +69,19 @@ public sealed class IdentityService(
         var (session, rawRefreshToken) = CreateSession(user.Id, Guid.NewGuid(), ResolveDevice(request.Device, client), client, now);
         db.Users.Add(user);
         db.AuthSessions.Add(session);
-        await db.SaveChangesAsync(cancellationToken);
-
+        
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (PostgresExceptionHelper.IsUniqueViolation(ex, "ix_users_normalized_email"))
+        {
+            return Result<AuthResponse>.Failure(IdentityErrors.EmailAlreadyExists);
+        }
+        catch (DbUpdateException ex) when (PostgresExceptionHelper.IsUniqueViolation(ex, "ix_users_normalized_phone_number"))
+        {
+            return Result<AuthResponse>.Failure(IdentityErrors.PhoneAlreadyExists);
+        }
         logger.LogInformation("auth.register.succeeded user_id={UserId} session_id={SessionId}", user.Id, session.Id);
         return Result<AuthResponse>.Success(CreateAuthResponse(user, session, rawRefreshToken, now));
     }
