@@ -1,4 +1,5 @@
 using System.Text;
+using Adeeb.Application.Abstractions.Students;
 using Adeeb.Modules.Identity.Application;
 using Adeeb.Modules.Identity.Domain.Users;
 using Adeeb.Modules.Identity.Infrastructure.Authentication;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Adeeb.Modules.Identity;
@@ -43,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<PasswordPolicy>();
         services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
         services.AddScoped<IAccessTokenGenerator, JwtTokenGenerator>();
+        services.TryAddScoped<IStudentRegistrationProvisioner, NoOpStudentRegistrationProvisioner>();
         services.AddScoped<IdentityService>();
 
         var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Adeeb.Application.Abstractions.Localization;
+using Adeeb.Application.Abstractions.Students;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Identity.Contracts;
 using Adeeb.Modules.Identity.Domain.Sessions;
@@ -24,6 +25,7 @@ public sealed class IdentityService(
     PasswordPolicy passwordPolicy,
     IRefreshTokenGenerator refreshTokenGenerator,
     IAccessTokenGenerator jwtTokenGenerator,
+    IStudentRegistrationProvisioner studentProvisioner,
     IDateTimeProvider clock,
     IOptions<RefreshTokenOptions> refreshOptions,
     ILogger<IdentityService> logger)
@@ -83,6 +85,16 @@ public sealed class IdentityService(
             return Result<AuthResponse>.Failure(IdentityErrors.PhoneAlreadyExists);
         }
         logger.LogInformation("auth.register.succeeded user_id={UserId} session_id={SessionId}", user.Id, session.Id);
+        var studentProvisioning = await studentProvisioner.ProvisionForIdentityUserAsync(user.Id, cancellationToken);
+        if (studentProvisioning.IsFailure)
+        {
+            logger.LogError(
+                "auth.register.student_provisioning_failed user_id={UserId} error_code={ErrorCode}",
+                user.Id,
+                studentProvisioning.Error?.Code);
+            return Result<AuthResponse>.Failure(studentProvisioning.Error!);
+        }
+
         return Result<AuthResponse>.Success(CreateAuthResponse(user, session, rawRefreshToken, now));
     }
 

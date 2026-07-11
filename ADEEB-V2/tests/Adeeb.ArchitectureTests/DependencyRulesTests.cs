@@ -1,6 +1,7 @@
 using Adeeb.Modules.Identity.Domain.Users;
 using Adeeb.Modules.AcademicCatalog.Domain;
 using Adeeb.Modules.QuestionBank.Domain;
+using Adeeb.Modules.Students.Domain.Students;
 using Adeeb.SharedKernel.Results;
 using NetArchTest.Rules;
 
@@ -39,7 +40,8 @@ public sealed class DependencyRulesTests
                 "Npgsql",
                 "Adeeb.Modules.Identity",
                 "Adeeb.Modules.AcademicCatalog",
-                "Adeeb.Modules.QuestionBank")
+                "Adeeb.Modules.QuestionBank",
+                "Adeeb.Modules.Students")
             .GetResult();
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
@@ -86,6 +88,27 @@ public sealed class DependencyRulesTests
     }
 
     [Fact]
+    public void Students_domain_must_not_depend_on_infrastructure_or_frameworks()
+    {
+        var result = Types.InAssembly(typeof(Student).Assembly)
+            .That()
+            .ResideInNamespaceMatching(@"Adeeb\.Modules\.Students\.Domain.*")
+            .ShouldNot()
+            .HaveDependencyOnAny(
+                "Microsoft.EntityFrameworkCore",
+                "Microsoft.AspNetCore",
+                "Npgsql",
+                "System.IdentityModel.Tokens.Jwt",
+                "Adeeb.Modules.Students.Infrastructure",
+                "Adeeb.Modules.Identity.Infrastructure",
+                "Adeeb.Modules.AcademicCatalog.Infrastructure",
+                "Adeeb.Modules.QuestionBank.Infrastructure")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
     public void Question_bank_must_not_depend_on_academic_catalog_infrastructure()
     {
         var result = Types.InAssembly(typeof(Question).Assembly)
@@ -124,6 +147,35 @@ public sealed class DependencyRulesTests
         var result = Types.InAssembly(typeof(Question).Assembly)
             .ShouldNot()
             .HaveDependencyOn("Adeeb.Modules.Identity")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Students_module_must_not_depend_on_other_module_infrastructure()
+    {
+        var result = Types.InAssembly(typeof(Student).Assembly)
+            .ShouldNot()
+            .HaveDependencyOnAny(
+                "Adeeb.Modules.Identity.Infrastructure",
+                "Adeeb.Modules.AcademicCatalog.Infrastructure",
+                "Adeeb.Modules.QuestionBank.Infrastructure")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Other_modules_must_not_depend_on_students_infrastructure()
+    {
+        var result = Types.InAssemblies([
+                typeof(User).Assembly,
+                typeof(Subject).Assembly,
+                typeof(Question).Assembly
+            ])
+            .ShouldNot()
+            .HaveDependencyOn("Adeeb.Modules.Students.Infrastructure")
             .GetResult();
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));

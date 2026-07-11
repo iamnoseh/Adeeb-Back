@@ -91,7 +91,17 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["QuestionBank.ClosedAnswerCanonicalCount"] = "Саволи ҷавоби пӯшида бояд як ҷавоби дурусти асосӣ дошта бошад",
             ["QuestionBank.InvalidFormJson"] = "JSON-и form нодуруст аст",
             ["QuestionBank.InvalidImageType"] = "Навъи расми савол дастгирӣ намешавад",
-            ["QuestionBank.ImageTooLarge"] = "Расми савол аз ҳад калон аст"
+            ["QuestionBank.ImageTooLarge"] = "Расми савол аз ҳад калон аст",
+            ["Student.NotFound"] = "Профили донишҷӯ ёфт нашуд",
+            ["Student.AlreadyExists"] = "Профили донишҷӯ аллакай вуҷуд дорад",
+            ["Student.ProvisioningRequired"] = "Эҷоди профили донишҷӯ лозим аст",
+            ["Student.Suspended"] = "Профили донишҷӯ боздошта шудааст",
+            ["Student.Closed"] = "Профили донишҷӯ баста шудааст",
+            ["Student.InvalidStatusTransition"] = "Гузариши ҳолати донишҷӯ нодуруст аст",
+            ["Student.InvalidStatus"] = "Ҳолати донишҷӯ нодуруст аст",
+            ["Student.Profile.Invalid"] = "Маълумоти профили донишҷӯ нодуруст аст",
+            ["Student.Profile.InvalidDateOfBirth"] = "Санаи таваллуд нодуруст аст",
+            ["Student.Profile.InvalidGrade"] = "Синф нодуруст аст"
         },
         ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -116,7 +126,17 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["QuestionBank.ClosedAnswerCanonicalCount"] = "Вопрос с закрытым ответом должен иметь один основной правильный ответ",
             ["QuestionBank.InvalidFormJson"] = "JSON формы недействителен",
             ["QuestionBank.InvalidImageType"] = "Тип изображения вопроса не поддерживается",
-            ["QuestionBank.ImageTooLarge"] = "Изображение вопроса слишком большое"
+            ["QuestionBank.ImageTooLarge"] = "Изображение вопроса слишком большое",
+            ["Student.NotFound"] = "Профиль ученика не найден",
+            ["Student.AlreadyExists"] = "Профиль ученика уже существует",
+            ["Student.ProvisioningRequired"] = "Требуется создание профиля ученика",
+            ["Student.Suspended"] = "Профиль ученика приостановлен",
+            ["Student.Closed"] = "Профиль ученика закрыт",
+            ["Student.InvalidStatusTransition"] = "Переход статуса ученика недопустим",
+            ["Student.InvalidStatus"] = "Статус ученика недействителен",
+            ["Student.Profile.Invalid"] = "Значение профиля ученика недействительно",
+            ["Student.Profile.InvalidDateOfBirth"] = "Дата рождения недействительна",
+            ["Student.Profile.InvalidGrade"] = "Класс недействителен"
         },
         ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -141,7 +161,17 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["QuestionBank.ClosedAnswerCanonicalCount"] = "Closed answer questions must have one canonical correct answer",
             ["QuestionBank.InvalidFormJson"] = "Form JSON is invalid",
             ["QuestionBank.InvalidImageType"] = "Question image type is not supported",
-            ["QuestionBank.ImageTooLarge"] = "Question image is too large"
+            ["QuestionBank.ImageTooLarge"] = "Question image is too large",
+            ["Student.NotFound"] = "Student persona was not found",
+            ["Student.AlreadyExists"] = "Student persona already exists",
+            ["Student.ProvisioningRequired"] = "Student provisioning is required",
+            ["Student.Suspended"] = "Student persona is suspended",
+            ["Student.Closed"] = "Student persona is closed",
+            ["Student.InvalidStatusTransition"] = "Student status transition is invalid",
+            ["Student.InvalidStatus"] = "Student status is invalid",
+            ["Student.Profile.Invalid"] = "Student profile value is invalid",
+            ["Student.Profile.InvalidDateOfBirth"] = "Date of birth is invalid",
+            ["Student.Profile.InvalidGrade"] = "Grade is invalid"
         }
     };
     public string this[string key]

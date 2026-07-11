@@ -11,6 +11,9 @@ using Adeeb.Modules.Identity.Infrastructure.Persistence;
 using Adeeb.Modules.QuestionBank;
 using Adeeb.Modules.QuestionBank.Endpoints;
 using Adeeb.Modules.QuestionBank.Infrastructure.Persistence;
+using Adeeb.Modules.Students;
+using Adeeb.Modules.Students.Endpoints;
+using Adeeb.Modules.Students.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -31,6 +34,7 @@ builder.Services.AddDatabaseInitializationOptions(builder.Configuration);
 builder.Services.AddIdentityModule(builder.Configuration);
 builder.Services.AddAcademicCatalogModule(builder.Configuration);
 builder.Services.AddQuestionBankModule(builder.Configuration);
+builder.Services.AddStudentsModule(builder.Configuration);
 builder.Services.AddAdeebDocumentation(builder.Configuration);
 builder.Services.AddAuthorization(options =>
 {
@@ -51,6 +55,7 @@ if (dbInitOptions.AutoMigrate)
     await IdentityDatabaseInitializer.MigrateAsync(app.Services);
     await AcademicCatalogDatabaseInitializer.MigrateAsync(app.Services);
     await QuestionBankDatabaseInitializer.MigrateAsync(app.Services);
+    await StudentsDatabaseInitializer.MigrateAsync(app.Services);
 }
 
 if (dbInitOptions.Seed)
@@ -93,6 +98,7 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
 app.MapIdentityEndpoints();
 app.MapAcademicCatalogEndpoints();
 app.MapQuestionBankEndpoints();
+app.MapStudentEndpoints();
 app.MapAdeebDocumentation();
 
 if (app.Environment.IsEnvironment("Testing"))
