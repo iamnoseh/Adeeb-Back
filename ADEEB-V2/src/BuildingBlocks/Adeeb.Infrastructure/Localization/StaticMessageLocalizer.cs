@@ -109,7 +109,21 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.IdempotencyKey.Invalid"] = "Калиди idempotency нодуруст аст",
             ["Commerce.IdempotencyKey.InUse"] = "Калиди idempotency аллакай истифода шудааст",
             ["Commerce.ExpiresAt.Invalid"] = "Мӯҳлати анҷом бояд баъд аз оғоз бошад",
-            ["Commerce.RevokeReason.Invalid"] = "Сабаби бекоркунӣ нодуруст аст"
+            ["Commerce.RevokeReason.Invalid"] = "Сабаби бекоркунӣ нодуруст аст",
+            ["Commerce.TariffNotFound"] = "Тариф ёфт нашуд",
+            ["Commerce.ReceiptNotFound"] = "Чеки пардохт ёфт нашуд",
+            ["Commerce.ReceiptAlreadyReviewed"] = "Чеки пардохт аллакай санҷида шудааст",
+            ["Commerce.Tariff.Name.Invalid"] = "Номи тариф нодуруст аст",
+            ["Commerce.Tariff.Price.Invalid"] = "Нархи тариф нодуруст аст",
+            ["Commerce.Tariff.Currency.Invalid"] = "Асъори тариф нодуруст аст",
+            ["Commerce.Tariff.Duration.Invalid"] = "Давомнокии тариф нодуруст аст",
+            ["Commerce.Tariff.QrImage.Required"] = "Расми QR-код лозим аст",
+            ["Commerce.Tariff.Status.Invalid"] = "Ҳолати тариф нодуруст аст",
+            ["Commerce.Receipt.Image.Required"] = "Расми чек лозим аст",
+            ["Commerce.ReviewNote.Invalid"] = "Эзоҳи санҷиш нодуруст аст",
+            ["Commerce.QrImage.InvalidType"] = "Навъи расми QR-код нодуруст аст",
+            ["Commerce.Receipt.Image.InvalidType"] = "Навъи расми чек нодуруст аст",
+            ["Commerce.Image.TooLarge"] = "Андозаи расм аз ҳад зиёд аст"
         },
         ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -152,7 +166,21 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.IdempotencyKey.Invalid"] = "Ключ идемпотентности недействителен",
             ["Commerce.IdempotencyKey.InUse"] = "Ключ идемпотентности уже используется",
             ["Commerce.ExpiresAt.Invalid"] = "Дата окончания должна быть после даты начала",
-            ["Commerce.RevokeReason.Invalid"] = "Причина отзыва недействительна"
+            ["Commerce.RevokeReason.Invalid"] = "Причина отзыва недействительна",
+            ["Commerce.TariffNotFound"] = "Тариф не найден",
+            ["Commerce.ReceiptNotFound"] = "Чек платежа не найден",
+            ["Commerce.ReceiptAlreadyReviewed"] = "Чек платежа уже проверен",
+            ["Commerce.Tariff.Name.Invalid"] = "Название тарифа недействительно",
+            ["Commerce.Tariff.Price.Invalid"] = "Цена тарифа недействительна",
+            ["Commerce.Tariff.Currency.Invalid"] = "Валюта тарифа недействительна",
+            ["Commerce.Tariff.Duration.Invalid"] = "Длительность тарифа недействительна",
+            ["Commerce.Tariff.QrImage.Required"] = "Требуется изображение QR-кода",
+            ["Commerce.Tariff.Status.Invalid"] = "Статус тарифа недействителен",
+            ["Commerce.Receipt.Image.Required"] = "Требуется изображение чека",
+            ["Commerce.ReviewNote.Invalid"] = "Комментарий проверки недействителен",
+            ["Commerce.QrImage.InvalidType"] = "Тип изображения QR-кода недействителен",
+            ["Commerce.Receipt.Image.InvalidType"] = "Тип изображения чека недействителен",
+            ["Commerce.Image.TooLarge"] = "Размер изображения слишком большой"
         },
         ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -195,7 +223,21 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.IdempotencyKey.Invalid"] = "Idempotency key is invalid",
             ["Commerce.IdempotencyKey.InUse"] = "Idempotency key is already in use",
             ["Commerce.ExpiresAt.Invalid"] = "Expiration must be after start",
-            ["Commerce.RevokeReason.Invalid"] = "Revoke reason is invalid"
+            ["Commerce.RevokeReason.Invalid"] = "Revoke reason is invalid",
+            ["Commerce.TariffNotFound"] = "Tariff was not found",
+            ["Commerce.ReceiptNotFound"] = "Payment receipt was not found",
+            ["Commerce.ReceiptAlreadyReviewed"] = "Payment receipt has already been reviewed",
+            ["Commerce.Tariff.Name.Invalid"] = "Tariff name is invalid",
+            ["Commerce.Tariff.Price.Invalid"] = "Tariff price is invalid",
+            ["Commerce.Tariff.Currency.Invalid"] = "Tariff currency is invalid",
+            ["Commerce.Tariff.Duration.Invalid"] = "Tariff duration is invalid",
+            ["Commerce.Tariff.QrImage.Required"] = "QR image is required",
+            ["Commerce.Tariff.Status.Invalid"] = "Tariff status is invalid",
+            ["Commerce.Receipt.Image.Required"] = "Receipt image is required",
+            ["Commerce.ReviewNote.Invalid"] = "Review note is invalid",
+            ["Commerce.QrImage.InvalidType"] = "QR image type is invalid",
+            ["Commerce.Receipt.Image.InvalidType"] = "Receipt image type is invalid",
+            ["Commerce.Image.TooLarge"] = "Image is too large"
         }
     };
     public string this[string key]

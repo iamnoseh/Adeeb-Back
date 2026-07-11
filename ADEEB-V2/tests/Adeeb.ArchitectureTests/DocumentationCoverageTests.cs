@@ -16,6 +16,13 @@ public sealed class DocumentationCoverageTests
         ("GET", "/api/v2/auth/me", "Auth.Me"),
         ("POST", "/api/v2/auth/change-password", "Auth.ChangePassword"),
         ("GET", "/api/v2/commerce/me/entitlements", "Commerce.MeEntitlements"),
+        ("GET", "/api/v2/commerce/tariffs", "Commerce.Tariffs"),
+        ("POST", "/api/v2/commerce/tariffs/{tariffId}/payment-receipts", "Commerce.SubmitPaymentReceipt"),
+        ("GET", "/api/v2/admin/commerce/tariffs", "Commerce.AdminTariffs"),
+        ("POST", "/api/v2/admin/commerce/tariffs", "Commerce.AdminCreateTariff"),
+        ("GET", "/api/v2/admin/commerce/payment-receipts", "Commerce.AdminPaymentReceipts"),
+        ("POST", "/api/v2/admin/commerce/payment-receipts/{receiptId}/approve", "Commerce.AdminApprovePaymentReceipt"),
+        ("POST", "/api/v2/admin/commerce/payment-receipts/{receiptId}/reject", "Commerce.AdminRejectPaymentReceipt"),
         ("POST", "/api/v2/admin/commerce/students/{studentId}/premium-grants", "Commerce.AdminGrantPremium"),
         ("POST", "/api/v2/admin/commerce/entitlements/{entitlementId}/revoke", "Commerce.AdminRevokeEntitlement")
     ];

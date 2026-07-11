@@ -1,4 +1,5 @@
 using Adeeb.Modules.Commerce.Application;
+using Adeeb.Modules.Commerce.Infrastructure.Files;
 using Adeeb.Modules.Commerce.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,6 +21,7 @@ public static class DependencyInjection
 
         services.AddDbContext<CommerceDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<CommerceService>();
+        services.AddScoped<CommerceImageStorage>();
         return services;
     }
 }

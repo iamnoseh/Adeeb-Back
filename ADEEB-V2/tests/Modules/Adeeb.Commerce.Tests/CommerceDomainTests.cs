@@ -1,4 +1,6 @@
 using Adeeb.Modules.Commerce.Domain.Entitlements;
+using Adeeb.Modules.Commerce.Domain.Payments;
+using Adeeb.Modules.Commerce.Domain.Tariffs;
 
 namespace Adeeb.Commerce.Tests;
 
@@ -54,5 +56,28 @@ public sealed class CommerceDomainTests
         Assert.Equal(CommerceEntitlementStatus.Revoked, entitlement.Status);
         Assert.Equal("manual", entitlement.RevokeReason);
         Assert.Equal(now.AddDays(1), entitlement.RevokedAtUtc);
+    }
+
+    [Fact]
+    public void Tariff_requires_positive_price_duration_and_qr()
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        Assert.Throws<ArgumentException>(() => new CommerceTariff(Guid.NewGuid(), "Premium", 0, "TJS", 30, "/qr.png", now));
+        Assert.Throws<ArgumentException>(() => new CommerceTariff(Guid.NewGuid(), "Premium", 20, "TJS", 0, "/qr.png", now));
+        Assert.Throws<ArgumentException>(() => new CommerceTariff(Guid.NewGuid(), "Premium", 20, "TJS", 30, "", now));
+    }
+
+    [Fact]
+    public void Payment_receipt_can_be_reviewed_once()
+    {
+        var now = DateTimeOffset.Parse("2026-07-11T08:00:00Z");
+        var receipt = new PaymentReceipt(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "/receipt.png", now);
+
+        receipt.Approve(now.AddMinutes(5), "paid");
+
+        Assert.Equal(PaymentReceiptStatus.Approved, receipt.Status);
+        Assert.Equal("paid", receipt.AdminNote);
+        Assert.Throws<InvalidOperationException>(() => receipt.Reject(now.AddMinutes(6), "no"));
     }
 }

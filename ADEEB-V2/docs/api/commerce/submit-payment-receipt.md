@@ -1,0 +1,56 @@
+---
+id: Commerce.SubmitPaymentReceipt
+title: Submit Payment Receipt
+method: POST
+route: /api/v2/commerce/tariffs/{tariffId}/payment-receipts
+status: stable
+---
+
+## 1. Endpoint
+`POST /api/v2/commerce/tariffs/{tariffId}/payment-receipts`
+## 2. Purpose
+Uploads a student payment receipt image after the student scans the tariff QR code and pays externally.
+## 3. Status
+Stable.
+## 4. Module
+Commerce.
+## 5. Authentication
+Bearer access token required.
+## 6. Authorization
+Authenticated active student self-access.
+## 7. Rate Limit
+Default authenticated limits.
+## 8. Localization
+Errors use request localization.
+## 9. Request Headers
+`Authorization: Bearer {token}` and `Content-Type: multipart/form-data`.
+## 10. Path Parameters
+`tariffId`: active tariff id.
+## 11. Query Parameters
+Not applicable.
+## 12. Request Body
+Multipart field `ReceiptImage`.
+## 13. Field Rules
+Receipt image is required. Allowed types: jpg, jpeg, png, webp. Max size: 10 MB.
+## 14. Success Response
+`200 OK` payment receipt with `status: Pending`.
+## 15. Error Responses
+`401`, `404`, `409`, `422` ProblemDetails.
+## 16. Stable Error Codes
+`commerce.student_required`, `commerce.tariff_not_found`, `commerce.receipt.image.required`, `commerce.receipt.image.invalid_type`, `commerce.image.too_large`.
+## 17. Frontend Behavior
+After upload, show pending review state until admin approves or rejects.
+## 18. Retry Policy
+If upload result is unknown, reload payment receipt history when available before re-uploading.
+## 19. Caching
+Do not cache mutation response.
+## 20. Idempotency
+Not idempotent; each upload creates a review item.
+## 21. Security Notes
+The client cannot choose `studentId`; it comes from JWT and Students.
+## 22. Example Flow
+Student scans QR, pays, uploads check image, waits for review.
+## 23. Related Endpoints
+`GET /api/v2/commerce/tariffs`, `GET /api/v2/commerce/me/entitlements`.
+## 24. Change History
+2026-07-11: Added manual receipt submission.

@@ -196,6 +196,94 @@ public sealed class CommerceServiceTests
         Assert.Equal(CommerceErrors.IdempotencyKeyInUse.Code, second.Error!.Code);
     }
 
+    [Fact]
+    public async Task Admin_creates_tariff_and_student_sees_only_active_tariffs()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db, new FakeStudentLookup());
+
+        var active = await service.CreateTariffAsync(
+            new TariffFormRequest { Name = "Premium 30", Price = 25, Currency = "tjs", DurationDays = 30, Status = 1 },
+            "/uploads/commerce/qr/active.png",
+            CancellationToken.None);
+        await service.CreateTariffAsync(
+            new TariffFormRequest { Name = "Draft", Price = 10, Currency = "TJS", DurationDays = 7, Status = 0 },
+            "/uploads/commerce/qr/draft.png",
+            CancellationToken.None);
+
+        var studentList = await service.GetTariffsAsync(admin: false, CancellationToken.None);
+        var adminList = await service.GetTariffsAsync(admin: true, CancellationToken.None);
+
+        Assert.True(active.IsSuccess);
+        Assert.Equal("TJS", active.Value!.Currency);
+        Assert.Single(studentList.Value!);
+        Assert.Equal(2, adminList.Value!.Count);
+    }
+
+    [Fact]
+    public async Task Student_submits_receipt_and_admin_approval_grants_premium()
+    {
+        var studentId = Guid.NewGuid();
+        await using var db = CreateDb();
+        var service = CreateService(db, new FakeStudentLookup(new StudentReference(studentId, Guid.NewGuid(), "Active")));
+        var tariff = await service.CreateTariffAsync(
+            new TariffFormRequest { Name = "Premium 30", Price = 25, Currency = "TJS", DurationDays = 30, Status = 1 },
+            "/uploads/commerce/qr/qr.png",
+            CancellationToken.None);
+
+        var submitted = await service.SubmitCurrentReceiptAsync(
+            Principal(Guid.NewGuid()),
+            tariff.Value!.TariffId,
+            "/uploads/commerce/receipts/check.png",
+            CancellationToken.None);
+        var approved = await service.ApproveReceiptAsync(
+            submitted.Value!.ReceiptId,
+            new ReviewPaymentReceiptRequest("accepted"),
+            CancellationToken.None);
+        var summary = await service.GetCurrentEntitlementsAsync(Principal(Guid.NewGuid()), CancellationToken.None);
+
+        Assert.True(submitted.IsSuccess);
+        Assert.Equal("Pending", submitted.Value.Status);
+        Assert.True(approved.IsSuccess);
+        Assert.Equal("Approved", approved.Value!.Status);
+        Assert.Equal("Premium", summary.Value!.AccessLevel);
+        Assert.True(summary.Value.PremiumActive);
+        Assert.Equal(FixedClock.Now.AddDays(30), summary.Value.PremiumUntilUtc);
+    }
+
+    [Fact]
+    public async Task Admin_rejection_does_not_grant_premium_and_review_is_single_use()
+    {
+        var studentId = Guid.NewGuid();
+        await using var db = CreateDb();
+        var service = CreateService(db, new FakeStudentLookup(new StudentReference(studentId, Guid.NewGuid(), "Active")));
+        var tariff = await service.CreateTariffAsync(
+            new TariffFormRequest { Name = "Premium 30", Price = 25, Currency = "TJS", DurationDays = 30, Status = 1 },
+            "/uploads/commerce/qr/qr.png",
+            CancellationToken.None);
+        var submitted = await service.SubmitCurrentReceiptAsync(
+            Principal(Guid.NewGuid()),
+            tariff.Value!.TariffId,
+            "/uploads/commerce/receipts/check.png",
+            CancellationToken.None);
+
+        var rejected = await service.RejectReceiptAsync(
+            submitted.Value!.ReceiptId,
+            new ReviewPaymentReceiptRequest("not paid"),
+            CancellationToken.None);
+        var secondReview = await service.ApproveReceiptAsync(
+            submitted.Value.ReceiptId,
+            new ReviewPaymentReceiptRequest("late approve"),
+            CancellationToken.None);
+        var summary = await service.GetCurrentEntitlementsAsync(Principal(Guid.NewGuid()), CancellationToken.None);
+
+        Assert.True(rejected.IsSuccess);
+        Assert.Equal("Rejected", rejected.Value!.Status);
+        Assert.True(secondReview.IsFailure);
+        Assert.Equal(CommerceErrors.ReceiptAlreadyReviewed.Code, secondReview.Error!.Code);
+        Assert.Equal("Free", summary.Value!.AccessLevel);
+    }
+
     private static CommerceService CreateService(CommerceDbContext db, IStudentLookup students) =>
         new(db, students, new FixedClock());
 
