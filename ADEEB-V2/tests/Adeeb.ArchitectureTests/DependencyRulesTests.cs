@@ -1,5 +1,6 @@
 using Adeeb.Modules.Identity.Domain.Users;
 using Adeeb.Modules.AcademicCatalog.Domain;
+using Adeeb.Modules.Commerce.Domain.Entitlements;
 using Adeeb.Modules.QuestionBank.Domain;
 using Adeeb.Modules.Students.Domain.Students;
 using Adeeb.SharedKernel.Results;
@@ -41,7 +42,8 @@ public sealed class DependencyRulesTests
                 "Adeeb.Modules.Identity",
                 "Adeeb.Modules.AcademicCatalog",
                 "Adeeb.Modules.QuestionBank",
-                "Adeeb.Modules.Students")
+                "Adeeb.Modules.Students",
+                "Adeeb.Modules.Commerce")
             .GetResult();
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
@@ -100,6 +102,7 @@ public sealed class DependencyRulesTests
                 "Npgsql",
                 "System.IdentityModel.Tokens.Jwt",
                 "Adeeb.Modules.Students.Infrastructure",
+                "Adeeb.Modules.Commerce.Infrastructure",
                 "Adeeb.Modules.Identity.Infrastructure",
                 "Adeeb.Modules.AcademicCatalog.Infrastructure",
                 "Adeeb.Modules.QuestionBank.Infrastructure")
@@ -114,6 +117,28 @@ public sealed class DependencyRulesTests
         var result = Types.InAssembly(typeof(Question).Assembly)
             .ShouldNot()
             .HaveDependencyOn("Adeeb.Modules.AcademicCatalog.Infrastructure")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Commerce_domain_must_not_depend_on_infrastructure_or_frameworks()
+    {
+        var result = Types.InAssembly(typeof(StudentEntitlement).Assembly)
+            .That()
+            .ResideInNamespaceMatching(@"Adeeb\.Modules\.Commerce\.Domain.*")
+            .ShouldNot()
+            .HaveDependencyOnAny(
+                "Microsoft.EntityFrameworkCore",
+                "Microsoft.AspNetCore",
+                "Npgsql",
+                "System.IdentityModel.Tokens.Jwt",
+                "Adeeb.Modules.Commerce.Infrastructure",
+                "Adeeb.Modules.Identity.Infrastructure",
+                "Adeeb.Modules.AcademicCatalog.Infrastructure",
+                "Adeeb.Modules.QuestionBank.Infrastructure",
+                "Adeeb.Modules.Students.Infrastructure")
             .GetResult();
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
@@ -172,10 +197,27 @@ public sealed class DependencyRulesTests
         var result = Types.InAssemblies([
                 typeof(User).Assembly,
                 typeof(Subject).Assembly,
-                typeof(Question).Assembly
+                typeof(Question).Assembly,
+                typeof(StudentEntitlement).Assembly
             ])
             .ShouldNot()
             .HaveDependencyOn("Adeeb.Modules.Students.Infrastructure")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Other_modules_must_not_depend_on_commerce_infrastructure()
+    {
+        var result = Types.InAssemblies([
+                typeof(User).Assembly,
+                typeof(Subject).Assembly,
+                typeof(Question).Assembly,
+                typeof(Student).Assembly
+            ])
+            .ShouldNot()
+            .HaveDependencyOn("Adeeb.Modules.Commerce.Infrastructure")
             .GetResult();
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));

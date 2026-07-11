@@ -13,6 +13,9 @@
   <Folder Name="/src/Modules/AcademicCatalog/">
     <Project Path="src/Modules/AcademicCatalog/Adeeb.Modules.AcademicCatalog/Adeeb.Modules.AcademicCatalog.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Commerce/">
+    <Project Path="src/Modules/Commerce/Adeeb.Modules.Commerce/Adeeb.Modules.Commerce.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Identity/">
     <Project Path="src/Modules/Identity/Adeeb.Modules.Identity/Adeeb.Modules.Identity.csproj" />
   </Folder>
@@ -28,6 +31,7 @@
   </Folder>
   <Folder Name="/tests/Modules/">
     <Project Path="tests/Modules/Adeeb.AcademicCatalog.Tests/Adeeb.AcademicCatalog.Tests.csproj" />
+    <Project Path="tests/Modules/Adeeb.Commerce.Tests/Adeeb.Commerce.Tests.csproj" />
     <Project Path="tests/Modules/Adeeb.Identity.Tests/Adeeb.Identity.Tests.csproj" />
     <Project Path="tests/Modules/Adeeb.QuestionBank.Tests/Adeeb.QuestionBank.Tests.csproj" />
     <Project Path="tests/Modules/Adeeb.Students.Tests/Adeeb.Students.Tests.csproj" />

@@ -102,7 +102,8 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Student.InvalidStatus"] = "Ҳолати донишҷӯ нодуруст аст",
             ["Student.Profile.Invalid"] = "Маълумоти профили донишҷӯ нодуруст аст",
             ["Student.Profile.InvalidDateOfBirth"] = "Санаи таваллуд нодуруст аст",
-            ["Student.Profile.InvalidGrade"] = "Синф нодуруст аст"
+            ["Student.Profile.InvalidGrade"] = "Синф нодуруст аст",
+            ["Commerce.StudentRequired"] = "Профили фаъоли донишҷӯ барои commerce лозим аст"
         },
         ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -138,7 +139,8 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Student.InvalidStatus"] = "Статус ученика недействителен",
             ["Student.Profile.Invalid"] = "Значение профиля ученика недействительно",
             ["Student.Profile.InvalidDateOfBirth"] = "Дата рождения недействительна",
-            ["Student.Profile.InvalidGrade"] = "Класс недействителен"
+            ["Student.Profile.InvalidGrade"] = "Класс недействителен",
+            ["Commerce.StudentRequired"] = "Для commerce требуется активный профиль ученика"
         },
         ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -174,7 +176,8 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Student.InvalidStatus"] = "Student status is invalid",
             ["Student.Profile.Invalid"] = "Student profile value is invalid",
             ["Student.Profile.InvalidDateOfBirth"] = "Date of birth is invalid",
-            ["Student.Profile.InvalidGrade"] = "Grade is invalid"
+            ["Student.Profile.InvalidGrade"] = "Grade is invalid",
+            ["Commerce.StudentRequired"] = "An active student persona is required for commerce"
         }
     };
     public string this[string key]

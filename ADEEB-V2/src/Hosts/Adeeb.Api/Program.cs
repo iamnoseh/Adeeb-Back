@@ -5,6 +5,9 @@ using Adeeb.Infrastructure;
 using Adeeb.Modules.AcademicCatalog;
 using Adeeb.Modules.AcademicCatalog.Endpoints;
 using Adeeb.Modules.AcademicCatalog.Infrastructure.Persistence;
+using Adeeb.Modules.Commerce;
+using Adeeb.Modules.Commerce.Endpoints;
+using Adeeb.Modules.Commerce.Infrastructure.Persistence;
 using Adeeb.Modules.Identity;
 using Adeeb.Modules.Identity.Endpoints;
 using Adeeb.Modules.Identity.Infrastructure.Persistence;
@@ -35,6 +38,7 @@ builder.Services.AddIdentityModule(builder.Configuration);
 builder.Services.AddAcademicCatalogModule(builder.Configuration);
 builder.Services.AddQuestionBankModule(builder.Configuration);
 builder.Services.AddStudentsModule(builder.Configuration);
+builder.Services.AddCommerceModule(builder.Configuration);
 builder.Services.AddAdeebDocumentation(builder.Configuration);
 builder.Services.AddAuthorization(options =>
 {
@@ -56,6 +60,7 @@ if (dbInitOptions.AutoMigrate)
     await AcademicCatalogDatabaseInitializer.MigrateAsync(app.Services);
     await QuestionBankDatabaseInitializer.MigrateAsync(app.Services);
     await StudentsDatabaseInitializer.MigrateAsync(app.Services);
+    await CommerceDatabaseInitializer.MigrateAsync(app.Services);
 }
 
 if (dbInitOptions.Seed)
@@ -99,6 +104,7 @@ app.MapIdentityEndpoints();
 app.MapAcademicCatalogEndpoints();
 app.MapQuestionBankEndpoints();
 app.MapStudentEndpoints();
+app.MapCommerceEndpoints();
 app.MapAdeebDocumentation();
 
 if (app.Environment.IsEnvironment("Testing"))

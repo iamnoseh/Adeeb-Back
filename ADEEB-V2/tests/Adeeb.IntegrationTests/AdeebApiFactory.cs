@@ -35,6 +35,7 @@ public sealed class AdeebApiFactory : WebApplicationFactory<Program>, IAsyncLife
                 ["ConnectionStrings:AcademicCatalog"] = ConnectionString,
                 ["ConnectionStrings:QuestionBank"] = ConnectionString,
                 ["ConnectionStrings:Students"] = ConnectionString,
+                ["ConnectionStrings:Commerce"] = ConnectionString,
                 ["DatabaseInitialization:AutoMigrate"] = "true",
                 ["DatabaseInitialization:Seed"] = "false",
                 ["Jwt:Issuer"] = "https://tests.adeeb.tj",

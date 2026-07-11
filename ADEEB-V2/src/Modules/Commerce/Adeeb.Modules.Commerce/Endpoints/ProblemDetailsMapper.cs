@@ -1,0 +1,37 @@
+using Adeeb.Application.Abstractions.Localization;
+using Adeeb.SharedKernel.Errors;
+using Adeeb.SharedKernel.Results;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Adeeb.Modules.Commerce.Endpoints;
+
+internal static class ProblemDetailsMapper
+{
+    public static IResult ToHttpResult<T>(this Result<T> result, HttpContext httpContext, IMessageLocalizer localizer) =>
+        result.IsSuccess ? Results.Ok(result.Value) : ToProblem(result, httpContext, localizer);
+
+    private static IResult ToProblem(Result result, HttpContext httpContext, IMessageLocalizer localizer)
+    {
+        var error = result.Error ?? Error.Failure("common.unexpected_error", "Common.UnexpectedError");
+        var status = error.Type switch
+        {
+            ErrorType.Validation => StatusCodes.Status422UnprocessableEntity,
+            ErrorType.NotFound => StatusCodes.Status404NotFound,
+            ErrorType.Conflict => StatusCodes.Status409Conflict,
+            ErrorType.Unauthorized => StatusCodes.Status401Unauthorized,
+            ErrorType.Forbidden => StatusCodes.Status403Forbidden,
+            _ => StatusCodes.Status500InternalServerError
+        };
+        var details = new ProblemDetails
+        {
+            Status = status,
+            Title = localizer[error.MessageKey],
+            Type = error.TypeUri ?? $"https://api.adeeb.tj/errors/{error.Code.Replace('.', '/')}",
+            Instance = httpContext.Request.Path
+        };
+        details.Extensions["code"] = error.Code;
+        details.Extensions["traceId"] = httpContext.TraceIdentifier;
+        return Results.Problem(details);
+    }
+}

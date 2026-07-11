@@ -14,7 +14,8 @@ public sealed class DocumentationCoverageTests
         ("GET", "/api/v2/auth/sessions", "Auth.GetSessions"),
         ("DELETE", "/api/v2/auth/sessions/{sessionId}", "Auth.RevokeSession"),
         ("GET", "/api/v2/auth/me", "Auth.Me"),
-        ("POST", "/api/v2/auth/change-password", "Auth.ChangePassword")
+        ("POST", "/api/v2/auth/change-password", "Auth.ChangePassword"),
+        ("GET", "/api/v2/commerce/me/entitlements", "Commerce.MeEntitlements")
     ];
 
     private static readonly string[] RequiredSections =
