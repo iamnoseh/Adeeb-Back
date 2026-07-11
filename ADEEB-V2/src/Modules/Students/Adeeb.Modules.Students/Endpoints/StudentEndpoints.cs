@@ -27,7 +27,9 @@ public static class StudentEndpoints
             return Guid.TryParse(userId, out var identityUserId)
                 ? (await service.ProvisionForIdentityUserAsync(identityUserId, ct)).ToHttpResult(context, localizer)
                 : Results.Unauthorized();
-        }).RequireAuthorization();
+        })
+            .RequireAuthorization()
+            .RequireRateLimiting("student-provision");
 
         var admin = app.MapGroup("/api/v2/admin/students").WithTags("Students Admin").RequireAuthorization("ContentAdmin");
         admin.MapGet("/{studentId:guid}", async (Guid studentId, StudentsService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>

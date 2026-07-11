@@ -33,6 +33,7 @@ public static class RateLimitingExtensions
             options.AddPolicy("auth-register", http => Fixed(http, "register", registerPermits, TimeSpan.FromMinutes(5)));
             options.AddPolicy("auth-refresh", http => Fixed(http, "refresh", 20, TimeSpan.FromMinutes(1)));
             options.AddPolicy("auth-change-password", http => Fixed(http, "change-password", 3, TimeSpan.FromMinutes(10)));
+            options.AddPolicy("student-provision", http => Fixed(http, "student-provision", 5, TimeSpan.FromMinutes(5)));
         });
 
         return services;

@@ -45,7 +45,7 @@ public static class DependencyInjection
         services.AddScoped<PasswordPolicy>();
         services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
         services.AddScoped<IAccessTokenGenerator, JwtTokenGenerator>();
-        services.TryAddScoped<IStudentRegistrationProvisioner, NoOpStudentRegistrationProvisioner>();
+        services.TryAddScoped<IStudentRegistrationProvisioner, MissingStudentRegistrationProvisioner>();
         services.AddScoped<IdentityService>();
 
         var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()

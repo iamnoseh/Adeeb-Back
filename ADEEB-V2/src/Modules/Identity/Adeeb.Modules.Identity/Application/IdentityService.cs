@@ -88,6 +88,8 @@ public sealed class IdentityService(
         var studentProvisioning = await studentProvisioner.ProvisionForIdentityUserAsync(user.Id, cancellationToken);
         if (studentProvisioning.IsFailure)
         {
+            session.Revoke(clock.UtcNow, "student_provisioning_failed");
+            await db.SaveChangesAsync(cancellationToken);
             logger.LogError(
                 "auth.register.student_provisioning_failed user_id={UserId} error_code={ErrorCode}",
                 user.Id,
