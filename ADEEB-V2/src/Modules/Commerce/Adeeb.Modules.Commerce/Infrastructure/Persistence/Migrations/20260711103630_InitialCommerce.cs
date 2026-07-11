@@ -23,8 +23,10 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                     student_id = table.Column<Guid>(type: "uuid", nullable: false),
                     tariff_id = table.Column<Guid>(type: "uuid", nullable: false),
                     receipt_image_url = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: false),
+                    idempotency_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     status = table.Column<int>(type: "integer", nullable: false),
                     admin_note = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
+                    reviewed_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     reviewed_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     created_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     updated_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
@@ -88,6 +90,13 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                 schema: "commerce",
                 table: "payment_receipts",
                 columns: new[] { "tariff_id", "status" });
+
+            migrationBuilder.CreateIndex(
+                name: "ux_commerce_payment_receipts_idempotency_key",
+                schema: "commerce",
+                table: "payment_receipts",
+                column: "idempotency_key",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_commerce_student_entitlements_student_kind_status",

@@ -66,4 +66,15 @@ public sealed class CommerceTariff : Entity
         Status = status;
         UpdatedAtUtc = now;
     }
+
+    public void Archive(DateTimeOffset now)
+    {
+        if (Status == CommerceTariffStatus.Archived)
+        {
+            return;
+        }
+
+        Status = CommerceTariffStatus.Archived;
+        UpdatedAtUtc = now;
+    }
 }

@@ -221,6 +221,37 @@ public sealed class CommerceServiceTests
     }
 
     [Fact]
+    public async Task Admin_updates_tariff_preserving_or_replacing_qr_and_archives_it()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db, new FakeStudentLookup());
+        var created = await service.CreateTariffAsync(
+            new TariffFormRequest { Name = "Premium 30", Price = 25, Currency = "TJS", DurationDays = 30, Status = 1 },
+            "/uploads/commerce/qr/original.png",
+            CancellationToken.None);
+
+        var preserved = await service.UpdateTariffAsync(
+            created.Value!.TariffId,
+            new TariffFormRequest { Name = "Premium 60", Price = 40, Currency = "TJS", DurationDays = 60, Status = 1 },
+            null,
+            CancellationToken.None);
+        var replaced = await service.UpdateTariffAsync(
+            created.Value.TariffId,
+            new TariffFormRequest { Name = "Premium 90", Price = 55, Currency = "TJS", DurationDays = 90, Status = 1 },
+            "/uploads/commerce/qr/new.png",
+            CancellationToken.None);
+        var archived = await service.ArchiveTariffAsync(created.Value.TariffId, CancellationToken.None);
+        var studentList = await service.GetTariffsAsync(admin: false, CancellationToken.None);
+        var adminList = await service.GetTariffsAsync(admin: true, CancellationToken.None);
+
+        Assert.Equal("/uploads/commerce/qr/original.png", preserved.Value!.QrImageUrl);
+        Assert.Equal("/uploads/commerce/qr/new.png", replaced.Value!.QrImageUrl);
+        Assert.Equal("Archived", archived.Value!.Status);
+        Assert.Empty(studentList.Value!);
+        Assert.Single(adminList.Value!);
+    }
+
+    [Fact]
     public async Task Student_submits_receipt_and_admin_approval_grants_premium()
     {
         var studentId = Guid.NewGuid();
@@ -234,10 +265,13 @@ public sealed class CommerceServiceTests
         var submitted = await service.SubmitCurrentReceiptAsync(
             Principal(Guid.NewGuid()),
             tariff.Value!.TariffId,
+            new SubmitPaymentReceiptFormRequest { IdempotencyKey = "receipt-1" },
             "/uploads/commerce/receipts/check.png",
             CancellationToken.None);
+        var reviewerId = Guid.NewGuid();
         var approved = await service.ApproveReceiptAsync(
             submitted.Value!.ReceiptId,
+            Principal(reviewerId),
             new ReviewPaymentReceiptRequest("accepted"),
             CancellationToken.None);
         var summary = await service.GetCurrentEntitlementsAsync(Principal(Guid.NewGuid()), CancellationToken.None);
@@ -246,9 +280,11 @@ public sealed class CommerceServiceTests
         Assert.Equal("Pending", submitted.Value.Status);
         Assert.True(approved.IsSuccess);
         Assert.Equal("Approved", approved.Value!.Status);
+        Assert.Equal(reviewerId, approved.Value.ReviewedByUserId);
         Assert.Equal("Premium", summary.Value!.AccessLevel);
         Assert.True(summary.Value.PremiumActive);
         Assert.Equal(FixedClock.Now.AddDays(30), summary.Value.PremiumUntilUtc);
+        Assert.Equal(1, await db.StudentEntitlements.CountAsync());
     }
 
     [Fact]
@@ -264,24 +300,127 @@ public sealed class CommerceServiceTests
         var submitted = await service.SubmitCurrentReceiptAsync(
             Principal(Guid.NewGuid()),
             tariff.Value!.TariffId,
+            new SubmitPaymentReceiptFormRequest { IdempotencyKey = "receipt-1" },
             "/uploads/commerce/receipts/check.png",
             CancellationToken.None);
 
+        var reviewerId = Guid.NewGuid();
         var rejected = await service.RejectReceiptAsync(
             submitted.Value!.ReceiptId,
+            Principal(reviewerId),
             new ReviewPaymentReceiptRequest("not paid"),
             CancellationToken.None);
         var secondReview = await service.ApproveReceiptAsync(
             submitted.Value.ReceiptId,
+            Principal(reviewerId),
             new ReviewPaymentReceiptRequest("late approve"),
             CancellationToken.None);
         var summary = await service.GetCurrentEntitlementsAsync(Principal(Guid.NewGuid()), CancellationToken.None);
 
         Assert.True(rejected.IsSuccess);
         Assert.Equal("Rejected", rejected.Value!.Status);
+        Assert.Equal(reviewerId, rejected.Value.ReviewedByUserId);
         Assert.True(secondReview.IsFailure);
         Assert.Equal(CommerceErrors.ReceiptAlreadyReviewed.Code, secondReview.Error!.Code);
         Assert.Equal("Free", summary.Value!.AccessLevel);
+    }
+
+    [Fact]
+    public async Task Student_receipt_history_is_owned_and_filterable()
+    {
+        var firstStudentId = Guid.NewGuid();
+        var secondStudentId = Guid.NewGuid();
+        var firstIdentityId = Guid.NewGuid();
+        var secondIdentityId = Guid.NewGuid();
+        await using var db = CreateDb();
+        var firstPrincipal = Principal(firstIdentityId);
+        var secondPrincipal = Principal(secondIdentityId);
+        var service = CreateService(db, new FakeStudentLookup(
+            new StudentReference(firstStudentId, firstIdentityId, "Active"),
+            new StudentReference(secondStudentId, secondIdentityId, "Active")));
+        var tariff = await service.CreateTariffAsync(
+            new TariffFormRequest { Name = "Premium 30", Price = 25, Currency = "TJS", DurationDays = 30, Status = 1 },
+            "/uploads/commerce/qr/qr.png",
+            CancellationToken.None);
+
+        await service.SubmitCurrentReceiptAsync(
+            firstPrincipal,
+            tariff.Value!.TariffId,
+            new SubmitPaymentReceiptFormRequest { IdempotencyKey = "receipt-1" },
+            "/uploads/commerce/receipts/first.png",
+            CancellationToken.None);
+        await service.SubmitCurrentReceiptAsync(
+            secondPrincipal,
+            tariff.Value.TariffId,
+            new SubmitPaymentReceiptFormRequest { IdempotencyKey = "receipt-2" },
+            "/uploads/commerce/receipts/second.png",
+            CancellationToken.None);
+
+        var firstHistory = await service.GetCurrentPaymentReceiptsAsync(firstPrincipal, null, CancellationToken.None);
+        var firstPending = await service.GetCurrentPaymentReceiptsAsync(firstPrincipal, 1, CancellationToken.None);
+        var firstApproved = await service.GetCurrentPaymentReceiptsAsync(firstPrincipal, 2, CancellationToken.None);
+
+        Assert.Single(firstHistory.Value!);
+        Assert.Equal(firstStudentId, firstHistory.Value![0].StudentId);
+        Assert.Single(firstPending.Value!);
+        Assert.Empty(firstApproved.Value!);
+    }
+
+    [Fact]
+    public async Task Receipt_upload_is_idempotent_and_key_cannot_cross_student_or_tariff()
+    {
+        var firstStudentId = Guid.NewGuid();
+        var secondStudentId = Guid.NewGuid();
+        var firstIdentityId = Guid.NewGuid();
+        var secondIdentityId = Guid.NewGuid();
+        await using var db = CreateDb();
+        var firstPrincipal = Principal(firstIdentityId);
+        var secondPrincipal = Principal(secondIdentityId);
+        var service = CreateService(db, new FakeStudentLookup(
+            new StudentReference(firstStudentId, firstIdentityId, "Active"),
+            new StudentReference(secondStudentId, secondIdentityId, "Active")));
+        var firstTariff = await service.CreateTariffAsync(
+            new TariffFormRequest { Name = "Premium 30", Price = 25, Currency = "TJS", DurationDays = 30, Status = 1 },
+            "/uploads/commerce/qr/first.png",
+            CancellationToken.None);
+        var secondTariff = await service.CreateTariffAsync(
+            new TariffFormRequest { Name = "Premium 60", Price = 40, Currency = "TJS", DurationDays = 60, Status = 1 },
+            "/uploads/commerce/qr/second.png",
+            CancellationToken.None);
+
+        var first = await service.SubmitCurrentReceiptAsync(
+            firstPrincipal,
+            firstTariff.Value!.TariffId,
+            new SubmitPaymentReceiptFormRequest { IdempotencyKey = "receipt-1" },
+            "/uploads/commerce/receipts/first.png",
+            CancellationToken.None);
+        var repeat = await service.SubmitCurrentReceiptAsync(
+            firstPrincipal,
+            firstTariff.Value.TariffId,
+            new SubmitPaymentReceiptFormRequest { IdempotencyKey = "receipt-1" },
+            "/uploads/commerce/receipts/retry.png",
+            CancellationToken.None);
+        var otherTariff = await service.SubmitCurrentReceiptAsync(
+            firstPrincipal,
+            secondTariff.Value!.TariffId,
+            new SubmitPaymentReceiptFormRequest { IdempotencyKey = "receipt-1" },
+            "/uploads/commerce/receipts/other-tariff.png",
+            CancellationToken.None);
+        var otherStudent = await service.SubmitCurrentReceiptAsync(
+            secondPrincipal,
+            firstTariff.Value.TariffId,
+            new SubmitPaymentReceiptFormRequest { IdempotencyKey = "receipt-1" },
+            "/uploads/commerce/receipts/other-student.png",
+            CancellationToken.None);
+
+        Assert.True(first.IsSuccess);
+        Assert.True(repeat.IsSuccess);
+        Assert.Equal(first.Value!.ReceiptId, repeat.Value!.ReceiptId);
+        Assert.True(otherTariff.IsFailure);
+        Assert.Equal(CommerceErrors.IdempotencyKeyInUse.Code, otherTariff.Error!.Code);
+        Assert.True(otherStudent.IsFailure);
+        Assert.Equal(CommerceErrors.IdempotencyKeyInUse.Code, otherStudent.Error!.Code);
+        Assert.Equal(1, await db.PaymentReceipts.CountAsync());
     }
 
     private static CommerceService CreateService(CommerceDbContext db, IStudentLookup students) =>
@@ -308,10 +447,13 @@ public sealed class CommerceServiceTests
         }
 
         public Task<StudentReference?> FindByIdentityUserIdAsync(Guid identityUserId, CancellationToken cancellationToken) =>
-            Task.FromResult(_students.FirstOrDefault());
+            Task.FromResult(_students.Count == 1
+                ? _students[0]
+                : _students.SingleOrDefault(x => x.IdentityUserId == identityUserId));
 
         public Task<StudentReference?> FindByStudentIdAsync(Guid studentId, CancellationToken cancellationToken) =>
             Task.FromResult(_students.SingleOrDefault(x => x.StudentId == studentId));
+
     }
 
     private sealed class FixedClock : IDateTimeProvider

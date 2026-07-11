@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CommerceDbContext))]
-    [Migration("20260711094924_InitialCommerce")]
+    [Migration("20260711103630_InitialCommerce")]
     partial class InitialCommerce
     {
         /// <inheritdoc />
@@ -108,6 +108,12 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");
 
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("idempotency_key");
+
                     b.Property<string>("ReceiptImageUrl")
                         .IsRequired()
                         .HasMaxLength(512)
@@ -117,6 +123,10 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("ReviewedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("reviewed_at_utc");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by_user_id");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -135,6 +145,10 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                         .HasColumnName("updated_at_utc");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_commerce_payment_receipts_idempotency_key");
 
                     b.HasIndex("StudentId", "Status")
                         .HasDatabaseName("ix_commerce_payment_receipts_student_status");

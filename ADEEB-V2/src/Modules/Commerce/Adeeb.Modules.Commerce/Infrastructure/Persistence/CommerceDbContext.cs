@@ -50,13 +50,18 @@ internal sealed class PaymentReceiptConfiguration : IEntityTypeConfiguration<Pay
         builder.Property(x => x.StudentId).HasColumnName("student_id").IsRequired();
         builder.Property(x => x.TariffId).HasColumnName("tariff_id").IsRequired();
         builder.Property(x => x.ReceiptImageUrl).HasColumnName("receipt_image_url").HasMaxLength(PaymentReceipt.ReceiptImageUrlMaxLength).IsRequired();
+        builder.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(PaymentReceipt.IdempotencyKeyMaxLength).IsRequired();
         builder.Property(x => x.Status).HasColumnName("status").HasConversion<int>().IsRequired();
         builder.Property(x => x.AdminNote).HasColumnName("admin_note").HasMaxLength(PaymentReceipt.AdminNoteMaxLength);
+        builder.Property(x => x.ReviewedByUserId).HasColumnName("reviewed_by_user_id");
         builder.Property(x => x.ReviewedAtUtc).HasColumnName("reviewed_at_utc");
         builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
         builder.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc").IsRequired();
         builder.HasIndex(x => new { x.StudentId, x.Status }).HasDatabaseName("ix_commerce_payment_receipts_student_status");
         builder.HasIndex(x => new { x.TariffId, x.Status }).HasDatabaseName("ix_commerce_payment_receipts_tariff_status");
+        builder.HasIndex(x => x.IdempotencyKey)
+            .IsUnique()
+            .HasDatabaseName(CommerceDatabaseConstraints.PaymentReceiptIdempotencyKeyUnique);
     }
 }
 

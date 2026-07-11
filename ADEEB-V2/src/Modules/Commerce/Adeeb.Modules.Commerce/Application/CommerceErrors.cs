@@ -11,4 +11,5 @@ public static class CommerceErrors
     public static readonly Error TariffNotFound = Error.NotFound("commerce.tariff_not_found", "Commerce.TariffNotFound");
     public static readonly Error ReceiptNotFound = Error.NotFound("commerce.receipt_not_found", "Commerce.ReceiptNotFound");
     public static readonly Error ReceiptAlreadyReviewed = Error.Conflict("commerce.receipt_already_reviewed", "Commerce.ReceiptAlreadyReviewed");
+    public static readonly Error ReviewerRequired = Error.Unauthorized("commerce.reviewer_required", "Commerce.ReviewerRequired");
 }

@@ -42,6 +42,7 @@ public sealed class TariffFormRequest
 
 public sealed class SubmitPaymentReceiptFormRequest
 {
+    public string? IdempotencyKey { get; init; }
     public IFormFile? ReceiptImage { get; init; }
 }
 
@@ -69,6 +70,7 @@ public sealed record PaymentReceiptResponse(
     string ReceiptImageUrl,
     string Status,
     string? AdminNote,
+    Guid? ReviewedByUserId,
     DateTimeOffset? ReviewedAtUtc,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset UpdatedAtUtc);

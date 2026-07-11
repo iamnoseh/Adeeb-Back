@@ -33,11 +33,11 @@ Not applicable.
 ## 13. Field Rules
 Note is optional and max 512 characters.
 ## 14. Success Response
-`200 OK` receipt with `status: Approved`.
+`200 OK` receipt with `status: Approved` and `reviewedByUserId` set to the reviewing admin user id.
 ## 15. Error Responses
 `401`, `403`, `404`, `409`, `422` ProblemDetails.
 ## 16. Stable Error Codes
-`commerce.receipt_not_found`, `commerce.receipt_already_reviewed`, `commerce.review_note.invalid`.
+`commerce.receipt_not_found`, `commerce.receipt_already_reviewed`, `commerce.review_note.invalid`, `commerce.reviewer_required`.
 ## 17. Frontend Behavior
 After approve, refresh receipt list and the student's entitlement state.
 ## 18. Retry Policy

@@ -21,7 +21,7 @@ public sealed class CommerceService(
         string? qrImageUrl,
         CancellationToken cancellationToken)
     {
-        var validation = Validation.ValidateTariff(request, qrImageUrl);
+        var validation = Validation.ValidateTariff(request, qrImageUrl, requireQrImage: true);
         if (validation.IsFailure)
         {
             return Result<TariffResponse>.ValidationFailure(validation.ValidationErrors!);
@@ -49,6 +49,50 @@ public sealed class CommerceService(
         return Result<TariffResponse>.Success(ToResponse(tariff));
     }
 
+    public async Task<Result<TariffResponse>> UpdateTariffAsync(
+        Guid tariffId,
+        TariffFormRequest request,
+        string? qrImageUrl,
+        CancellationToken cancellationToken)
+    {
+        var tariff = await db.Tariffs.SingleOrDefaultAsync(x => x.Id == tariffId, cancellationToken);
+        if (tariff is null)
+        {
+            return Result<TariffResponse>.Failure(CommerceErrors.TariffNotFound);
+        }
+
+        var effectiveQrImageUrl = qrImageUrl ?? tariff.QrImageUrl;
+        var validation = Validation.ValidateTariff(request, effectiveQrImageUrl, requireQrImage: false);
+        if (validation.IsFailure)
+        {
+            return Result<TariffResponse>.ValidationFailure(validation.ValidationErrors!);
+        }
+
+        tariff.Update(
+            request.Name!,
+            request.Price!.Value,
+            request.Currency!,
+            request.DurationDays!.Value,
+            effectiveQrImageUrl,
+            (CommerceTariffStatus)(request.Status ?? (int)tariff.Status),
+            clock.UtcNow);
+        await db.SaveChangesAsync(cancellationToken);
+        return Result<TariffResponse>.Success(ToResponse(tariff));
+    }
+
+    public async Task<Result<TariffResponse>> ArchiveTariffAsync(Guid tariffId, CancellationToken cancellationToken)
+    {
+        var tariff = await db.Tariffs.SingleOrDefaultAsync(x => x.Id == tariffId, cancellationToken);
+        if (tariff is null)
+        {
+            return Result<TariffResponse>.Failure(CommerceErrors.TariffNotFound);
+        }
+
+        tariff.Archive(clock.UtcNow);
+        await db.SaveChangesAsync(cancellationToken);
+        return Result<TariffResponse>.Success(ToResponse(tariff));
+    }
+
     public async Task<Result<IReadOnlyList<TariffResponse>>> GetTariffsAsync(bool admin, CancellationToken cancellationToken)
     {
         var query = db.Tariffs.AsNoTracking();
@@ -64,10 +108,11 @@ public sealed class CommerceService(
     public async Task<Result<PaymentReceiptResponse>> SubmitCurrentReceiptAsync(
         ClaimsPrincipal principal,
         Guid tariffId,
+        SubmitPaymentReceiptFormRequest request,
         string? receiptImageUrl,
         CancellationToken cancellationToken)
     {
-        var validation = Validation.ValidateReceiptImage(receiptImageUrl);
+        var validation = Validation.ValidateReceiptSubmission(request, receiptImageUrl);
         if (validation.IsFailure)
         {
             return Result<PaymentReceiptResponse>.ValidationFailure(validation.ValidationErrors!);
@@ -86,11 +131,66 @@ public sealed class CommerceService(
             return Result<PaymentReceiptResponse>.Failure(CommerceErrors.TariffNotFound);
         }
 
+        var idempotencyKey = request.IdempotencyKey!.Trim();
+        var existing = await db.PaymentReceipts.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.IdempotencyKey == idempotencyKey, cancellationToken);
+        if (existing is not null)
+        {
+            if (existing.StudentId != student.StudentId || existing.TariffId != tariffId)
+            {
+                return Result<PaymentReceiptResponse>.Failure(CommerceErrors.IdempotencyKeyInUse);
+            }
+
+            return Result<PaymentReceiptResponse>.Success(ToResponse(existing, tariff));
+        }
+
         var now = clock.UtcNow;
-        var receipt = new PaymentReceipt(Guid.NewGuid(), student.StudentId, tariffId, receiptImageUrl!, now);
+        var receipt = new PaymentReceipt(Guid.NewGuid(), student.StudentId, tariffId, receiptImageUrl!, idempotencyKey, now);
         db.PaymentReceipts.Add(receipt);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (PostgresExceptionHelper.IsUniqueViolation(ex, CommerceDatabaseConstraints.PaymentReceiptIdempotencyKeyUnique))
+        {
+            db.ChangeTracker.Clear();
+            var raced = await db.PaymentReceipts.AsNoTracking()
+                .SingleAsync(x => x.IdempotencyKey == idempotencyKey, cancellationToken);
+            return raced.StudentId == student.StudentId && raced.TariffId == tariffId
+                ? Result<PaymentReceiptResponse>.Success(ToResponse(raced, tariff))
+                : Result<PaymentReceiptResponse>.Failure(CommerceErrors.IdempotencyKeyInUse);
+        }
+
         return Result<PaymentReceiptResponse>.Success(ToResponse(receipt, tariff));
+    }
+
+    public async Task<Result<IReadOnlyList<PaymentReceiptResponse>>> GetCurrentPaymentReceiptsAsync(
+        ClaimsPrincipal principal,
+        int? status,
+        CancellationToken cancellationToken)
+    {
+        var student = await GetActiveCurrentStudentAsync(principal, cancellationToken);
+        if (student is null)
+        {
+            return Result<IReadOnlyList<PaymentReceiptResponse>>.Failure(CommerceErrors.StudentRequired);
+        }
+
+        var query = from receipt in db.PaymentReceipts.AsNoTracking()
+                    join tariff in db.Tariffs.AsNoTracking() on receipt.TariffId equals tariff.Id
+                    where receipt.StudentId == student.StudentId
+                    select new { receipt, tariff };
+
+        if (status is not null && Enum.IsDefined(typeof(PaymentReceiptStatus), status.Value))
+        {
+            var parsed = (PaymentReceiptStatus)status.Value;
+            query = query.Where(x => x.receipt.Status == parsed);
+        }
+
+        var rows = await query
+            .OrderByDescending(x => x.receipt.CreatedAtUtc)
+            .Take(100)
+            .ToListAsync(cancellationToken);
+        return Result<IReadOnlyList<PaymentReceiptResponse>>.Success(rows.Select(x => ToResponse(x.receipt, x.tariff)).ToList());
     }
 
     public async Task<Result<IReadOnlyList<PaymentReceiptResponse>>> GetPaymentReceiptsAsync(
@@ -116,6 +216,7 @@ public sealed class CommerceService(
 
     public async Task<Result<PaymentReceiptResponse>> ApproveReceiptAsync(
         Guid receiptId,
+        ClaimsPrincipal reviewer,
         ReviewPaymentReceiptRequest request,
         CancellationToken cancellationToken)
     {
@@ -123,6 +224,12 @@ public sealed class CommerceService(
         if (validation.IsFailure)
         {
             return Result<PaymentReceiptResponse>.ValidationFailure(validation.ValidationErrors!);
+        }
+
+        var reviewerUserId = GetUserId(reviewer);
+        if (reviewerUserId is null)
+        {
+            return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReviewerRequired);
         }
 
         var receipt = await db.PaymentReceipts.SingleOrDefaultAsync(x => x.Id == receiptId, cancellationToken);
@@ -135,7 +242,7 @@ public sealed class CommerceService(
         try
         {
             var now = clock.UtcNow;
-            receipt.Approve(now, request.Note);
+            receipt.Approve(reviewerUserId.Value, now, request.Note);
             await EnsurePaymentEntitlementAsync(receipt.StudentId, tariff, receipt.Id, now, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
         }
@@ -149,6 +256,7 @@ public sealed class CommerceService(
 
     public async Task<Result<PaymentReceiptResponse>> RejectReceiptAsync(
         Guid receiptId,
+        ClaimsPrincipal reviewer,
         ReviewPaymentReceiptRequest request,
         CancellationToken cancellationToken)
     {
@@ -156,6 +264,12 @@ public sealed class CommerceService(
         if (validation.IsFailure)
         {
             return Result<PaymentReceiptResponse>.ValidationFailure(validation.ValidationErrors!);
+        }
+
+        var reviewerUserId = GetUserId(reviewer);
+        if (reviewerUserId is null)
+        {
+            return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReviewerRequired);
         }
 
         var receipt = await db.PaymentReceipts.SingleOrDefaultAsync(x => x.Id == receiptId, cancellationToken);
@@ -167,7 +281,7 @@ public sealed class CommerceService(
         var tariff = await db.Tariffs.AsNoTracking().SingleAsync(x => x.Id == receipt.TariffId, cancellationToken);
         try
         {
-            receipt.Reject(clock.UtcNow, request.Note);
+            receipt.Reject(reviewerUserId.Value, clock.UtcNow, request.Note);
             await db.SaveChangesAsync(cancellationToken);
         }
         catch (InvalidOperationException)
@@ -381,6 +495,7 @@ public sealed class CommerceService(
             receipt.ReceiptImageUrl,
             receipt.Status.ToString(),
             receipt.AdminNote,
+            receipt.ReviewedByUserId,
             receipt.ReviewedAtUtc,
             receipt.CreatedAtUtc,
             receipt.UpdatedAtUtc);

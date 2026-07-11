@@ -6,7 +6,7 @@ namespace Adeeb.Modules.Commerce.Application;
 
 internal static class Validation
 {
-    public static Result ValidateTariff(TariffFormRequest request, string? qrImageUrl)
+    public static Result ValidateTariff(TariffFormRequest request, string? qrImageUrl, bool requireQrImage)
     {
         var errors = new Dictionary<string, IReadOnlyList<Error>>();
 
@@ -30,7 +30,7 @@ internal static class Validation
             errors["durationDays"] = [Error.Validation("commerce.tariff.duration.invalid", "Commerce.Tariff.Duration.Invalid")];
         }
 
-        if (string.IsNullOrWhiteSpace(qrImageUrl))
+        if (requireQrImage && string.IsNullOrWhiteSpace(qrImageUrl))
         {
             errors["qrImage"] = [Error.Validation("commerce.tariff.qr_image.required", "Commerce.Tariff.QrImage.Required")];
         }
@@ -54,6 +54,23 @@ internal static class Validation
         }
 
         return Result.Success();
+    }
+
+    public static Result ValidateReceiptSubmission(SubmitPaymentReceiptFormRequest request, string? receiptImageUrl)
+    {
+        var errors = new Dictionary<string, IReadOnlyList<Error>>();
+
+        if (string.IsNullOrWhiteSpace(request.IdempotencyKey) || request.IdempotencyKey.Trim().Length > Domain.Payments.PaymentReceipt.IdempotencyKeyMaxLength)
+        {
+            errors["idempotencyKey"] = [Error.Validation("commerce.idempotency_key.invalid", "Commerce.IdempotencyKey.Invalid")];
+        }
+
+        if (string.IsNullOrWhiteSpace(receiptImageUrl))
+        {
+            errors["receiptImage"] = [Error.Validation("commerce.receipt.image.required", "Commerce.Receipt.Image.Required")];
+        }
+
+        return errors.Count == 0 ? Result.Success() : Result.ValidationFailure(errors);
     }
 
     public static Result ValidateReview(ReviewPaymentReceiptRequest request)
