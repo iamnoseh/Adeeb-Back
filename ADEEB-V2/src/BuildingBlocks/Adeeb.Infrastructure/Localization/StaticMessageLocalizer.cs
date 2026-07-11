@@ -103,7 +103,13 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Student.Profile.Invalid"] = "Маълумоти профили донишҷӯ нодуруст аст",
             ["Student.Profile.InvalidDateOfBirth"] = "Санаи таваллуд нодуруст аст",
             ["Student.Profile.InvalidGrade"] = "Синф нодуруст аст",
-            ["Commerce.StudentRequired"] = "Профили фаъоли донишҷӯ барои commerce лозим аст"
+            ["Commerce.StudentRequired"] = "Профили фаъоли донишҷӯ барои commerce лозим аст",
+            ["Commerce.StudentNotFound"] = "Профили фаъоли донишҷӯ ёфт нашуд",
+            ["Commerce.EntitlementNotFound"] = "Ҳуқуқи commerce ёфт нашуд",
+            ["Commerce.IdempotencyKey.Invalid"] = "Калиди idempotency нодуруст аст",
+            ["Commerce.IdempotencyKey.InUse"] = "Калиди idempotency аллакай истифода шудааст",
+            ["Commerce.ExpiresAt.Invalid"] = "Мӯҳлати анҷом бояд баъд аз оғоз бошад",
+            ["Commerce.RevokeReason.Invalid"] = "Сабаби бекоркунӣ нодуруст аст"
         },
         ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -140,7 +146,13 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Student.Profile.Invalid"] = "Значение профиля ученика недействительно",
             ["Student.Profile.InvalidDateOfBirth"] = "Дата рождения недействительна",
             ["Student.Profile.InvalidGrade"] = "Класс недействителен",
-            ["Commerce.StudentRequired"] = "Для commerce требуется активный профиль ученика"
+            ["Commerce.StudentRequired"] = "Для commerce требуется активный профиль ученика",
+            ["Commerce.StudentNotFound"] = "Активный профиль ученика не найден",
+            ["Commerce.EntitlementNotFound"] = "Commerce entitlement не найден",
+            ["Commerce.IdempotencyKey.Invalid"] = "Ключ идемпотентности недействителен",
+            ["Commerce.IdempotencyKey.InUse"] = "Ключ идемпотентности уже используется",
+            ["Commerce.ExpiresAt.Invalid"] = "Дата окончания должна быть после даты начала",
+            ["Commerce.RevokeReason.Invalid"] = "Причина отзыва недействительна"
         },
         ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -177,7 +189,13 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Student.Profile.Invalid"] = "Student profile value is invalid",
             ["Student.Profile.InvalidDateOfBirth"] = "Date of birth is invalid",
             ["Student.Profile.InvalidGrade"] = "Grade is invalid",
-            ["Commerce.StudentRequired"] = "An active student persona is required for commerce"
+            ["Commerce.StudentRequired"] = "An active student persona is required for commerce",
+            ["Commerce.StudentNotFound"] = "Active student persona was not found",
+            ["Commerce.EntitlementNotFound"] = "Commerce entitlement was not found",
+            ["Commerce.IdempotencyKey.Invalid"] = "Idempotency key is invalid",
+            ["Commerce.IdempotencyKey.InUse"] = "Idempotency key is already in use",
+            ["Commerce.ExpiresAt.Invalid"] = "Expiration must be after start",
+            ["Commerce.RevokeReason.Invalid"] = "Revoke reason is invalid"
         }
     };
     public string this[string key]

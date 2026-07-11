@@ -35,4 +35,5 @@ public sealed record StudentReference(Guid StudentId, Guid IdentityUserId, strin
 public interface IStudentLookup
 {
     Task<StudentReference?> FindByIdentityUserIdAsync(Guid identityUserId, CancellationToken cancellationToken);
+    Task<StudentReference?> FindByStudentIdAsync(Guid studentId, CancellationToken cancellationToken);
 }

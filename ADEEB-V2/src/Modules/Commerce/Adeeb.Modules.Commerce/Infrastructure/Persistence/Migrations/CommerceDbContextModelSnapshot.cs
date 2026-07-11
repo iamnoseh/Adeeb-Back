@@ -48,6 +48,15 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("kind");
 
+                    b.Property<string>("RevokeReason")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("revoke_reason");
+
+                    b.Property<DateTimeOffset?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at_utc");
+
                     b.Property<int>("Source")
                         .HasColumnType("integer")
                         .HasColumnName("source");

@@ -8,6 +8,9 @@ namespace Adeeb.Modules.Commerce.Endpoints;
 
 internal static class ProblemDetailsMapper
 {
+    public static IResult ToHttpResult(this Result result, HttpContext httpContext, IMessageLocalizer localizer) =>
+        result.IsSuccess ? Results.NoContent() : ToProblem(result, httpContext, localizer);
+
     public static IResult ToHttpResult<T>(this Result<T> result, HttpContext httpContext, IMessageLocalizer localizer) =>
         result.IsSuccess ? Results.Ok(result.Value) : ToProblem(result, httpContext, localizer);
 
@@ -32,6 +35,14 @@ internal static class ProblemDetailsMapper
         };
         details.Extensions["code"] = error.Code;
         details.Extensions["traceId"] = httpContext.TraceIdentifier;
+
+        if (result.ValidationErrors is not null)
+        {
+            details.Extensions["errors"] = result.ValidationErrors.ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value.Select(e => new { code = e.Code, message = localizer[e.MessageKey] }).ToArray());
+        }
+
         return Results.Problem(details);
     }
 }

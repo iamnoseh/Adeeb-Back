@@ -27,6 +27,8 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                     starts_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     expires_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     idempotency_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    revoke_reason = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    revoked_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     created_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     updated_at_utc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },

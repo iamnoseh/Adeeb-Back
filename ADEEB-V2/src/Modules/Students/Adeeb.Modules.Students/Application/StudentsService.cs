@@ -164,6 +164,12 @@ public sealed class StudentsService(
             .Select(x => new StudentReference(x.Id, x.IdentityUserId, x.Status.ToString()))
             .SingleOrDefaultAsync(cancellationToken);
 
+    public async Task<StudentReference?> FindByStudentIdAsync(Guid studentId, CancellationToken cancellationToken) =>
+        await db.Students.AsNoTracking()
+            .Where(x => x.Id == studentId)
+            .Select(x => new StudentReference(x.Id, x.IdentityUserId, x.Status.ToString()))
+            .SingleOrDefaultAsync(cancellationToken);
+
     private IQueryable<StudentResponse> ProjectStudents() =>
         db.Students.AsNoTracking()
             .Select(x => new StudentResponse(

@@ -55,6 +55,8 @@ public sealed class StudentEntitlement : Entity
     public DateTimeOffset StartsAtUtc { get; private set; }
     public DateTimeOffset? ExpiresAtUtc { get; private set; }
     public string IdempotencyKey { get; private set; } = string.Empty;
+    public string? RevokeReason { get; private set; }
+    public DateTimeOffset? RevokedAtUtc { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
 
@@ -63,7 +65,7 @@ public sealed class StudentEntitlement : Entity
         StartsAtUtc <= now &&
         (ExpiresAtUtc is null || ExpiresAtUtc > now);
 
-    public void Revoke(DateTimeOffset now)
+    public void Revoke(DateTimeOffset now, string? reason)
     {
         if (Status == CommerceEntitlementStatus.Revoked)
         {
@@ -71,6 +73,8 @@ public sealed class StudentEntitlement : Entity
         }
 
         Status = CommerceEntitlementStatus.Revoked;
+        RevokeReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+        RevokedAtUtc = now;
         UpdatedAtUtc = now;
     }
 }

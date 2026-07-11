@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CommerceDbContext))]
-    [Migration("20260711092602_InitialCommerce")]
+    [Migration("20260711093507_InitialCommerce")]
     partial class InitialCommerce
     {
         /// <inheritdoc />
@@ -50,6 +50,15 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                     b.Property<int>("Kind")
                         .HasColumnType("integer")
                         .HasColumnName("kind");
+
+                    b.Property<string>("RevokeReason")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("revoke_reason");
+
+                    b.Property<DateTimeOffset?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at_utc");
 
                     b.Property<int>("Source")
                         .HasColumnType("integer")

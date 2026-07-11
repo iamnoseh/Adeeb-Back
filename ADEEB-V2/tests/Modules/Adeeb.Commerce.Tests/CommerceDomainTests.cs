@@ -48,9 +48,11 @@ public sealed class CommerceDomainTests
         Assert.True(entitlement.IsActiveAt(now));
         Assert.False(entitlement.IsActiveAt(now.AddDays(30)));
 
-        entitlement.Revoke(now.AddDays(1));
+        entitlement.Revoke(now.AddDays(1), "manual");
 
         Assert.False(entitlement.IsActiveAt(now.AddDays(2)));
         Assert.Equal(CommerceEntitlementStatus.Revoked, entitlement.Status);
+        Assert.Equal("manual", entitlement.RevokeReason);
+        Assert.Equal(now.AddDays(1), entitlement.RevokedAtUtc);
     }
 }

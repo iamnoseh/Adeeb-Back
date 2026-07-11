@@ -29,6 +29,8 @@ internal sealed class StudentEntitlementConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.StartsAtUtc).HasColumnName("starts_at_utc").IsRequired();
         builder.Property(x => x.ExpiresAtUtc).HasColumnName("expires_at_utc");
         builder.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(128).IsRequired();
+        builder.Property(x => x.RevokeReason).HasColumnName("revoke_reason").HasMaxLength(256);
+        builder.Property(x => x.RevokedAtUtc).HasColumnName("revoked_at_utc");
         builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
         builder.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc").IsRequired();
         builder.HasIndex(x => x.IdempotencyKey)

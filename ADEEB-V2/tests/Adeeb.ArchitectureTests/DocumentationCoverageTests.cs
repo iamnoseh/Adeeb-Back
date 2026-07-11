@@ -15,7 +15,9 @@ public sealed class DocumentationCoverageTests
         ("DELETE", "/api/v2/auth/sessions/{sessionId}", "Auth.RevokeSession"),
         ("GET", "/api/v2/auth/me", "Auth.Me"),
         ("POST", "/api/v2/auth/change-password", "Auth.ChangePassword"),
-        ("GET", "/api/v2/commerce/me/entitlements", "Commerce.MeEntitlements")
+        ("GET", "/api/v2/commerce/me/entitlements", "Commerce.MeEntitlements"),
+        ("POST", "/api/v2/admin/commerce/students/{studentId}/premium-grants", "Commerce.AdminGrantPremium"),
+        ("POST", "/api/v2/admin/commerce/entitlements/{entitlementId}/revoke", "Commerce.AdminRevokeEntitlement")
     ];
 
     private static readonly string[] RequiredSections =
