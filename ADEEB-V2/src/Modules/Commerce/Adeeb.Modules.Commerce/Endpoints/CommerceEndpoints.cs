@@ -1,6 +1,9 @@
 using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Application.Abstractions.Authorization;
 using Adeeb.Modules.Commerce.Application;
+using Adeeb.Modules.Commerce.Application.Entitlements;
+using Adeeb.Modules.Commerce.Application.PaymentReceipts;
+using Adeeb.Modules.Commerce.Application.Tariffs;
 using Adeeb.Modules.Commerce.Contracts;
 using Adeeb.Modules.Commerce.Infrastructure.Files;
 using Microsoft.AspNetCore.Builder;
@@ -17,39 +20,39 @@ public static class CommerceEndpoints
         var group = app.MapGroup("/api/v2/commerce").WithTags("Commerce");
 
         group.MapGet("/tariffs", async (
-            CommerceService service,
+            TariffUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.GetTariffsAsync(admin: false, ct)).ToHttpResult(context, localizer));
+            (await useCases.ListAsync(admin: false, ct)).ToHttpResult(context, localizer));
 
         group.MapGet("/me/entitlements", async (
-            CommerceService service,
+            EntitlementUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.GetCurrentEntitlementsAsync(context.User, ct)).ToHttpResult(context, localizer))
+            (await useCases.GetCurrentAsync(context.User, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization();
 
         group.MapGet("/me/payment-receipts", async (
             [AsParameters] StudentPaymentReceiptQuery query,
-            CommerceService service,
+            PaymentReceiptUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.GetCurrentPaymentReceiptsPageAsync(context.User, query, ct)).ToHttpResult(context, localizer))
+            (await useCases.ListCurrentAsync(context.User, query, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization();
 
         group.MapPost("/tariffs/{tariffId:guid}/payment-receipts", async (
             Guid tariffId,
             [FromForm] SubmitPaymentReceiptFormRequest form,
-            CommerceService service,
+            PaymentReceiptUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
         {
             await using var image = form.ReceiptImage?.OpenReadStream();
-            return (await service.SubmitCurrentReceiptAsync(
+            return (await useCases.SubmitAsync(
                 context.User,
                 tariffId,
                 form,
@@ -66,17 +69,17 @@ public static class CommerceEndpoints
             .RequireAuthorization();
 
         admin.MapGet("/tariffs", async (
-            CommerceService service,
+            TariffUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.GetTariffsAsync(admin: true, ct)).ToHttpResult(context, localizer))
+            (await useCases.ListAsync(admin: true, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization(Permissions.Commerce.ViewTariffs);
 
         admin.MapPost("/tariffs", async (
             [FromForm] TariffFormRequest form,
             CommerceImageStorage images,
-            CommerceService service,
+            TariffUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
@@ -87,7 +90,7 @@ public static class CommerceEndpoints
                 return saved.ToHttpResult(context, localizer);
             }
 
-            return (await service.CreateTariffAsync(form, saved.Value, ct)).ToHttpResult(context, localizer);
+            return (await useCases.CreateAsync(form, saved.Value, ct)).ToHttpResult(context, localizer);
         })
         .Accepts<TariffFormRequest>("multipart/form-data")
         .DisableAntiforgery()
@@ -97,7 +100,7 @@ public static class CommerceEndpoints
             Guid tariffId,
             [FromForm] TariffFormRequest form,
             CommerceImageStorage images,
-            CommerceService service,
+            TariffUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
@@ -108,7 +111,7 @@ public static class CommerceEndpoints
                 return saved.ToHttpResult(context, localizer);
             }
 
-            return (await service.UpdateTariffAsync(tariffId, form, saved.Value, ct)).ToHttpResult(context, localizer);
+            return (await useCases.UpdateAsync(tariffId, form, saved.Value, ct)).ToHttpResult(context, localizer);
         })
         .Accepts<TariffFormRequest>("multipart/form-data")
         .DisableAntiforgery()
@@ -116,30 +119,30 @@ public static class CommerceEndpoints
 
         admin.MapPost("/tariffs/{tariffId:guid}/archive", async (
             Guid tariffId,
-            CommerceService service,
+            TariffUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.ArchiveTariffAsync(tariffId, ct)).ToHttpResult(context, localizer))
+            (await useCases.ArchiveAsync(tariffId, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization(Permissions.Commerce.ManageTariffs);
 
         admin.MapGet("/payment-receipts", async (
             [AsParameters] AdminPaymentReceiptQuery query,
-            CommerceService service,
+            PaymentReceiptUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.GetPaymentReceiptsPageAsync(query, ct)).ToHttpResult(context, localizer))
+            (await useCases.ListAdminAsync(query, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization(Permissions.Commerce.ViewPaymentReceipts);
 
         admin.MapGet("/payment-receipts/{receiptId:guid}/image", async (
             Guid receiptId,
-            CommerceService service,
+            PaymentReceiptUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
         {
-            var result = await service.OpenReceiptImageAsync(receiptId, ct);
+            var result = await useCases.OpenImageAsync(receiptId, ct);
             return result.IsFailure
                 ? result.ToHttpResult(context, localizer)
                 : Results.Stream(result.Value!.Content, result.Value.ContentType, enableRangeProcessing: true);
@@ -149,41 +152,41 @@ public static class CommerceEndpoints
         admin.MapPost("/payment-receipts/{receiptId:guid}/approve", async (
             Guid receiptId,
             ReviewPaymentReceiptRequest request,
-            CommerceService service,
+            PaymentReceiptUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.ApproveReceiptAsync(receiptId, context.User, request, ct)).ToHttpResult(context, localizer))
+            (await useCases.ApproveAsync(receiptId, context.User, request, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization(Permissions.Commerce.ReviewPaymentReceipts);
 
         admin.MapPost("/payment-receipts/{receiptId:guid}/reject", async (
             Guid receiptId,
             ReviewPaymentReceiptRequest request,
-            CommerceService service,
+            PaymentReceiptUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.RejectReceiptAsync(receiptId, context.User, request, ct)).ToHttpResult(context, localizer))
+            (await useCases.RejectAsync(receiptId, context.User, request, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization(Permissions.Commerce.ReviewPaymentReceipts);
 
         admin.MapPost("/students/{studentId:guid}/premium-grants", async (
             Guid studentId,
             GrantPremiumEntitlementRequest request,
-            CommerceService service,
+            EntitlementUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.GrantPremiumAsync(studentId, request, ct)).ToHttpResult(context, localizer))
+            (await useCases.GrantPremiumAsync(studentId, request, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization(Permissions.Commerce.GrantPremium);
 
         admin.MapPost("/entitlements/{entitlementId:guid}/revoke", async (
             Guid entitlementId,
             RevokeEntitlementRequest request,
-            CommerceService service,
+            EntitlementUseCases useCases,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.RevokeEntitlementAsync(entitlementId, request, ct)).ToHttpResult(context, localizer))
+            (await useCases.RevokeAsync(entitlementId, request, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization(Permissions.Commerce.GrantPremium);
 
         return app;

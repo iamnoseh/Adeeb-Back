@@ -1,6 +1,7 @@
 using Adeeb.Modules.Identity.Domain.Users;
 using Adeeb.Modules.AcademicCatalog.Domain;
 using Adeeb.Modules.Commerce.Domain.Entitlements;
+using Adeeb.Modules.Commerce.Endpoints;
 using Adeeb.Modules.QuestionBank.Domain;
 using Adeeb.Modules.Students.Domain.Students;
 using Adeeb.SharedKernel.Results;
@@ -218,6 +219,35 @@ public sealed class DependencyRulesTests
             ])
             .ShouldNot()
             .HaveDependencyOn("Adeeb.Modules.Commerce.Infrastructure")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Commerce_endpoints_must_use_focused_use_cases_and_not_persistence()
+    {
+        var result = Types.InAssembly(typeof(CommerceEndpoints).Assembly)
+            .That()
+            .ResideInNamespaceMatching(@"Adeeb\.Modules\.Commerce\.Endpoints.*")
+            .ShouldNot()
+            .HaveDependencyOnAny(
+                "Microsoft.EntityFrameworkCore",
+                "Adeeb.Modules.Commerce.Infrastructure.Persistence",
+                "Adeeb.Modules.Commerce.Application.CommerceService")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Commerce_application_must_not_depend_on_endpoints()
+    {
+        var result = Types.InAssembly(typeof(CommerceEndpoints).Assembly)
+            .That()
+            .ResideInNamespaceMatching(@"Adeeb\.Modules\.Commerce\.Application.*")
+            .ShouldNot()
+            .HaveDependencyOn("Adeeb.Modules.Commerce.Endpoints")
             .GetResult();
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
