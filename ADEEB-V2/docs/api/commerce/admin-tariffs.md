@@ -17,7 +17,7 @@ Commerce.
 ## 5. Authentication
 Bearer access token required.
 ## 6. Authorization
-`ContentAdmin` policy.
+`commerce.tariffs.view` permission.
 ## 7. Rate Limit
 Default admin limits.
 ## 8. Localization

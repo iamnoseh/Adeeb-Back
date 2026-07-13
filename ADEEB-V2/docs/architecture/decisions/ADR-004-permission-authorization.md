@@ -37,3 +37,7 @@ Permission claim issuance and role mapping become security-critical and require 
 ## Rollback Plan
 
 Keep audit data and permission constants. Individual endpoints may temporarily use a stricter combined role-and-permission policy during rollback, but must not revert to broader access. Disable a problematic permission mapping by denying access, not by granting a generic administrator bypass.
+
+## Implementation Status
+
+Implemented on 2026-07-13. Commerce endpoints use permission-named policies, JWTs carry mapped permission claims, and only legacy SuperAdmin tokens receive a role fallback. PostgreSQL enforces audit immutability with an update/delete trigger; audit payloads redact credential, token, authorization, image, object-key, card, account, and connection fields.

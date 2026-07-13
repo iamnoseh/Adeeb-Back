@@ -17,7 +17,7 @@ Commerce.
 ## 5. Authentication
 Bearer access token required.
 ## 6. Authorization
-Commerce receipt-view permission; legacy `ContentAdmin` authorization remains until the permission migration completes.
+`commerce.payment_receipts.view` permission. Support administrators may view evidence but cannot review receipts.
 ## 7. Rate Limit
 Admin receipt-view limit.
 ## 8. Localization

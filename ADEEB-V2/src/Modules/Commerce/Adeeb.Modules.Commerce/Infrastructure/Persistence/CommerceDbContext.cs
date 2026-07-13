@@ -1,4 +1,5 @@
 using Adeeb.Modules.Commerce.Domain.Entitlements;
+using Adeeb.Modules.Commerce.Domain.Auditing;
 using Adeeb.Modules.Commerce.Domain.Payments;
 using Adeeb.Modules.Commerce.Domain.Tariffs;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
     public DbSet<StudentEntitlement> StudentEntitlements => Set<StudentEntitlement>();
     public DbSet<CommerceTariff> Tariffs => Set<CommerceTariff>();
     public DbSet<PaymentReceipt> PaymentReceipts => Set<PaymentReceipt>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -18,6 +20,32 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
         modelBuilder.ApplyConfiguration(new StudentEntitlementConfiguration());
         modelBuilder.ApplyConfiguration(new CommerceTariffConfiguration());
         modelBuilder.ApplyConfiguration(new PaymentReceiptConfiguration());
+        modelBuilder.ApplyConfiguration(new AuditLogConfiguration());
+    }
+}
+
+internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
+{
+    public void Configure(EntityTypeBuilder<AuditLog> builder)
+    {
+        builder.ToTable("audit_logs");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id");
+        builder.Property(x => x.ActorUserId).HasColumnName("actor_user_id");
+        builder.Property(x => x.Action).HasColumnName("action").HasMaxLength(AuditLog.ActionMaxLength).IsRequired();
+        builder.Property(x => x.ResourceType).HasColumnName("resource_type").HasMaxLength(AuditLog.ResourceTypeMaxLength).IsRequired();
+        builder.Property(x => x.ResourceId).HasColumnName("resource_id").HasMaxLength(AuditLog.ResourceIdMaxLength).IsRequired();
+        builder.Property(x => x.StudentId).HasColumnName("student_id");
+        builder.Property(x => x.OldValuesJson).HasColumnName("old_values_json").HasColumnType("jsonb");
+        builder.Property(x => x.NewValuesJson).HasColumnName("new_values_json").HasColumnType("jsonb");
+        builder.Property(x => x.IpAddress).HasColumnName("ip_address").HasMaxLength(AuditLog.IpAddressMaxLength);
+        builder.Property(x => x.UserAgent).HasColumnName("user_agent").HasMaxLength(AuditLog.UserAgentMaxLength);
+        builder.Property(x => x.CorrelationId).HasColumnName("correlation_id").HasMaxLength(AuditLog.CorrelationIdMaxLength);
+        builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
+        builder.HasIndex(x => new { x.ResourceType, x.ResourceId, x.CreatedAtUtc })
+            .HasDatabaseName("ix_commerce_audit_resource_created");
+        builder.HasIndex(x => new { x.ActorUserId, x.CreatedAtUtc })
+            .HasDatabaseName("ix_commerce_audit_actor_created");
     }
 }
 

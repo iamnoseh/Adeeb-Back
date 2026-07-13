@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Commerce.Application;
+using Adeeb.Modules.Commerce.Application.Auditing;
 using Adeeb.Modules.Commerce.Contracts;
 using Adeeb.Modules.Commerce.Domain.Entitlements;
 using Adeeb.Modules.Commerce.Domain.Payments;
@@ -34,6 +35,7 @@ public sealed class CommerceConcurrencyIntegrationScenarios(AdeebApiFactory fact
             .ToListAsync();
         Assert.Equal(PaymentReceiptStatus.Approved, receipt.Status);
         Assert.Single(entitlements);
+        Assert.Equal(1, await verification.AuditLogs.CountAsync(x => x.ResourceId == receiptId.ToString() && x.Action == CommerceAuditActions.ReceiptApproved));
     }
 
     [Fact]
@@ -54,6 +56,9 @@ public sealed class CommerceConcurrencyIntegrationScenarios(AdeebApiFactory fact
         var entitlementCount = await verification.StudentEntitlements.CountAsync(x => x.SourcePaymentReceiptId == receiptId);
         Assert.Contains(receipt.Status, new[] { PaymentReceiptStatus.Approved, PaymentReceiptStatus.Rejected });
         Assert.Equal(receipt.Status == PaymentReceiptStatus.Approved ? 1 : 0, entitlementCount);
+        Assert.Equal(1, await verification.AuditLogs.CountAsync(x =>
+            x.ResourceId == receiptId.ToString() &&
+            (x.Action == CommerceAuditActions.ReceiptApproved || x.Action == CommerceAuditActions.ReceiptRejected)));
     }
 
     [Fact]
@@ -106,7 +111,12 @@ public sealed class CommerceConcurrencyIntegrationScenarios(AdeebApiFactory fact
     private async Task<Result<PaymentReceiptResponse>> ReviewAsync(Guid receiptId, bool approve, Guid reviewerId)
     {
         await using var db = CreateDb();
-        var service = new CommerceService(db, new EmptyStudentLookup(), new FixedClock());
+        var clock = new FixedClock();
+        var service = new CommerceService(
+            db,
+            new EmptyStudentLookup(),
+            clock,
+            new CommerceAuditWriter(db, new TestAuditContext(reviewerId), clock));
         var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", reviewerId.ToString())], "Test"));
         return approve
             ? await service.ApproveReceiptAsync(receiptId, principal, new ReviewPaymentReceiptRequest("approved"), CancellationToken.None)
@@ -141,5 +151,10 @@ public sealed class CommerceConcurrencyIntegrationScenarios(AdeebApiFactory fact
         public DateTimeOffset UtcNow => Now;
         public DateTimeOffset DushanbeNow => ToDushanbeTime(Now);
         public DateTimeOffset ToDushanbeTime(DateTimeOffset utc) => utc.ToOffset(TimeSpan.FromHours(5));
+    }
+
+    private sealed class TestAuditContext(Guid reviewerId) : ICommerceAuditContext
+    {
+        public CommerceAuditActor Current => new(reviewerId, "127.0.0.1", "integration-test", "test-correlation");
     }
 }

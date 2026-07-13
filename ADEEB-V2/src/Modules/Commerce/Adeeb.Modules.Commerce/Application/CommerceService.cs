@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Application.Abstractions.Storage;
 using Adeeb.Modules.Commerce.Application.Storage;
+using Adeeb.Modules.Commerce.Application.Auditing;
 using Adeeb.Modules.Commerce.Contracts;
 using Adeeb.Modules.Commerce.Domain.Entitlements;
 using Adeeb.Modules.Commerce.Domain.Payments;
@@ -18,10 +19,20 @@ public sealed class CommerceService(
     IStudentLookup students,
     IDateTimeProvider clock,
     IReceiptImageProcessor imageProcessor,
-    IPrivateFileStorage privateFiles)
+    IPrivateFileStorage privateFiles,
+    ICommerceAuditWriter audit)
 {
     public CommerceService(CommerceDbContext db, IStudentLookup students, IDateTimeProvider clock)
-        : this(db, students, clock, new MissingReceiptImageProcessor(), new MissingPrivateFileStorage())
+        : this(db, students, clock, new MissingReceiptImageProcessor(), new MissingPrivateFileStorage(), new NullCommerceAuditWriter())
+    {
+    }
+
+    public CommerceService(
+        CommerceDbContext db,
+        IStudentLookup students,
+        IDateTimeProvider clock,
+        ICommerceAuditWriter audit)
+        : this(db, students, clock, new MissingReceiptImageProcessor(), new MissingPrivateFileStorage(), audit)
     {
     }
 
@@ -54,6 +65,14 @@ public sealed class CommerceService(
             (CommerceTariffStatus)(request.Status ?? (int)CommerceTariffStatus.Active),
             now);
         db.Tariffs.Add(tariff);
+        audit.Write(CommerceAuditActions.TariffCreated, "CommerceTariff", tariff.Id, newValues: new Dictionary<string, object?>
+        {
+            ["name"] = tariff.Name,
+            ["price"] = tariff.Price,
+            ["currency"] = tariff.Currency,
+            ["durationDays"] = tariff.DurationDays,
+            ["status"] = tariff.Status.ToString()
+        });
         await db.SaveChangesAsync(cancellationToken);
         return Result<TariffResponse>.Success(ToResponse(tariff));
     }
@@ -77,6 +96,14 @@ public sealed class CommerceService(
             return Result<TariffResponse>.ValidationFailure(validation.ValidationErrors!);
         }
 
+        var oldValues = new Dictionary<string, object?>
+        {
+            ["name"] = tariff.Name,
+            ["price"] = tariff.Price,
+            ["currency"] = tariff.Currency,
+            ["durationDays"] = tariff.DurationDays,
+            ["status"] = tariff.Status.ToString()
+        };
         tariff.Update(
             request.Name!,
             request.Price!.Value,
@@ -85,6 +112,14 @@ public sealed class CommerceService(
             effectiveQrImageUrl,
             (CommerceTariffStatus)(request.Status ?? (int)tariff.Status),
             clock.UtcNow);
+        audit.Write(CommerceAuditActions.TariffUpdated, "CommerceTariff", tariff.Id, oldValues: oldValues, newValues: new Dictionary<string, object?>
+        {
+            ["name"] = tariff.Name,
+            ["price"] = tariff.Price,
+            ["currency"] = tariff.Currency,
+            ["durationDays"] = tariff.DurationDays,
+            ["status"] = tariff.Status.ToString()
+        });
         await db.SaveChangesAsync(cancellationToken);
         return Result<TariffResponse>.Success(ToResponse(tariff));
     }
@@ -97,7 +132,14 @@ public sealed class CommerceService(
             return Result<TariffResponse>.Failure(CommerceErrors.TariffNotFound);
         }
 
+        var previousStatus = tariff.Status.ToString();
         tariff.Archive(clock.UtcNow);
+        audit.Write(
+            CommerceAuditActions.TariffArchived,
+            "CommerceTariff",
+            tariff.Id,
+            oldValues: new Dictionary<string, object?> { ["status"] = previousStatus },
+            newValues: new Dictionary<string, object?> { ["status"] = tariff.Status.ToString() });
         await db.SaveChangesAsync(cancellationToken);
         return Result<TariffResponse>.Success(ToResponse(tariff));
     }
@@ -166,6 +208,11 @@ public sealed class CommerceService(
             idempotencyKey,
             now);
         db.PaymentReceipts.Add(receipt);
+        audit.Write(CommerceAuditActions.ReceiptSubmitted, "PaymentReceipt", receipt.Id, receipt.StudentId, newValues: new Dictionary<string, object?>
+        {
+            ["tariffId"] = receipt.TariffId,
+            ["status"] = receipt.Status.ToString()
+        });
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -251,16 +298,18 @@ public sealed class CommerceService(
 
     public async Task<Result<PrivateFileReadResult>> OpenReceiptImageAsync(Guid receiptId, CancellationToken cancellationToken)
     {
-        var objectKey = await db.PaymentReceipts.AsNoTracking()
+        var receipt = await db.PaymentReceipts.AsNoTracking()
             .Where(x => x.Id == receiptId)
-            .Select(x => x.ReceiptImageObjectKey)
+            .Select(x => new { x.ReceiptImageObjectKey, x.StudentId })
             .SingleOrDefaultAsync(cancellationToken);
-        if (string.IsNullOrWhiteSpace(objectKey))
+        if (receipt is null)
         {
             return Result<PrivateFileReadResult>.Failure(CommerceErrors.ReceiptNotFound);
         }
 
-        var file = await privateFiles.OpenReadAsync(objectKey, cancellationToken);
+        audit.Write(CommerceAuditActions.ReceiptImageAccessed, "PaymentReceipt", receiptId, receipt.StudentId);
+        await db.SaveChangesAsync(cancellationToken);
+        var file = await privateFiles.OpenReadAsync(receipt.ReceiptImageObjectKey, cancellationToken);
         return file is null
             ? Result<PrivateFileReadResult>.Failure(CommerceErrors.ReceiptImageNotFound)
             : Result<PrivateFileReadResult>.Success(file);
@@ -346,6 +395,11 @@ public sealed class CommerceService(
         }
 
         await EnsurePaymentEntitlementAsync(receipt, now, cancellationToken);
+        audit.Write(CommerceAuditActions.ReceiptApproved, "PaymentReceipt", receipt.Id, receipt.StudentId, newValues: new Dictionary<string, object?>
+        {
+            ["status"] = receipt.Status.ToString(),
+            ["reviewedByUserId"] = reviewerUserId
+        });
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -398,6 +452,12 @@ public sealed class CommerceService(
         {
             return Result<PaymentReceiptResponse>.Failure(transition.Error!);
         }
+
+        audit.Write(CommerceAuditActions.ReceiptRejected, "PaymentReceipt", receipt.Id, receipt.StudentId, newValues: new Dictionary<string, object?>
+        {
+            ["status"] = receipt.Status.ToString(),
+            ["reviewedByUserId"] = reviewerUserId
+        });
 
         try
         {
@@ -457,6 +517,13 @@ public sealed class CommerceService(
             now);
 
         db.StudentEntitlements.Add(entitlement);
+        audit.Write(CommerceAuditActions.EntitlementGranted, "StudentEntitlement", entitlement.Id, entitlement.StudentId, newValues: new Dictionary<string, object?>
+        {
+            ["kind"] = entitlement.Kind.ToString(),
+            ["source"] = entitlement.Source.ToString(),
+            ["startsAtUtc"] = entitlement.StartsAtUtc,
+            ["expiresAtUtc"] = entitlement.ExpiresAtUtc
+        });
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -492,6 +559,11 @@ public sealed class CommerceService(
         }
 
         entitlement.Revoke(clock.UtcNow, request.Reason);
+        audit.Write(CommerceAuditActions.EntitlementRevoked, "StudentEntitlement", entitlement.Id, entitlement.StudentId, newValues: new Dictionary<string, object?>
+        {
+            ["status"] = entitlement.Status.ToString(),
+            ["revokedAtUtc"] = entitlement.RevokedAtUtc
+        });
         await db.SaveChangesAsync(cancellationToken);
         return Result<StudentEntitlementResponse>.Success(ToResponse(entitlement));
     }

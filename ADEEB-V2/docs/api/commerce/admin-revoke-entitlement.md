@@ -30,7 +30,7 @@ Bearer access token required.
 
 ## 6. Authorization
 
-`ContentAdmin` policy. Current roles: `SuperAdmin`, `Admin`.
+`commerce.entitlements.grant` permission.
 
 ## 7. Rate Limit
 
@@ -93,7 +93,7 @@ Not applicable.
 
 `401 Unauthorized` when the access token is missing or invalid.
 
-`403 Forbidden` when the user lacks the `ContentAdmin` policy.
+`403 Forbidden` when the user lacks `commerce.entitlements.grant`.
 
 `404 Not Found` when the entitlement does not exist.
 

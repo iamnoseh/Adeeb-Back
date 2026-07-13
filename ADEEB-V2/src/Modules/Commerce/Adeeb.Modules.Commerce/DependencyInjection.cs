@@ -4,6 +4,8 @@ using Amazon.S3;
 using Adeeb.Application.Abstractions.Storage;
 using Adeeb.Modules.Commerce.Application;
 using Adeeb.Modules.Commerce.Application.Storage;
+using Adeeb.Modules.Commerce.Application.Auditing;
+using Adeeb.Modules.Commerce.Infrastructure.Auditing;
 using Adeeb.Modules.Commerce.Infrastructure.Files;
 using Adeeb.Modules.Commerce.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -61,6 +63,9 @@ public static class DependencyInjection
         }
 
         services.AddScoped<IReceiptImageProcessor, ReceiptImageProcessor>();
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICommerceAuditContext, HttpCommerceAuditContext>();
+        services.AddScoped<ICommerceAuditWriter, CommerceAuditWriter>();
         services.AddScoped<CommerceService>();
         services.AddScoped<CommerceImageStorage>();
         services.AddHostedService<OrphanReceiptFileCleanupService>();

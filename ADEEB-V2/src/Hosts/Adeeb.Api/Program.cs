@@ -40,10 +40,7 @@ builder.Services.AddQuestionBankModule(builder.Configuration);
 builder.Services.AddStudentsModule(builder.Configuration);
 builder.Services.AddCommerceModule(builder.Configuration);
 builder.Services.AddAdeebDocumentation(builder.Configuration);
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("ContentAdmin", policy => policy.RequireRole("SuperAdmin", "Admin"));
-});
+builder.Services.AddAdeebAuthorization();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();

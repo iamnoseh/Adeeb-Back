@@ -3,6 +3,7 @@ using Adeeb.Application.Abstractions.Storage;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Commerce.Application;
 using Adeeb.Modules.Commerce.Application.Storage;
+using Adeeb.Modules.Commerce.Application.Auditing;
 using Adeeb.Modules.Commerce.Contracts;
 using Adeeb.Modules.Commerce.Domain.Tariffs;
 using Adeeb.Modules.Commerce.Infrastructure.Files;
@@ -107,7 +108,8 @@ public sealed class ReceiptImageSecurityTests
             new FixedStudentLookup(new StudentReference(studentId, identityId, "Active")),
             new FixedClock(),
             new ValidProcessor(),
-            storage);
+            storage,
+            new RecordingAudit());
         var principal = Principal(identityId);
         var request = new SubmitPaymentReceiptFormRequest { IdempotencyKey = "same-key" };
 
@@ -145,7 +147,8 @@ public sealed class ReceiptImageSecurityTests
             new FixedStudentLookup(new StudentReference(studentId, identityId, "Active")),
             new FixedClock(),
             new ValidProcessor(),
-            storage);
+            storage,
+            new RecordingAudit());
 
         await Assert.ThrowsAsync<DbUpdateException>(() => service.SubmitCurrentReceiptAsync(
             Principal(identityId),
@@ -228,5 +231,18 @@ public sealed class ReceiptImageSecurityTests
             InterceptionResult<int> result,
             CancellationToken cancellationToken = default) =>
             ValueTask.FromException<InterceptionResult<int>>(new DbUpdateException("simulated database failure"));
+    }
+
+    private sealed class RecordingAudit : ICommerceAuditWriter
+    {
+        public void Write(
+            string action,
+            string resourceType,
+            Guid resourceId,
+            Guid? studentId = null,
+            IReadOnlyDictionary<string, object?>? oldValues = null,
+            IReadOnlyDictionary<string, object?>? newValues = null)
+        {
+        }
     }
 }

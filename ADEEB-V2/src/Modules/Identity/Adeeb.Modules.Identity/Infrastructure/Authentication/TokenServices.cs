@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Adeeb.Application.Abstractions.Localization;
+using Adeeb.Application.Abstractions.Authorization;
 using Adeeb.Modules.Identity.Domain.Sessions;
 using Adeeb.Modules.Identity.Domain.Users;
 using Adeeb.Modules.Identity.Infrastructure.Configuration;
@@ -50,7 +51,7 @@ public sealed class JwtTokenGenerator(IOptions<JwtOptions> options) : IAccessTok
         var expires = now.AddMinutes(_options.AccessTokenMinutes);
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim("sid", session.Id.ToString()),
@@ -60,6 +61,8 @@ public sealed class JwtTokenGenerator(IOptions<JwtOptions> options) : IAccessTok
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
         };
+        claims.AddRange(RolePermissionMapping.GetPermissions(user.Role)
+            .Select(permission => new Claim(AdeebClaimNames.Permission, permission)));
 
         var token = new JwtSecurityToken(
             issuer: _options.Issuer,

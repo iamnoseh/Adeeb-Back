@@ -17,7 +17,7 @@ Commerce.
 ## 5. Authentication
 Bearer access token required.
 ## 6. Authorization
-`ContentAdmin` policy.
+`commerce.payment_receipts.review` permission. Finance administrators may review; content and support administrators may not.
 ## 7. Rate Limit
 Default admin limits.
 ## 8. Localization
