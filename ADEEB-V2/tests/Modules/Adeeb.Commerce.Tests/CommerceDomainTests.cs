@@ -75,11 +75,14 @@ public sealed class CommerceDomainTests
         var reviewerId = Guid.NewGuid();
         var receipt = new PaymentReceipt(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "/receipt.png", "receipt-1", now);
 
-        receipt.Approve(reviewerId, now.AddMinutes(5), "paid");
+        var approved = receipt.Approve(reviewerId, now.AddMinutes(5), "paid");
 
         Assert.Equal(PaymentReceiptStatus.Approved, receipt.Status);
         Assert.Equal("paid", receipt.AdminNote);
         Assert.Equal(reviewerId, receipt.ReviewedByUserId);
-        Assert.Throws<InvalidOperationException>(() => receipt.Reject(reviewerId, now.AddMinutes(6), "no"));
+        Assert.True(approved.IsSuccess);
+        var rejected = receipt.Reject(reviewerId, now.AddMinutes(6), "no");
+        Assert.True(rejected.IsFailure);
+        Assert.Equal("commerce.receipt_already_reviewed", rejected.Error!.Code);
     }
 }

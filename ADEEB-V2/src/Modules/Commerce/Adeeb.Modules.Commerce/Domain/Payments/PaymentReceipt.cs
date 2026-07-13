@@ -1,4 +1,5 @@
 using Adeeb.SharedKernel.Domain;
+using Adeeb.SharedKernel.Results;
 
 namespace Adeeb.Modules.Commerce.Domain.Payments;
 
@@ -57,33 +58,58 @@ public sealed class PaymentReceipt : Entity
     public DateTimeOffset? ReviewedAtUtc { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
+    public uint Version { get; private set; }
 
-    public void Approve(Guid reviewerUserId, DateTimeOffset now, string? note)
+    public Result Approve(Guid reviewerUserId, DateTimeOffset now, string? note)
     {
-        EnsurePending();
+        var canReview = EnsurePending();
+        if (canReview.IsFailure)
+        {
+            return canReview;
+        }
+
+        if (reviewerUserId == Guid.Empty)
+        {
+            return Result.Failure(PaymentReceiptErrors.ReviewerRequired);
+        }
+
         Status = PaymentReceiptStatus.Approved;
         AdminNote = NormalizeNote(note);
         ReviewedByUserId = reviewerUserId;
         ReviewedAtUtc = now;
         UpdatedAtUtc = now;
+        return Result.Success();
     }
 
-    public void Reject(Guid reviewerUserId, DateTimeOffset now, string? note)
+    public Result Reject(Guid reviewerUserId, DateTimeOffset now, string? note)
     {
-        EnsurePending();
+        var canReview = EnsurePending();
+        if (canReview.IsFailure)
+        {
+            return canReview;
+        }
+
+        if (reviewerUserId == Guid.Empty)
+        {
+            return Result.Failure(PaymentReceiptErrors.ReviewerRequired);
+        }
+
         Status = PaymentReceiptStatus.Rejected;
         AdminNote = NormalizeNote(note);
         ReviewedByUserId = reviewerUserId;
         ReviewedAtUtc = now;
         UpdatedAtUtc = now;
+        return Result.Success();
     }
 
-    private void EnsurePending()
+    private Result EnsurePending()
     {
         if (Status != PaymentReceiptStatus.Pending)
         {
-            throw new InvalidOperationException("Only pending receipts can be reviewed.");
+            return Result.Failure(PaymentReceiptErrors.AlreadyReviewed);
         }
+
+        return Result.Success();
     }
 
     private static string? NormalizeNote(string? note) =>

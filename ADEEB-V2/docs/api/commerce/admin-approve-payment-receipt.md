@@ -37,7 +37,7 @@ Note is optional and max 512 characters.
 ## 15. Error Responses
 `401`, `403`, `404`, `409`, `422` ProblemDetails.
 ## 16. Stable Error Codes
-`commerce.receipt_not_found`, `commerce.receipt_already_reviewed`, `commerce.review_note.invalid`, `commerce.reviewer_required`.
+`commerce.receipt_not_found`, `commerce.receipt_already_reviewed`, `commerce.receipt_concurrency_conflict`, `commerce.entitlement_already_created`, `commerce.review_note.invalid`, `commerce.reviewer_required`.
 ## 17. Frontend Behavior
 After approve, refresh receipt list and the student's entitlement state.
 ## 18. Retry Policy
@@ -45,12 +45,13 @@ Safe to retry only if the first result is unknown; reviewed receipts return conf
 ## 19. Caching
 Invalidate entitlement summary after success.
 ## 20. Idempotency
-Approval creates a premium entitlement with an internal receipt-based idempotency key.
+Approval, entitlement creation, and persistence execute in one transaction. A unique database constraint allows at most one entitlement per receipt.
 ## 21. Security Notes
-Approval is an admin decision, not automated payment verification.
+Approval is an admin decision, not automated payment verification. Concurrent review attempts produce one committed final state and a stable `409` for the loser.
 ## 22. Example Flow
 Admin compares check image with bank record, then approves.
 ## 23. Related Endpoints
 `GET /api/v2/commerce/me/entitlements`.
 ## 24. Change History
 2026-07-11: Added receipt approval.
+2026-07-13: Added transactional optimistic concurrency and receipt-entitlement uniqueness.

@@ -232,6 +232,9 @@ public sealed class CommerceService(
             return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReviewerRequired);
         }
 
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
         var receipt = await db.PaymentReceipts.SingleOrDefaultAsync(x => x.Id == receiptId, cancellationToken);
         if (receipt is null)
         {
@@ -239,16 +242,29 @@ public sealed class CommerceService(
         }
 
         var tariff = await db.Tariffs.AsNoTracking().SingleAsync(x => x.Id == receipt.TariffId, cancellationToken);
+        var now = clock.UtcNow;
+        var transition = receipt.Approve(reviewerUserId.Value, now, request.Note);
+        if (transition.IsFailure)
+        {
+            return Result<PaymentReceiptResponse>.Failure(transition.Error!);
+        }
+
+        await EnsurePaymentEntitlementAsync(receipt.StudentId, tariff, receipt.Id, now, cancellationToken);
         try
         {
-            var now = clock.UtcNow;
-            receipt.Approve(reviewerUserId.Value, now, request.Note);
-            await EnsurePaymentEntitlementAsync(receipt.StudentId, tariff, receipt.Id, now, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
         }
-        catch (InvalidOperationException)
+        catch (DbUpdateConcurrencyException)
         {
-            return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReceiptAlreadyReviewed);
+            return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReceiptConcurrencyConflict);
+        }
+        catch (DbUpdateException ex) when (PostgresExceptionHelper.IsUniqueViolation(ex, CommerceDatabaseConstraints.StudentEntitlementSourcePaymentReceiptUnique))
+        {
+            return Result<PaymentReceiptResponse>.Failure(CommerceErrors.EntitlementAlreadyCreated);
         }
 
         return Result<PaymentReceiptResponse>.Success(ToResponse(receipt, tariff));
@@ -272,6 +288,9 @@ public sealed class CommerceService(
             return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReviewerRequired);
         }
 
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
         var receipt = await db.PaymentReceipts.SingleOrDefaultAsync(x => x.Id == receiptId, cancellationToken);
         if (receipt is null)
         {
@@ -279,14 +298,23 @@ public sealed class CommerceService(
         }
 
         var tariff = await db.Tariffs.AsNoTracking().SingleAsync(x => x.Id == receipt.TariffId, cancellationToken);
+        var transition = receipt.Reject(reviewerUserId.Value, clock.UtcNow, request.Note);
+        if (transition.IsFailure)
+        {
+            return Result<PaymentReceiptResponse>.Failure(transition.Error!);
+        }
+
         try
         {
-            receipt.Reject(reviewerUserId.Value, clock.UtcNow, request.Note);
             await db.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
         }
-        catch (InvalidOperationException)
+        catch (DbUpdateConcurrencyException)
         {
-            return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReceiptAlreadyReviewed);
+            return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReceiptConcurrencyConflict);
         }
 
         return Result<PaymentReceiptResponse>.Success(ToResponse(receipt, tariff));
@@ -440,20 +468,31 @@ public sealed class CommerceService(
         CancellationToken cancellationToken)
     {
         var idempotencyKey = $"payment-receipt:{receiptId:N}";
-        if (await db.StudentEntitlements.AnyAsync(x => x.IdempotencyKey == idempotencyKey, cancellationToken))
+        if (await db.StudentEntitlements.AnyAsync(x => x.SourcePaymentReceiptId == receiptId, cancellationToken))
         {
             return;
         }
+
+        var latestActiveExpiry = await db.StudentEntitlements
+            .Where(x =>
+                x.StudentId == studentId &&
+                x.Kind == CommerceEntitlementKind.Premium &&
+                x.Status == CommerceEntitlementStatus.Active &&
+                x.ExpiresAtUtc != null &&
+                x.ExpiresAtUtc > now)
+            .MaxAsync(x => (DateTimeOffset?)x.ExpiresAtUtc, cancellationToken);
+        var startsAt = latestActiveExpiry ?? now;
 
         db.StudentEntitlements.Add(new StudentEntitlement(
             Guid.NewGuid(),
             studentId,
             CommerceEntitlementKind.Premium,
             CommerceEntitlementSource.Payment,
-            now,
-            now.AddDays(tariff.DurationDays),
+            startsAt,
+            startsAt.AddDays(tariff.DurationDays),
             idempotencyKey,
-            now));
+            now,
+            receiptId));
     }
 
     private static StudentEntitlementResponse ToResponse(StudentEntitlement entitlement) =>

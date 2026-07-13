@@ -57,6 +57,7 @@ internal sealed class PaymentReceiptConfiguration : IEntityTypeConfiguration<Pay
         builder.Property(x => x.ReviewedAtUtc).HasColumnName("reviewed_at_utc");
         builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
         builder.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc").IsRequired();
+        builder.Property(x => x.Version).IsRowVersion();
         builder.HasIndex(x => new { x.StudentId, x.Status }).HasDatabaseName("ix_commerce_payment_receipts_student_status");
         builder.HasIndex(x => new { x.TariffId, x.Status }).HasDatabaseName("ix_commerce_payment_receipts_tariff_status");
         builder.HasIndex(x => x.IdempotencyKey)
@@ -79,6 +80,7 @@ internal sealed class StudentEntitlementConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.StartsAtUtc).HasColumnName("starts_at_utc").IsRequired();
         builder.Property(x => x.ExpiresAtUtc).HasColumnName("expires_at_utc");
         builder.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(128).IsRequired();
+        builder.Property(x => x.SourcePaymentReceiptId).HasColumnName("source_payment_receipt_id");
         builder.Property(x => x.RevokeReason).HasColumnName("revoke_reason").HasMaxLength(256);
         builder.Property(x => x.RevokedAtUtc).HasColumnName("revoked_at_utc");
         builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
@@ -88,5 +90,9 @@ internal sealed class StudentEntitlementConfiguration : IEntityTypeConfiguration
             .HasDatabaseName(CommerceDatabaseConstraints.StudentEntitlementIdempotencyKeyUnique);
         builder.HasIndex(x => new { x.StudentId, x.Kind, x.Status })
             .HasDatabaseName(CommerceDatabaseConstraints.StudentEntitlementStudentKindStatus);
+        builder.HasIndex(x => x.SourcePaymentReceiptId)
+            .IsUnique()
+            .HasFilter("source_payment_receipt_id IS NOT NULL")
+            .HasDatabaseName(CommerceDatabaseConstraints.StudentEntitlementSourcePaymentReceiptUnique);
     }
 }
