@@ -29,11 +29,27 @@ jobs:
       - name: Restore
         run: dotnet restore Adeeb.slnx
 
-      - name: Build
-        run: dotnet build Adeeb.slnx --no-restore --configuration Release
+      - name: Verify Docker for Testcontainers
+        run: docker info
 
-      - name: Test
-        run: dotnet test Adeeb.slnx --no-build --configuration Release --verbosity normal
+      - name: Verify formatting
+        run: dotnet format Adeeb.slnx --no-restore --verify-no-changes
 
-      - name: Build warnings as errors
+      - name: Build with warnings as errors
         run: dotnet build Adeeb.slnx --no-restore --configuration Release -warnaserror
+
+      - name: Test with coverage
+        run: dotnet test Adeeb.slnx --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory TestResults
+
+      - name: Audit dependencies
+        run: dotnet list Adeeb.slnx package --vulnerable --include-transitive
+
+      - name: Publish API
+        run: dotnet publish src/Hosts/Adeeb.Api/Adeeb.Api.csproj --no-build --configuration Release --output artifacts/api
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: ADEEB-V2/TestResults/**/coverage.cobertura.xml
+          if-no-files-found: error

@@ -13,9 +13,17 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Adeeb.IntegrationTests;
 
-public sealed class StudentsIntegrationScenarios(AdeebApiFactory factory) : IClassFixture<AdeebApiFactory>
+public sealed class StudentsIntegrationScenarios(AdeebApiFactory factory) : IClassFixture<AdeebApiFactory>, IAsyncLifetime
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    public async Task InitializeAsync()
+    {
+        using var client = factory.CreateClient();
+        await factory.ResetDatabaseAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task Registration_provisions_student_persona()

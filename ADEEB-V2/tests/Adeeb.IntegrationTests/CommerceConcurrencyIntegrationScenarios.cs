@@ -13,8 +13,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Adeeb.IntegrationTests;
 
-public sealed class CommerceConcurrencyIntegrationScenarios(AdeebApiFactory factory) : IClassFixture<AdeebApiFactory>
+public sealed class CommerceConcurrencyIntegrationScenarios(AdeebApiFactory factory) : IClassFixture<AdeebApiFactory>, IAsyncLifetime
 {
+    public async Task InitializeAsync()
+    {
+        using var client = factory.CreateClient();
+        await factory.ResetDatabaseAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
+
     [Fact]
     public async Task ConcurrentApprovals_OnlyOneShouldSucceedAndCreateOneEntitlement()
     {

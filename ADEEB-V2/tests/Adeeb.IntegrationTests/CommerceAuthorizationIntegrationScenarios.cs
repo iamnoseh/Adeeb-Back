@@ -14,8 +14,16 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Adeeb.IntegrationTests;
 
-public sealed class CommerceAuthorizationIntegrationScenarios(AdeebApiFactory factory) : IClassFixture<AdeebApiFactory>
+public sealed class CommerceAuthorizationIntegrationScenarios(AdeebApiFactory factory) : IClassFixture<AdeebApiFactory>, IAsyncLifetime
 {
+    public async Task InitializeAsync()
+    {
+        using var client = factory.CreateClient();
+        await factory.ResetDatabaseAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
+
     [Fact]
     public async Task Commerce_security_matrix_enforces_finance_support_and_content_boundaries()
     {
