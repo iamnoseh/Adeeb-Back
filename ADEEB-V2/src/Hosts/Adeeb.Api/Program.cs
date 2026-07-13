@@ -26,11 +26,12 @@ using System.Globalization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAdeebInfrastructure();
+builder.Services.AddProductionHttp(builder.Configuration, builder.Environment);
 builder.Services.AddProxyConfiguration(builder.Configuration);
 builder.Services.AddAdeebLocalization();
-builder.Services.AddAdeebRateLimiting(builder.Environment);
+builder.Services.AddAdeebRateLimiting(builder.Configuration, builder.Environment);
 builder.Services.AddAdeebSwagger();
-builder.Services.AddAdeebOpenTelemetry();
+builder.Services.AddAdeebOpenTelemetry(builder.Configuration, builder.Environment);
 builder.Services.AddAdeebHealthChecks(builder.Configuration);
 builder.Services.AddDatabaseInitializationOptions(builder.Configuration);
 
@@ -47,6 +48,7 @@ var app = builder.Build();
 
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
+app.UseProductionHttp();
 app.UseAuthentication();
 app.UseRequestLocalization();
 

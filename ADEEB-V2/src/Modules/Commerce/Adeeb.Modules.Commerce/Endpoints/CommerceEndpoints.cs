@@ -61,6 +61,7 @@ public static class CommerceEndpoints
                 ct)).ToHttpResult(context, localizer);
         })
         .RequireAuthorization()
+        .RequireRateLimiting("commerce-receipt-upload")
         .Accepts<SubmitPaymentReceiptFormRequest>("multipart/form-data")
         .DisableAntiforgery();
 
@@ -157,6 +158,7 @@ public static class CommerceEndpoints
             IMessageLocalizer localizer,
             CancellationToken ct) =>
             (await useCases.ApproveAsync(receiptId, context.User, request, ct)).ToHttpResult(context, localizer))
+            .RequireRateLimiting("commerce-receipt-review")
             .RequireAuthorization(Permissions.Commerce.ReviewPaymentReceipts);
 
         admin.MapPost("/payment-receipts/{receiptId:guid}/reject", async (
@@ -167,6 +169,7 @@ public static class CommerceEndpoints
             IMessageLocalizer localizer,
             CancellationToken ct) =>
             (await useCases.RejectAsync(receiptId, context.User, request, ct)).ToHttpResult(context, localizer))
+            .RequireRateLimiting("commerce-receipt-review")
             .RequireAuthorization(Permissions.Commerce.ReviewPaymentReceipts);
 
         admin.MapPost("/students/{studentId:guid}/premium-grants", async (

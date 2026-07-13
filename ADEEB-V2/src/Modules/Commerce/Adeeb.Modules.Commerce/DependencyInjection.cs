@@ -78,6 +78,8 @@ public static class DependencyInjection
         services.AddScoped<PaymentReceiptUseCases>();
         services.AddScoped<EntitlementUseCases>();
         services.AddScoped<CommerceImageStorage>();
+        services.AddHealthChecks()
+            .AddCheck<PrivateFileStorageHealthCheck>("private-file-storage", tags: ["storage", "ready"]);
         services.AddHostedService<OrphanReceiptFileCleanupService>();
         return services;
     }
