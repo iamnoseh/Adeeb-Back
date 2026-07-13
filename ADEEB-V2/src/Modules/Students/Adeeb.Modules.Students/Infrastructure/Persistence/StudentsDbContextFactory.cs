@@ -8,7 +8,7 @@ public sealed class StudentsDbContextFactory : IDesignTimeDbContextFactory<Stude
     public StudentsDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ADEEB_STUDENTS_MIGRATIONS_CONNECTION")
-            ?? "Host=localhost;Port=5432;Database=adeeb_v2;Username=postgres;Password=12345";
+            ?? "Host=localhost;Port=5432;Database=adeeb_v2;Username=postgres";
 
         var options = new DbContextOptionsBuilder<StudentsDbContext>()
             .UseNpgsql(connectionString)
