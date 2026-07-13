@@ -1,5 +1,6 @@
 using Adeeb.SharedKernel.Domain;
 using Adeeb.SharedKernel.Results;
+using Adeeb.Modules.Commerce.Domain;
 
 namespace Adeeb.Modules.Commerce.Domain.Payments;
 
@@ -11,7 +12,17 @@ public sealed class PaymentReceipt : Entity
 
     private PaymentReceipt() { }
 
-    public PaymentReceipt(Guid id, Guid studentId, Guid tariffId, string receiptImageUrl, string idempotencyKey, DateTimeOffset now)
+    public PaymentReceipt(
+        Guid id,
+        Guid studentId,
+        Guid tariffId,
+        string tariffNameSnapshot,
+        decimal priceSnapshot,
+        string currencySnapshot,
+        short durationDaysSnapshot,
+        string receiptImageUrl,
+        string idempotencyKey,
+        DateTimeOffset now)
     {
         if (id == Guid.Empty)
         {
@@ -28,6 +39,26 @@ public sealed class PaymentReceipt : Entity
             throw new ArgumentException("Tariff id is required.", nameof(tariffId));
         }
 
+        if (string.IsNullOrWhiteSpace(tariffNameSnapshot) || tariffNameSnapshot.Trim().Length > Tariffs.CommerceTariff.NameMaxLength)
+        {
+            throw new ArgumentException("Tariff snapshot name is invalid.", nameof(tariffNameSnapshot));
+        }
+
+        if (priceSnapshot <= 0)
+        {
+            throw new ArgumentException("Tariff snapshot price must be positive.", nameof(priceSnapshot));
+        }
+
+        if (!SupportedCurrencies.TryNormalize(currencySnapshot, out var normalizedCurrency))
+        {
+            throw new ArgumentException("Tariff snapshot currency is unsupported.", nameof(currencySnapshot));
+        }
+
+        if (durationDaysSnapshot <= 0)
+        {
+            throw new ArgumentException("Tariff snapshot duration must be positive.", nameof(durationDaysSnapshot));
+        }
+
         if (string.IsNullOrWhiteSpace(receiptImageUrl) || receiptImageUrl.Trim().Length > ReceiptImageUrlMaxLength)
         {
             throw new ArgumentException("Receipt image URL is invalid.", nameof(receiptImageUrl));
@@ -41,6 +72,10 @@ public sealed class PaymentReceipt : Entity
         Id = id;
         StudentId = studentId;
         TariffId = tariffId;
+        TariffNameSnapshot = tariffNameSnapshot.Trim();
+        PriceSnapshot = priceSnapshot;
+        CurrencySnapshot = normalizedCurrency;
+        DurationDaysSnapshot = durationDaysSnapshot;
         ReceiptImageUrl = receiptImageUrl.Trim();
         IdempotencyKey = idempotencyKey.Trim();
         Status = PaymentReceiptStatus.Pending;
@@ -50,6 +85,10 @@ public sealed class PaymentReceipt : Entity
 
     public Guid StudentId { get; private set; }
     public Guid TariffId { get; private set; }
+    public string TariffNameSnapshot { get; private set; } = string.Empty;
+    public decimal PriceSnapshot { get; private set; }
+    public string CurrencySnapshot { get; private set; } = "TJS";
+    public short DurationDaysSnapshot { get; private set; }
     public string ReceiptImageUrl { get; private set; } = string.Empty;
     public string IdempotencyKey { get; private set; } = string.Empty;
     public PaymentReceiptStatus Status { get; private set; }

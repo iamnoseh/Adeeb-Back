@@ -141,11 +141,21 @@ public sealed class CommerceService(
                 return Result<PaymentReceiptResponse>.Failure(CommerceErrors.IdempotencyKeyInUse);
             }
 
-            return Result<PaymentReceiptResponse>.Success(ToResponse(existing, tariff));
+            return Result<PaymentReceiptResponse>.Success(ToResponse(existing));
         }
 
         var now = clock.UtcNow;
-        var receipt = new PaymentReceipt(Guid.NewGuid(), student.StudentId, tariffId, receiptImageUrl!, idempotencyKey, now);
+        var receipt = new PaymentReceipt(
+            Guid.NewGuid(),
+            student.StudentId,
+            tariffId,
+            tariff.Name,
+            tariff.Price,
+            tariff.Currency,
+            tariff.DurationDays,
+            receiptImageUrl!,
+            idempotencyKey,
+            now);
         db.PaymentReceipts.Add(receipt);
         try
         {
@@ -157,11 +167,11 @@ public sealed class CommerceService(
             var raced = await db.PaymentReceipts.AsNoTracking()
                 .SingleAsync(x => x.IdempotencyKey == idempotencyKey, cancellationToken);
             return raced.StudentId == student.StudentId && raced.TariffId == tariffId
-                ? Result<PaymentReceiptResponse>.Success(ToResponse(raced, tariff))
+                ? Result<PaymentReceiptResponse>.Success(ToResponse(raced))
                 : Result<PaymentReceiptResponse>.Failure(CommerceErrors.IdempotencyKeyInUse);
         }
 
-        return Result<PaymentReceiptResponse>.Success(ToResponse(receipt, tariff));
+        return Result<PaymentReceiptResponse>.Success(ToResponse(receipt));
     }
 
     public async Task<Result<IReadOnlyList<PaymentReceiptResponse>>> GetCurrentPaymentReceiptsAsync(
@@ -175,43 +185,38 @@ public sealed class CommerceService(
             return Result<IReadOnlyList<PaymentReceiptResponse>>.Failure(CommerceErrors.StudentRequired);
         }
 
-        var query = from receipt in db.PaymentReceipts.AsNoTracking()
-                    join tariff in db.Tariffs.AsNoTracking() on receipt.TariffId equals tariff.Id
-                    where receipt.StudentId == student.StudentId
-                    select new { receipt, tariff };
+        var query = db.PaymentReceipts.AsNoTracking().Where(x => x.StudentId == student.StudentId);
 
         if (status is not null && Enum.IsDefined(typeof(PaymentReceiptStatus), status.Value))
         {
             var parsed = (PaymentReceiptStatus)status.Value;
-            query = query.Where(x => x.receipt.Status == parsed);
+            query = query.Where(x => x.Status == parsed);
         }
 
         var rows = await query
-            .OrderByDescending(x => x.receipt.CreatedAtUtc)
+            .OrderByDescending(x => x.CreatedAtUtc)
             .Take(100)
             .ToListAsync(cancellationToken);
-        return Result<IReadOnlyList<PaymentReceiptResponse>>.Success(rows.Select(x => ToResponse(x.receipt, x.tariff)).ToList());
+        return Result<IReadOnlyList<PaymentReceiptResponse>>.Success(rows.Select(ToResponse).ToList());
     }
 
     public async Task<Result<IReadOnlyList<PaymentReceiptResponse>>> GetPaymentReceiptsAsync(
         int? status,
         CancellationToken cancellationToken)
     {
-        var query = from receipt in db.PaymentReceipts.AsNoTracking()
-                    join tariff in db.Tariffs.AsNoTracking() on receipt.TariffId equals tariff.Id
-                    select new { receipt, tariff };
+        var query = db.PaymentReceipts.AsNoTracking();
 
         if (status is not null && Enum.IsDefined(typeof(PaymentReceiptStatus), status.Value))
         {
             var parsed = (PaymentReceiptStatus)status.Value;
-            query = query.Where(x => x.receipt.Status == parsed);
+            query = query.Where(x => x.Status == parsed);
         }
 
         var rows = await query
-            .OrderByDescending(x => x.receipt.CreatedAtUtc)
+            .OrderByDescending(x => x.CreatedAtUtc)
             .Take(100)
             .ToListAsync(cancellationToken);
-        return Result<IReadOnlyList<PaymentReceiptResponse>>.Success(rows.Select(x => ToResponse(x.receipt, x.tariff)).ToList());
+        return Result<IReadOnlyList<PaymentReceiptResponse>>.Success(rows.Select(ToResponse).ToList());
     }
 
     public async Task<Result<PaymentReceiptResponse>> ApproveReceiptAsync(
@@ -241,7 +246,6 @@ public sealed class CommerceService(
             return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReceiptNotFound);
         }
 
-        var tariff = await db.Tariffs.AsNoTracking().SingleAsync(x => x.Id == receipt.TariffId, cancellationToken);
         var now = clock.UtcNow;
         var transition = receipt.Approve(reviewerUserId.Value, now, request.Note);
         if (transition.IsFailure)
@@ -249,7 +253,7 @@ public sealed class CommerceService(
             return Result<PaymentReceiptResponse>.Failure(transition.Error!);
         }
 
-        await EnsurePaymentEntitlementAsync(receipt.StudentId, tariff, receipt.Id, now, cancellationToken);
+        await EnsurePaymentEntitlementAsync(receipt, now, cancellationToken);
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -267,7 +271,7 @@ public sealed class CommerceService(
             return Result<PaymentReceiptResponse>.Failure(CommerceErrors.EntitlementAlreadyCreated);
         }
 
-        return Result<PaymentReceiptResponse>.Success(ToResponse(receipt, tariff));
+        return Result<PaymentReceiptResponse>.Success(ToResponse(receipt));
     }
 
     public async Task<Result<PaymentReceiptResponse>> RejectReceiptAsync(
@@ -297,7 +301,6 @@ public sealed class CommerceService(
             return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReceiptNotFound);
         }
 
-        var tariff = await db.Tariffs.AsNoTracking().SingleAsync(x => x.Id == receipt.TariffId, cancellationToken);
         var transition = receipt.Reject(reviewerUserId.Value, clock.UtcNow, request.Note);
         if (transition.IsFailure)
         {
@@ -317,7 +320,7 @@ public sealed class CommerceService(
             return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReceiptConcurrencyConflict);
         }
 
-        return Result<PaymentReceiptResponse>.Success(ToResponse(receipt, tariff));
+        return Result<PaymentReceiptResponse>.Success(ToResponse(receipt));
     }
 
     public async Task<Result<StudentEntitlementResponse>> GrantPremiumAsync(
@@ -461,21 +464,19 @@ public sealed class CommerceService(
     }
 
     private async Task EnsurePaymentEntitlementAsync(
-        Guid studentId,
-        CommerceTariff tariff,
-        Guid receiptId,
+        PaymentReceipt receipt,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        var idempotencyKey = $"payment-receipt:{receiptId:N}";
-        if (await db.StudentEntitlements.AnyAsync(x => x.SourcePaymentReceiptId == receiptId, cancellationToken))
+        var idempotencyKey = $"payment-receipt:{receipt.Id:N}";
+        if (await db.StudentEntitlements.AnyAsync(x => x.SourcePaymentReceiptId == receipt.Id, cancellationToken))
         {
             return;
         }
 
         var latestActiveExpiry = await db.StudentEntitlements
             .Where(x =>
-                x.StudentId == studentId &&
+                x.StudentId == receipt.StudentId &&
                 x.Kind == CommerceEntitlementKind.Premium &&
                 x.Status == CommerceEntitlementStatus.Active &&
                 x.ExpiresAtUtc != null &&
@@ -485,14 +486,14 @@ public sealed class CommerceService(
 
         db.StudentEntitlements.Add(new StudentEntitlement(
             Guid.NewGuid(),
-            studentId,
+            receipt.StudentId,
             CommerceEntitlementKind.Premium,
             CommerceEntitlementSource.Payment,
             startsAt,
-            startsAt.AddDays(tariff.DurationDays),
+            startsAt.AddDays(receipt.DurationDaysSnapshot),
             idempotencyKey,
             now,
-            receiptId));
+            receipt.Id));
     }
 
     private static StudentEntitlementResponse ToResponse(StudentEntitlement entitlement) =>
@@ -522,15 +523,15 @@ public sealed class CommerceService(
             tariff.CreatedAtUtc,
             tariff.UpdatedAtUtc);
 
-    private static PaymentReceiptResponse ToResponse(PaymentReceipt receipt, CommerceTariff tariff) =>
+    private static PaymentReceiptResponse ToResponse(PaymentReceipt receipt) =>
         new(
             receipt.Id,
             receipt.StudentId,
             receipt.TariffId,
-            tariff.Name,
-            tariff.Price,
-            tariff.Currency,
-            tariff.DurationDays,
+            receipt.TariffNameSnapshot,
+            receipt.PriceSnapshot,
+            receipt.CurrencySnapshot,
+            receipt.DurationDaysSnapshot,
             receipt.ReceiptImageUrl,
             receipt.Status.ToString(),
             receipt.AdminNote,

@@ -56,6 +56,31 @@ public sealed class CommerceConcurrencyIntegrationScenarios(AdeebApiFactory fact
         Assert.Equal(receipt.Status == PaymentReceiptStatus.Approved ? 1 : 0, entitlementCount);
     }
 
+    [Fact]
+    public async Task ReceiptSnapshotAndEntitlementDuration_SurviveTariffChange()
+    {
+        var receiptId = await SeedPendingReceiptAsync();
+        await using (var update = CreateDb())
+        {
+            var receipt = await update.PaymentReceipts.SingleAsync(x => x.Id == receiptId);
+            var tariff = await update.Tariffs.SingleAsync(x => x.Id == receipt.TariffId);
+            tariff.Update("Premium 90", 70, "USD", 90, tariff.QrImageUrl, CommerceTariffStatus.Active, FixedClock.Now.AddMinutes(1));
+            await update.SaveChangesAsync();
+        }
+
+        var approved = await ReviewAsync(receiptId, approve: true, Guid.NewGuid());
+
+        Assert.True(approved.IsSuccess);
+        Assert.Equal("Premium 30", approved.Value!.TariffName);
+        Assert.Equal(25, approved.Value.TariffPrice);
+        Assert.Equal("TJS", approved.Value.Currency);
+        Assert.Equal(30, approved.Value.DurationDays);
+        await using var verification = CreateDb();
+        var entitlement = await verification.StudentEntitlements.AsNoTracking()
+            .SingleAsync(x => x.SourcePaymentReceiptId == receiptId);
+        Assert.Equal(FixedClock.Now.AddDays(30), entitlement.ExpiresAtUtc);
+    }
+
     private async Task<Guid> SeedPendingReceiptAsync()
     {
         await using var db = CreateDb();
@@ -66,6 +91,10 @@ public sealed class CommerceConcurrencyIntegrationScenarios(AdeebApiFactory fact
             Guid.NewGuid(),
             Guid.NewGuid(),
             tariff.Id,
+            tariff.Name,
+            tariff.Price,
+            tariff.Currency,
+            tariff.DurationDays,
             "commerce/payment-receipts/test/receipt.webp",
             $"receipt-{Guid.NewGuid():N}",
             now);

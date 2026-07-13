@@ -73,7 +73,7 @@ public sealed class CommerceDomainTests
     {
         var now = DateTimeOffset.Parse("2026-07-11T08:00:00Z");
         var reviewerId = Guid.NewGuid();
-        var receipt = new PaymentReceipt(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "/receipt.png", "receipt-1", now);
+        var receipt = new PaymentReceipt(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Premium", 25, "TJS", 30, "/receipt.png", "receipt-1", now);
 
         var approved = receipt.Approve(reviewerId, now.AddMinutes(5), "paid");
 

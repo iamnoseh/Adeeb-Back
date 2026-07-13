@@ -33,7 +33,7 @@ Not applicable.
 ## 13. Field Rules
 Invalid status values are ignored and return all current student receipts.
 ## 14. Success Response
-`200 OK` array of payment receipt responses.
+`200 OK` array of payment receipt responses. Each item returns the tariff name, price, currency, and duration captured when that receipt was submitted.
 ## 15. Error Responses
 `401 Unauthorized`, `409 Conflict` when no active student persona exists.
 ## 16. Stable Error Codes
@@ -54,3 +54,4 @@ Student uploads a receipt, then opens payment history to see `Pending`.
 `POST /api/v2/commerce/tariffs/{tariffId}/payment-receipts`.
 ## 24. Change History
 2026-07-11: Added current student payment receipt history.
+2026-07-13: Receipt history now reads immutable tariff snapshots rather than current tariffs.

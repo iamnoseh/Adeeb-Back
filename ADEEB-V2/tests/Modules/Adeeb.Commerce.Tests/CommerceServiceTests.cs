@@ -268,6 +268,11 @@ public sealed class CommerceServiceTests
             new SubmitPaymentReceiptFormRequest { IdempotencyKey = "receipt-1" },
             "/uploads/commerce/receipts/check.png",
             CancellationToken.None);
+        await service.UpdateTariffAsync(
+            tariff.Value.TariffId,
+            new TariffFormRequest { Name = "Premium 60", Price = 40, Currency = "USD", DurationDays = 60, Status = 1 },
+            null,
+            CancellationToken.None);
         var reviewerId = Guid.NewGuid();
         var approved = await service.ApproveReceiptAsync(
             submitted.Value!.ReceiptId,
@@ -278,6 +283,10 @@ public sealed class CommerceServiceTests
 
         Assert.True(submitted.IsSuccess);
         Assert.Equal("Pending", submitted.Value.Status);
+        Assert.Equal("Premium 30", submitted.Value.TariffName);
+        Assert.Equal(25, submitted.Value.TariffPrice);
+        Assert.Equal("TJS", submitted.Value.Currency);
+        Assert.Equal(30, submitted.Value.DurationDays);
         Assert.True(approved.IsSuccess);
         Assert.Equal("Approved", approved.Value!.Status);
         Assert.Equal(reviewerId, approved.Value.ReviewedByUserId);
@@ -285,6 +294,21 @@ public sealed class CommerceServiceTests
         Assert.True(summary.Value.PremiumActive);
         Assert.Equal(FixedClock.Now.AddDays(30), summary.Value.PremiumUntilUtc);
         Assert.Equal(1, await db.StudentEntitlements.CountAsync());
+    }
+
+    [Fact]
+    public async Task Tariff_rejects_unsupported_currency()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db, new FakeStudentLookup());
+
+        var result = await service.CreateTariffAsync(
+            new TariffFormRequest { Name = "Premium", Price = 25, Currency = "EUR", DurationDays = 30, Status = 1 },
+            "/uploads/commerce/qr/qr.png",
+            CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("commerce.tariff.currency.unsupported", result.ValidationErrors!["currency"].Single().Code);
     }
 
     [Fact]

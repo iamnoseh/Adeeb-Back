@@ -9,7 +9,7 @@ status: stable
 ## 1. Endpoint
 `POST /api/v2/admin/commerce/payment-receipts/{receiptId}/approve`
 ## 2. Purpose
-Approves a submitted receipt and grants premium for the selected tariff duration.
+Approves a submitted receipt and grants premium for the immutable duration captured when the receipt was submitted.
 ## 3. Status
 Stable.
 ## 4. Module
@@ -55,3 +55,4 @@ Admin compares check image with bank record, then approves.
 ## 24. Change History
 2026-07-11: Added receipt approval.
 2026-07-13: Added transactional optimistic concurrency and receipt-entitlement uniqueness.
+2026-07-13: Entitlement duration now comes from the receipt snapshot, not the current tariff.

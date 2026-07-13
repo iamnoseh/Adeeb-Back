@@ -49,6 +49,10 @@ internal sealed class PaymentReceiptConfiguration : IEntityTypeConfiguration<Pay
         builder.Property(x => x.Id).HasColumnName("id");
         builder.Property(x => x.StudentId).HasColumnName("student_id").IsRequired();
         builder.Property(x => x.TariffId).HasColumnName("tariff_id").IsRequired();
+        builder.Property(x => x.TariffNameSnapshot).HasColumnName("tariff_name_snapshot").HasMaxLength(CommerceTariff.NameMaxLength).IsRequired();
+        builder.Property(x => x.PriceSnapshot).HasColumnName("price_snapshot").HasPrecision(18, 2).IsRequired();
+        builder.Property(x => x.CurrencySnapshot).HasColumnName("currency_snapshot").HasMaxLength(CommerceTariff.CurrencyMaxLength).IsRequired();
+        builder.Property(x => x.DurationDaysSnapshot).HasColumnName("duration_days_snapshot").IsRequired();
         builder.Property(x => x.ReceiptImageUrl).HasColumnName("receipt_image_url").HasMaxLength(PaymentReceipt.ReceiptImageUrlMaxLength).IsRequired();
         builder.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(PaymentReceipt.IdempotencyKeyMaxLength).IsRequired();
         builder.Property(x => x.Status).HasColumnName("status").HasConversion<int>().IsRequired();
