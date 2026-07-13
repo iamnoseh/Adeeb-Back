@@ -36,9 +36,9 @@ Multipart fields:
 ## 13. Field Rules
 `IdempotencyKey` is required and must be at most 128 characters.
 
-Receipt image is required. Allowed types: jpg, jpeg, png, webp. Max size: 10 MB.
+Receipt image is required. Source formats are JPEG, PNG, and WebP. The API verifies signatures, decodes the image, limits it to 6000 pixels per axis and 24 million pixels total, removes metadata, and re-encodes it as WebP. Max input size: 10 MB.
 ## 14. Success Response
-`200 OK` payment receipt with `status: Pending`. Tariff name, price, currency, and duration are immutable submission-time snapshot values.
+`200 OK` payment receipt with `status: Pending` and `receiptImageAvailable: true`. No storage object key or public image URL is returned. Tariff name, price, currency, and duration are immutable submission-time snapshot values.
 ## 15. Error Responses
 `401`, `404`, `409`, `422` ProblemDetails.
 ## 16. Stable Error Codes
@@ -52,7 +52,7 @@ Do not cache mutation response.
 ## 20. Idempotency
 Idempotent by `IdempotencyKey` for the same student and tariff. A retry returns the original receipt snapshot even if the tariff later changes.
 ## 21. Security Notes
-The client cannot choose `studentId`; it comes from JWT and Students. Supported currencies are `TJS`, `USD`, and `RUB`.
+The client cannot choose `studentId`; it comes from JWT and Students. The client filename is ignored, and receipt evidence is stored outside `wwwroot`. Supported currencies are `TJS`, `USD`, and `RUB`.
 ## 22. Example Flow
 Student scans QR, pays, uploads check image, waits for review.
 ## 23. Related Endpoints
@@ -60,3 +60,4 @@ Student scans QR, pays, uploads check image, waits for review.
 ## 24. Change History
 2026-07-11: Added manual receipt submission.
 2026-07-13: Preserved immutable tariff snapshots on payment receipts.
+2026-07-13: Moved receipt images to validated private storage with cleanup on failure.

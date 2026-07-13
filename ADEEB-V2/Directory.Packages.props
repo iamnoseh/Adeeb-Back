@@ -20,6 +20,8 @@
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.19.1" />
     <PackageVersion Include="DocumentFormat.OpenXml" Version="3.3.0" />
     <PackageVersion Include="PdfPig" Version="0.1.9" />
+    <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.100.3" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />

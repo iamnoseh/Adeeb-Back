@@ -44,6 +44,8 @@ public sealed class AdeebApiFactory : WebApplicationFactory<Program>, IAsyncLife
                 ["Jwt:AccessTokenMinutes"] = "10",
                 ["RefreshTokens:LifetimeDays"] = "30",
                 ["RefreshTokens:TokenBytes"] = "64",
+                ["PrivateFileStorage:Provider"] = "Local",
+                ["PrivateFileStorage:LocalRoot"] = Path.Combine(Path.GetTempPath(), "adeeb-integration-private", Guid.NewGuid().ToString("N")),
                 ["Proxy:ForwardLimit"] = "1",
                 ["Proxy:KnownProxies:0"] = "127.0.0.1",
                 ["Proxy:KnownNetworks:0"] = "10.0.0.0/8"

@@ -6,7 +6,7 @@ namespace Adeeb.Modules.Commerce.Domain.Payments;
 
 public sealed class PaymentReceipt : Entity
 {
-    public const int ReceiptImageUrlMaxLength = 512;
+    public const int ReceiptImageObjectKeyMaxLength = 512;
     public const int AdminNoteMaxLength = 512;
     public const int IdempotencyKeyMaxLength = 128;
 
@@ -20,7 +20,7 @@ public sealed class PaymentReceipt : Entity
         decimal priceSnapshot,
         string currencySnapshot,
         short durationDaysSnapshot,
-        string receiptImageUrl,
+        string receiptImageObjectKey,
         string idempotencyKey,
         DateTimeOffset now)
     {
@@ -59,9 +59,9 @@ public sealed class PaymentReceipt : Entity
             throw new ArgumentException("Tariff snapshot duration must be positive.", nameof(durationDaysSnapshot));
         }
 
-        if (string.IsNullOrWhiteSpace(receiptImageUrl) || receiptImageUrl.Trim().Length > ReceiptImageUrlMaxLength)
+        if (string.IsNullOrWhiteSpace(receiptImageObjectKey) || receiptImageObjectKey.Trim().Length > ReceiptImageObjectKeyMaxLength)
         {
-            throw new ArgumentException("Receipt image URL is invalid.", nameof(receiptImageUrl));
+            throw new ArgumentException("Receipt image object key is invalid.", nameof(receiptImageObjectKey));
         }
 
         if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Trim().Length > IdempotencyKeyMaxLength)
@@ -76,7 +76,7 @@ public sealed class PaymentReceipt : Entity
         PriceSnapshot = priceSnapshot;
         CurrencySnapshot = normalizedCurrency;
         DurationDaysSnapshot = durationDaysSnapshot;
-        ReceiptImageUrl = receiptImageUrl.Trim();
+        ReceiptImageObjectKey = receiptImageObjectKey.Trim();
         IdempotencyKey = idempotencyKey.Trim();
         Status = PaymentReceiptStatus.Pending;
         CreatedAtUtc = now;
@@ -89,7 +89,7 @@ public sealed class PaymentReceipt : Entity
     public decimal PriceSnapshot { get; private set; }
     public string CurrencySnapshot { get; private set; } = "TJS";
     public short DurationDaysSnapshot { get; private set; }
-    public string ReceiptImageUrl { get; private set; } = string.Empty;
+    public string ReceiptImageObjectKey { get; private set; } = string.Empty;
     public string IdempotencyKey { get; private set; } = string.Empty;
     public PaymentReceiptStatus Status { get; private set; }
     public string? AdminNote { get; private set; }

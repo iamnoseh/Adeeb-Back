@@ -18,9 +18,6 @@ public sealed class CommerceImageStorage(IWebHostEnvironment environment)
     public Task<Result<string?>> SaveQrAsync(IFormFile? image, CancellationToken ct) =>
         SaveAsync(image, "commerce/qr", "commerce.qr_image.invalid_type", "Commerce.QrImage.InvalidType", ct);
 
-    public Task<Result<string?>> SaveReceiptAsync(IFormFile? image, CancellationToken ct) =>
-        SaveAsync(image, "commerce/receipts", "commerce.receipt.image.invalid_type", "Commerce.Receipt.Image.InvalidType", ct);
-
     private async Task<Result<string?>> SaveAsync(IFormFile? image, string folder, string invalidCode, string invalidKey, CancellationToken ct)
     {
         if (image is null || image.Length == 0)

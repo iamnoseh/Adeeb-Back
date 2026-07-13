@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using Adeeb.Application.Abstractions.Time;
+using Adeeb.Application.Abstractions.Storage;
+using Adeeb.Modules.Commerce.Application.Storage;
 using Adeeb.Modules.Commerce.Contracts;
 using Adeeb.Modules.Commerce.Domain.Entitlements;
 using Adeeb.Modules.Commerce.Domain.Payments;
@@ -14,8 +16,15 @@ namespace Adeeb.Modules.Commerce.Application;
 public sealed class CommerceService(
     CommerceDbContext db,
     IStudentLookup students,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    IReceiptImageProcessor imageProcessor,
+    IPrivateFileStorage privateFiles)
 {
+    public CommerceService(CommerceDbContext db, IStudentLookup students, IDateTimeProvider clock)
+        : this(db, students, clock, new MissingReceiptImageProcessor(), new MissingPrivateFileStorage())
+    {
+    }
+
     public async Task<Result<TariffResponse>> CreateTariffAsync(
         TariffFormRequest request,
         string? qrImageUrl,
@@ -172,6 +181,89 @@ public sealed class CommerceService(
         }
 
         return Result<PaymentReceiptResponse>.Success(ToResponse(receipt));
+    }
+
+    public async Task<Result<PaymentReceiptResponse>> SubmitCurrentReceiptAsync(
+        ClaimsPrincipal principal,
+        Guid tariffId,
+        SubmitPaymentReceiptFormRequest request,
+        Stream? receiptImage,
+        long receiptImageLength,
+        CancellationToken cancellationToken)
+    {
+        var keyValidation = Validation.ValidateReceiptSubmission(request, receiptImage is null ? null : "pending");
+        if (keyValidation.IsFailure)
+        {
+            return Result<PaymentReceiptResponse>.ValidationFailure(keyValidation.ValidationErrors!);
+        }
+
+        var student = await GetActiveCurrentStudentAsync(principal, cancellationToken);
+        if (student is null)
+        {
+            return Result<PaymentReceiptResponse>.Failure(CommerceErrors.StudentRequired);
+        }
+
+        var idempotencyKey = request.IdempotencyKey!.Trim();
+        var existing = await db.PaymentReceipts.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.IdempotencyKey == idempotencyKey, cancellationToken);
+        if (existing is not null)
+        {
+            return existing.StudentId == student.StudentId && existing.TariffId == tariffId
+                ? Result<PaymentReceiptResponse>.Success(ToResponse(existing))
+                : Result<PaymentReceiptResponse>.Failure(CommerceErrors.IdempotencyKeyInUse);
+        }
+
+        var processed = await imageProcessor.ProcessAsync(receiptImage!, receiptImageLength, cancellationToken);
+        if (processed.IsFailure)
+        {
+            return Result<PaymentReceiptResponse>.Failure(processed.Error!);
+        }
+
+        var objectKey = $"commerce/payment-receipts/{student.StudentId:N}/{Guid.NewGuid():N}.webp";
+        await using var content = new MemoryStream(processed.Value!.Content, writable: false);
+        await privateFiles.SaveAsync(content, processed.Value.ContentType, objectKey, cancellationToken);
+        try
+        {
+            var result = await SubmitCurrentReceiptAsync(principal, tariffId, request, objectKey, cancellationToken);
+            if (result.IsFailure)
+            {
+                await privateFiles.DeleteAsync(objectKey, CancellationToken.None);
+                return result;
+            }
+
+            var persistedKey = await db.PaymentReceipts.AsNoTracking()
+                .Where(x => x.Id == result.Value!.ReceiptId)
+                .Select(x => x.ReceiptImageObjectKey)
+                .SingleAsync(CancellationToken.None);
+            if (!string.Equals(persistedKey, objectKey, StringComparison.Ordinal))
+            {
+                await privateFiles.DeleteAsync(objectKey, CancellationToken.None);
+            }
+
+            return result;
+        }
+        catch
+        {
+            await privateFiles.DeleteAsync(objectKey, CancellationToken.None);
+            throw;
+        }
+    }
+
+    public async Task<Result<PrivateFileReadResult>> OpenReceiptImageAsync(Guid receiptId, CancellationToken cancellationToken)
+    {
+        var objectKey = await db.PaymentReceipts.AsNoTracking()
+            .Where(x => x.Id == receiptId)
+            .Select(x => x.ReceiptImageObjectKey)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(objectKey))
+        {
+            return Result<PrivateFileReadResult>.Failure(CommerceErrors.ReceiptNotFound);
+        }
+
+        var file = await privateFiles.OpenReadAsync(objectKey, cancellationToken);
+        return file is null
+            ? Result<PrivateFileReadResult>.Failure(CommerceErrors.ReceiptImageNotFound)
+            : Result<PrivateFileReadResult>.Success(file);
     }
 
     public async Task<Result<IReadOnlyList<PaymentReceiptResponse>>> GetCurrentPaymentReceiptsAsync(
@@ -532,11 +624,29 @@ public sealed class CommerceService(
             receipt.PriceSnapshot,
             receipt.CurrencySnapshot,
             receipt.DurationDaysSnapshot,
-            receipt.ReceiptImageUrl,
+            true,
             receipt.Status.ToString(),
             receipt.AdminNote,
             receipt.ReviewedByUserId,
             receipt.ReviewedAtUtc,
             receipt.CreatedAtUtc,
             receipt.UpdatedAtUtc);
+
+    private sealed class MissingReceiptImageProcessor : IReceiptImageProcessor
+    {
+        public Task<Result<ValidatedReceiptImage>> ProcessAsync(Stream input, long declaredLength, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Secure receipt image processor is not configured.");
+    }
+
+    private sealed class MissingPrivateFileStorage : IPrivateFileStorage
+    {
+        public Task<StoredFile> SaveAsync(Stream stream, string contentType, string objectKey, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Private file storage is not configured.");
+        public Task<PrivateFileReadResult?> OpenReadAsync(string objectKey, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Private file storage is not configured.");
+        public Task DeleteAsync(string objectKey, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Private file storage is not configured.");
+        public Task<string> CreateSignedReadUrlAsync(string objectKey, TimeSpan lifetime, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Private file storage is not configured.");
+    }
 }

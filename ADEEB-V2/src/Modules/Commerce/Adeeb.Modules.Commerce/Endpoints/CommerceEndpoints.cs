@@ -42,19 +42,19 @@ public static class CommerceEndpoints
         group.MapPost("/tariffs/{tariffId:guid}/payment-receipts", async (
             Guid tariffId,
             [FromForm] SubmitPaymentReceiptFormRequest form,
-            CommerceImageStorage images,
             CommerceService service,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
         {
-            var saved = await images.SaveReceiptAsync(form.ReceiptImage, ct);
-            if (saved.IsFailure)
-            {
-                return saved.ToHttpResult(context, localizer);
-            }
-
-            return (await service.SubmitCurrentReceiptAsync(context.User, tariffId, form, saved.Value, ct)).ToHttpResult(context, localizer);
+            await using var image = form.ReceiptImage?.OpenReadStream();
+            return (await service.SubmitCurrentReceiptAsync(
+                context.User,
+                tariffId,
+                form,
+                image,
+                form.ReceiptImage?.Length ?? 0,
+                ct)).ToHttpResult(context, localizer);
         })
         .RequireAuthorization()
         .Accepts<SubmitPaymentReceiptFormRequest>("multipart/form-data")
@@ -125,6 +125,19 @@ public static class CommerceEndpoints
             IMessageLocalizer localizer,
             CancellationToken ct) =>
             (await service.GetPaymentReceiptsAsync(status, ct)).ToHttpResult(context, localizer));
+
+        admin.MapGet("/payment-receipts/{receiptId:guid}/image", async (
+            Guid receiptId,
+            CommerceService service,
+            HttpContext context,
+            IMessageLocalizer localizer,
+            CancellationToken ct) =>
+        {
+            var result = await service.OpenReceiptImageAsync(receiptId, ct);
+            return result.IsFailure
+                ? result.ToHttpResult(context, localizer)
+                : Results.Stream(result.Value!.Content, result.Value.ContentType, enableRangeProcessing: true);
+        });
 
         admin.MapPost("/payment-receipts/{receiptId:guid}/approve", async (
             Guid receiptId,

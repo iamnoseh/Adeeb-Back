@@ -127,7 +127,10 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.ReviewNote.Invalid"] = "Эзоҳи санҷиш нодуруст аст",
             ["Commerce.QrImage.InvalidType"] = "Навъи расми QR-код нодуруст аст",
             ["Commerce.Receipt.Image.InvalidType"] = "Навъи расми чек нодуруст аст",
-            ["Commerce.Image.TooLarge"] = "Андозаи расм аз ҳад зиёд аст"
+            ["Commerce.Image.TooLarge"] = "Андозаи расм аз ҳад зиёд аст",
+            ["Commerce.Receipt.Image.Corrupted"] = "Расми чек вайрон аст",
+            ["Commerce.Image.Dimensions.Invalid"] = "Андозаҳои расм аз ҳад зиёданд",
+            ["Commerce.Receipt.ImageNotFound"] = "Расми чек ёфт нашуд"
         },
         ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -188,7 +191,10 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.ReviewNote.Invalid"] = "Комментарий проверки недействителен",
             ["Commerce.QrImage.InvalidType"] = "Тип изображения QR-кода недействителен",
             ["Commerce.Receipt.Image.InvalidType"] = "Тип изображения чека недействителен",
-            ["Commerce.Image.TooLarge"] = "Размер изображения слишком большой"
+            ["Commerce.Image.TooLarge"] = "Размер изображения слишком большой",
+            ["Commerce.Receipt.Image.Corrupted"] = "Изображение чека повреждено",
+            ["Commerce.Image.Dimensions.Invalid"] = "Размеры изображения превышают допустимые",
+            ["Commerce.Receipt.ImageNotFound"] = "Изображение чека не найдено"
         },
         ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -249,7 +255,10 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.ReviewNote.Invalid"] = "Review note is invalid",
             ["Commerce.QrImage.InvalidType"] = "QR image type is invalid",
             ["Commerce.Receipt.Image.InvalidType"] = "Receipt image type is invalid",
-            ["Commerce.Image.TooLarge"] = "Image is too large"
+            ["Commerce.Image.TooLarge"] = "Image is too large",
+            ["Commerce.Receipt.Image.Corrupted"] = "Receipt image is corrupted",
+            ["Commerce.Image.Dimensions.Invalid"] = "Image dimensions exceed the allowed limits",
+            ["Commerce.Receipt.ImageNotFound"] = "Receipt image was not found"
         }
     };
     public string this[string key]

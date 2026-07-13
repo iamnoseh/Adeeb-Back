@@ -67,7 +67,7 @@ public sealed record PaymentReceiptResponse(
     decimal TariffPrice,
     string Currency,
     short DurationDays,
-    string ReceiptImageUrl,
+    bool ReceiptImageAvailable,
     string Status,
     string? AdminNote,
     Guid? ReviewedByUserId,
