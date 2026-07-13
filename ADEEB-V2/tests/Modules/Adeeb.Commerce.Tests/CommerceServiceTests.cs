@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Commerce.Application;
+using Adeeb.Modules.Commerce.Application.Caching;
 using Adeeb.Modules.Commerce.Contracts;
 using Adeeb.Modules.Commerce.Domain.Entitlements;
 using Adeeb.Modules.Commerce.Domain.Payments;
+using Adeeb.Modules.Commerce.Domain.Tariffs;
 using Adeeb.Modules.Commerce.Infrastructure.Persistence;
 using Adeeb.Modules.Students.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -535,6 +537,33 @@ public sealed class CommerceServiceTests
         Assert.Equal("date_range.invalid", result.Error!.Code);
     }
 
+    [Fact]
+    public async Task Public_tariff_cache_is_used_and_invalidated_after_mutation()
+    {
+        await using var db = CreateDb();
+        var cache = new RecordingTariffCache();
+        var service = new CommerceService(db, new FakeStudentLookup(), new FixedClock(), cache);
+
+        var created = await service.CreateTariffAsync(
+            new TariffFormRequest { Name = "Premium", Price = 25, Currency = "TJS", DurationDays = 30, Status = 1 },
+            "private/qr.webp",
+            CancellationToken.None);
+        var firstRead = await service.GetTariffsAsync(admin: false, CancellationToken.None);
+        db.Tariffs.Add(new CommerceTariff(
+            Guid.NewGuid(), "Premium 60", 40, "TJS", 60, "private/qr-60.webp", FixedClock.Now));
+        await db.SaveChangesAsync();
+        var cachedRead = await service.GetTariffsAsync(admin: false, CancellationToken.None);
+        await service.UpdateTariffAsync(
+            created.Value!.TariffId,
+            new TariffFormRequest { Name = "Premium", Price = 30, Currency = "TJS", DurationDays = 30, Status = 1 },
+            null,
+            CancellationToken.None);
+
+        Assert.Single(firstRead.Value!);
+        Assert.Single(cachedRead.Value!);
+        Assert.Equal(2, cache.InvalidationCount);
+    }
+
     private static CommerceService CreateService(CommerceDbContext db, IStudentLookup students) =>
         new(db, students, new FixedClock());
 
@@ -566,6 +595,26 @@ public sealed class CommerceServiceTests
         public Task<StudentReference?> FindByStudentIdAsync(Guid studentId, CancellationToken cancellationToken) =>
             Task.FromResult(_students.SingleOrDefault(x => x.StudentId == studentId));
 
+    }
+
+    private sealed class RecordingTariffCache : IActiveTariffCache
+    {
+        private IReadOnlyList<TariffResponse>? _tariffs;
+        public int InvalidationCount { get; private set; }
+
+        public bool TryGet(out IReadOnlyList<TariffResponse>? tariffs)
+        {
+            tariffs = _tariffs;
+            return tariffs is not null;
+        }
+
+        public void Set(IReadOnlyList<TariffResponse> tariffs) => _tariffs = tariffs;
+
+        public void Invalidate()
+        {
+            InvalidationCount++;
+            _tariffs = null;
+        }
     }
 
     private sealed class FixedClock : IDateTimeProvider

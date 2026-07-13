@@ -6,6 +6,7 @@ using Adeeb.Application.Abstractions.Storage;
 using Adeeb.Modules.Commerce.Application.Storage;
 using Adeeb.Modules.Commerce.Application.Auditing;
 using Adeeb.Modules.Commerce.Application.Pagination;
+using Adeeb.Modules.Commerce.Application.Caching;
 using Adeeb.Modules.Commerce.Contracts;
 using Adeeb.Modules.Commerce.Domain.Entitlements;
 using Adeeb.Modules.Commerce.Domain.Payments;
@@ -23,10 +24,20 @@ public sealed class CommerceService(
     IDateTimeProvider clock,
     IReceiptImageProcessor imageProcessor,
     IPrivateFileStorage privateFiles,
-    ICommerceAuditWriter audit)
+    ICommerceAuditWriter audit,
+    IActiveTariffCache tariffCache)
 {
     public CommerceService(CommerceDbContext db, IStudentLookup students, IDateTimeProvider clock)
-        : this(db, students, clock, new MissingReceiptImageProcessor(), new MissingPrivateFileStorage(), new NullCommerceAuditWriter())
+        : this(db, students, clock, new MissingReceiptImageProcessor(), new MissingPrivateFileStorage(), new NullCommerceAuditWriter(), new NullActiveTariffCache())
+    {
+    }
+
+    public CommerceService(
+        CommerceDbContext db,
+        IStudentLookup students,
+        IDateTimeProvider clock,
+        IActiveTariffCache tariffCache)
+        : this(db, students, clock, new MissingReceiptImageProcessor(), new MissingPrivateFileStorage(), new NullCommerceAuditWriter(), tariffCache)
     {
     }
 
@@ -35,7 +46,18 @@ public sealed class CommerceService(
         IStudentLookup students,
         IDateTimeProvider clock,
         ICommerceAuditWriter audit)
-        : this(db, students, clock, new MissingReceiptImageProcessor(), new MissingPrivateFileStorage(), audit)
+        : this(db, students, clock, new MissingReceiptImageProcessor(), new MissingPrivateFileStorage(), audit, new NullActiveTariffCache())
+    {
+    }
+
+    public CommerceService(
+        CommerceDbContext db,
+        IStudentLookup students,
+        IDateTimeProvider clock,
+        IReceiptImageProcessor imageProcessor,
+        IPrivateFileStorage privateFiles,
+        ICommerceAuditWriter audit)
+        : this(db, students, clock, imageProcessor, privateFiles, audit, new NullActiveTariffCache())
     {
     }
 
@@ -77,6 +99,7 @@ public sealed class CommerceService(
             ["status"] = tariff.Status.ToString()
         });
         await db.SaveChangesAsync(cancellationToken);
+        tariffCache.Invalidate();
         return Result<TariffResponse>.Success(ToResponse(tariff));
     }
 
@@ -124,6 +147,7 @@ public sealed class CommerceService(
             ["status"] = tariff.Status.ToString()
         });
         await db.SaveChangesAsync(cancellationToken);
+        tariffCache.Invalidate();
         return Result<TariffResponse>.Success(ToResponse(tariff));
     }
 
@@ -144,11 +168,17 @@ public sealed class CommerceService(
             oldValues: new Dictionary<string, object?> { ["status"] = previousStatus },
             newValues: new Dictionary<string, object?> { ["status"] = tariff.Status.ToString() });
         await db.SaveChangesAsync(cancellationToken);
+        tariffCache.Invalidate();
         return Result<TariffResponse>.Success(ToResponse(tariff));
     }
 
     public async Task<Result<IReadOnlyList<TariffResponse>>> GetTariffsAsync(bool admin, CancellationToken cancellationToken)
     {
+        if (!admin && tariffCache.TryGet(out var cached))
+        {
+            return Result<IReadOnlyList<TariffResponse>>.Success(cached!);
+        }
+
         var query = db.Tariffs.AsNoTracking();
         if (!admin)
         {
@@ -156,7 +186,13 @@ public sealed class CommerceService(
         }
 
         var tariffs = await query.OrderBy(x => x.Price).ThenBy(x => x.Name).ToListAsync(cancellationToken);
-        return Result<IReadOnlyList<TariffResponse>>.Success(tariffs.Select(ToResponse).ToList());
+        IReadOnlyList<TariffResponse> response = tariffs.Select(ToResponse).ToList();
+        if (!admin)
+        {
+            tariffCache.Set(response);
+        }
+
+        return Result<IReadOnlyList<TariffResponse>>.Success(response);
     }
 
     public async Task<Result<PaymentReceiptResponse>> SubmitCurrentReceiptAsync(

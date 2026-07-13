@@ -5,6 +5,8 @@ using Adeeb.Application.Abstractions.Storage;
 using Adeeb.Modules.Commerce.Application;
 using Adeeb.Modules.Commerce.Application.Storage;
 using Adeeb.Modules.Commerce.Application.Auditing;
+using Adeeb.Modules.Commerce.Application.Caching;
+using Adeeb.Modules.Commerce.Infrastructure.Caching;
 using Adeeb.Modules.Commerce.Infrastructure.Auditing;
 using Adeeb.Modules.Commerce.Infrastructure.Files;
 using Adeeb.Modules.Commerce.Infrastructure.Persistence;
@@ -27,6 +29,8 @@ public static class DependencyInjection
         }
 
         services.AddDbContext<CommerceDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddMemoryCache();
+        services.AddSingleton<IActiveTariffCache, ActiveTariffCache>();
         var storage = configuration.GetSection(PrivateFileStorageOptions.SectionName).Get<PrivateFileStorageOptions>() ?? new();
         services.AddOptions<PrivateFileStorageOptions>()
             .Bind(configuration.GetSection(PrivateFileStorageOptions.SectionName))

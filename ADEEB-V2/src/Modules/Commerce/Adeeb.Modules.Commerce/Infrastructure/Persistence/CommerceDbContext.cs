@@ -93,6 +93,23 @@ internal sealed class PaymentReceiptConfiguration : IEntityTypeConfiguration<Pay
         builder.Property(x => x.Version).IsRowVersion();
         builder.HasIndex(x => new { x.StudentId, x.Status }).HasDatabaseName("ix_commerce_payment_receipts_student_status");
         builder.HasIndex(x => new { x.TariffId, x.Status }).HasDatabaseName("ix_commerce_payment_receipts_tariff_status");
+        builder.HasIndex(x => new { x.StudentId, x.CreatedAtUtc, x.Id })
+            .IsDescending(false, true, true)
+            .HasDatabaseName("ix_commerce_receipts_student_created_id");
+        builder.HasIndex(x => new { x.StudentId, x.Status, x.CreatedAtUtc, x.Id })
+            .IsDescending(false, false, true, true)
+            .HasDatabaseName("ix_commerce_receipts_student_status_created_id");
+        builder.HasIndex(x => new { x.Status, x.CreatedAtUtc, x.Id })
+            .IsDescending(false, true, true)
+            .HasDatabaseName("ix_commerce_receipts_status_created_id");
+        builder.HasIndex(x => new { x.CreatedAtUtc, x.Id })
+            .IsDescending(true, true)
+            .HasFilter("status = 1")
+            .HasDatabaseName("ix_commerce_receipts_pending_created_id");
+        builder.HasIndex(x => new { x.ReviewedByUserId, x.ReviewedAtUtc })
+            .IsDescending(false, true)
+            .HasFilter("reviewed_by_user_id IS NOT NULL")
+            .HasDatabaseName("ix_commerce_receipts_reviewer_reviewed");
         builder.HasIndex(x => new { x.StudentId, x.IdempotencyKey })
             .IsUnique()
             .HasDatabaseName(CommerceDatabaseConstraints.PaymentReceiptIdempotencyScopeUnique);
