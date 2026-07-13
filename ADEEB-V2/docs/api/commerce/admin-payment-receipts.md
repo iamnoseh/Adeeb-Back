@@ -27,17 +27,21 @@ Errors use request localization.
 ## 10. Path Parameters
 Not applicable.
 ## 11. Query Parameters
-Optional `status`: `1 Pending`, `2 Approved`, `3 Rejected`.
+Filters: `status`, `studentId`, `tariffId`, `reviewedByUserId`, `createdFrom`, `createdTo`, `reviewedFrom`, and `reviewedTo`.
+
+`status` accepts `Pending`, `Approved`, `Rejected` or numeric values `1`, `2`, `3`. Date values use ISO 8601 timestamps.
+
+`limit`: optional page size from `1` to `100`, default `30`. `cursor`: optional opaque `nextCursor` from the previous page.
 ## 12. Request Body
 Not applicable.
 ## 13. Field Rules
-Invalid status values are ignored and return all receipts.
+Invalid status, limit, cursor, or inverted date range returns `422` and is never silently ignored.
 ## 14. Success Response
-`200 OK` array of payment receipts.
+`200 OK` cursor envelope with `items`, `nextCursor`, and `hasMore`. Results are ordered by creation time and receipt id descending.
 ## 15. Error Responses
-`401`, `403` ProblemDetails.
+`401`, `403`, `422` ProblemDetails.
 ## 16. Stable Error Codes
-Not applicable.
+`commerce.receipt.status.invalid`, `pagination.limit.invalid`, `pagination.cursor.invalid`, `date_range.invalid`.
 ## 17. Frontend Behavior
 Admin UI should default to pending receipts.
 ## 18. Retry Policy
@@ -54,3 +58,4 @@ Admin opens pending checks and reviews the uploaded image.
 Approve/reject receipt endpoints.
 ## 24. Change History
 2026-07-11: Added admin receipt list.
+2026-07-13: Added validated filters and cursor pagination.

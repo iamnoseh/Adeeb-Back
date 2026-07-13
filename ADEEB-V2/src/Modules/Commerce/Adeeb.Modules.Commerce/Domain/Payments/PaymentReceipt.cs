@@ -22,7 +22,8 @@ public sealed class PaymentReceipt : Entity
         short durationDaysSnapshot,
         string receiptImageObjectKey,
         string idempotencyKey,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        string requestFingerprint = "legacy")
     {
         if (id == Guid.Empty)
         {
@@ -69,6 +70,11 @@ public sealed class PaymentReceipt : Entity
             throw new ArgumentException("Idempotency key is invalid.", nameof(idempotencyKey));
         }
 
+        if (string.IsNullOrWhiteSpace(requestFingerprint) || requestFingerprint.Trim().Length > 128)
+        {
+            throw new ArgumentException("Request fingerprint is invalid.", nameof(requestFingerprint));
+        }
+
         Id = id;
         StudentId = studentId;
         TariffId = tariffId;
@@ -78,6 +84,7 @@ public sealed class PaymentReceipt : Entity
         DurationDaysSnapshot = durationDaysSnapshot;
         ReceiptImageObjectKey = receiptImageObjectKey.Trim();
         IdempotencyKey = idempotencyKey.Trim();
+        RequestFingerprint = requestFingerprint.Trim();
         Status = PaymentReceiptStatus.Pending;
         CreatedAtUtc = now;
         UpdatedAtUtc = now;
@@ -91,6 +98,7 @@ public sealed class PaymentReceipt : Entity
     public short DurationDaysSnapshot { get; private set; }
     public string ReceiptImageObjectKey { get; private set; } = string.Empty;
     public string IdempotencyKey { get; private set; } = string.Empty;
+    public string RequestFingerprint { get; private set; } = string.Empty;
     public PaymentReceiptStatus Status { get; private set; }
     public string? AdminNote { get; private set; }
     public Guid? ReviewedByUserId { get; private set; }

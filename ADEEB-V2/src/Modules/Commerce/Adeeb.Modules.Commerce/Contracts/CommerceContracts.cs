@@ -48,6 +48,46 @@ public sealed class SubmitPaymentReceiptFormRequest
 
 public sealed record ReviewPaymentReceiptRequest(string? Note);
 
+public sealed record CursorPageResponse<T>(
+    IReadOnlyList<T> Items,
+    string? NextCursor,
+    bool HasMore);
+
+public sealed class StudentPaymentReceiptQuery
+{
+    public string? Status { get; init; }
+    public int Limit { get; init; } = 30;
+    public string? Cursor { get; init; }
+}
+
+public sealed class AdminPaymentReceiptQuery
+{
+    public string? Status { get; init; }
+    public Guid? StudentId { get; init; }
+    public Guid? TariffId { get; init; }
+    public Guid? ReviewedByUserId { get; init; }
+    public DateTimeOffset? CreatedFrom { get; init; }
+    public DateTimeOffset? CreatedTo { get; init; }
+    public DateTimeOffset? ReviewedFrom { get; init; }
+    public DateTimeOffset? ReviewedTo { get; init; }
+    public int Limit { get; init; } = 30;
+    public string? Cursor { get; init; }
+}
+
+public sealed record PaymentReceiptListItemResponse(
+    Guid ReceiptId,
+    Guid StudentId,
+    Guid TariffId,
+    string TariffName,
+    decimal TariffPrice,
+    string Currency,
+    short DurationDays,
+    bool ReceiptImageAvailable,
+    string Status,
+    Guid? ReviewedByUserId,
+    DateTimeOffset? ReviewedAtUtc,
+    DateTimeOffset CreatedAtUtc);
+
 public sealed record TariffResponse(
     Guid TariffId,
     string Name,

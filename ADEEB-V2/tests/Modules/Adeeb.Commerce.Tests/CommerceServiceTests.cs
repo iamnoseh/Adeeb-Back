@@ -3,6 +3,7 @@ using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Commerce.Application;
 using Adeeb.Modules.Commerce.Contracts;
 using Adeeb.Modules.Commerce.Domain.Entitlements;
+using Adeeb.Modules.Commerce.Domain.Payments;
 using Adeeb.Modules.Commerce.Infrastructure.Persistence;
 using Adeeb.Modules.Students.Contracts;
 using Microsoft.EntityFrameworkCore;
@@ -391,7 +392,7 @@ public sealed class CommerceServiceTests
     }
 
     [Fact]
-    public async Task Receipt_upload_is_idempotent_and_key_cannot_cross_student_or_tariff()
+    public async Task Receipt_upload_is_idempotent_scoped_to_student_and_rejects_payload_mismatch()
     {
         var firstStudentId = Guid.NewGuid();
         var secondStudentId = Guid.NewGuid();
@@ -441,10 +442,97 @@ public sealed class CommerceServiceTests
         Assert.True(repeat.IsSuccess);
         Assert.Equal(first.Value!.ReceiptId, repeat.Value!.ReceiptId);
         Assert.True(otherTariff.IsFailure);
-        Assert.Equal(CommerceErrors.IdempotencyKeyInUse.Code, otherTariff.Error!.Code);
-        Assert.True(otherStudent.IsFailure);
-        Assert.Equal(CommerceErrors.IdempotencyKeyInUse.Code, otherStudent.Error!.Code);
-        Assert.Equal(1, await db.PaymentReceipts.CountAsync());
+        Assert.Equal(CommerceErrors.IdempotencyPayloadMismatch.Code, otherTariff.Error!.Code);
+        Assert.True(otherStudent.IsSuccess);
+        Assert.Equal(2, await db.PaymentReceipts.CountAsync());
+    }
+
+    [Fact]
+    public async Task Receipt_cursor_pagination_is_stable_when_rows_share_a_timestamp()
+    {
+        var studentId = Guid.NewGuid();
+        var identityId = Guid.NewGuid();
+        var tariffId = Guid.NewGuid();
+        await using var db = CreateDb();
+        for (var index = 0; index < 5; index++)
+        {
+            db.PaymentReceipts.Add(new PaymentReceipt(
+                Guid.NewGuid(),
+                studentId,
+                tariffId,
+                "Premium 30",
+                25,
+                "TJS",
+                30,
+                $"receipts/{index}.webp",
+                $"receipt-{index}",
+                FixedClock.Now,
+                $"fingerprint-{index}"));
+        }
+
+        await db.SaveChangesAsync();
+        var service = CreateService(db, new FakeStudentLookup(new StudentReference(studentId, identityId, "Active")));
+
+        var first = await service.GetCurrentPaymentReceiptsPageAsync(
+            Principal(identityId),
+            new StudentPaymentReceiptQuery { Limit = 2 },
+            CancellationToken.None);
+        var second = await service.GetCurrentPaymentReceiptsPageAsync(
+            Principal(identityId),
+            new StudentPaymentReceiptQuery { Limit = 2, Cursor = first.Value!.NextCursor },
+            CancellationToken.None);
+        var third = await service.GetCurrentPaymentReceiptsPageAsync(
+            Principal(identityId),
+            new StudentPaymentReceiptQuery { Limit = 2, Cursor = second.Value!.NextCursor },
+            CancellationToken.None);
+
+        var ids = first.Value.Items.Concat(second.Value!.Items).Concat(third.Value!.Items).Select(x => x.ReceiptId).ToList();
+        Assert.Equal(5, ids.Count);
+        Assert.Equal(5, ids.Distinct().Count());
+        Assert.True(first.Value.HasMore);
+        Assert.True(second.Value.HasMore);
+        Assert.False(third.Value.HasMore);
+        Assert.Null(third.Value.NextCursor);
+    }
+
+    [Theory]
+    [InlineData(0, null, null, "pagination.limit.invalid")]
+    [InlineData(101, null, null, "pagination.limit.invalid")]
+    [InlineData(30, "not-base64", null, "pagination.cursor.invalid")]
+    [InlineData(30, null, "unknown", "commerce.receipt.status.invalid")]
+    public async Task Receipt_queries_reject_invalid_pagination_and_status(
+        int limit,
+        string? cursor,
+        string? status,
+        string expectedCode)
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db, new FakeStudentLookup());
+
+        var result = await service.GetPaymentReceiptsPageAsync(
+            new AdminPaymentReceiptQuery { Limit = limit, Cursor = cursor, Status = status },
+            CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(expectedCode, result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task Admin_receipt_query_rejects_inverted_date_ranges()
+    {
+        await using var db = CreateDb();
+        var service = CreateService(db, new FakeStudentLookup());
+
+        var result = await service.GetPaymentReceiptsPageAsync(
+            new AdminPaymentReceiptQuery
+            {
+                CreatedFrom = FixedClock.Now,
+                CreatedTo = FixedClock.Now.AddDays(-1)
+            },
+            CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("date_range.invalid", result.Error!.Code);
     }
 
     private static CommerceService CreateService(CommerceDbContext db, IStudentLookup students) =>

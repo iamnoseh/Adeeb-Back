@@ -86,6 +86,52 @@ public sealed class CommerceConcurrencyIntegrationScenarios(AdeebApiFactory fact
         Assert.Equal(FixedClock.Now.AddDays(30), entitlement.ExpiresAtUtc);
     }
 
+    [Fact]
+    public async Task ScopedIdempotencyAndCursorPagination_WorkAgainstPostgreSql()
+    {
+        await using var db = CreateDb();
+        await db.Database.MigrateAsync();
+        var firstStudentId = Guid.NewGuid();
+        var secondStudentId = Guid.NewGuid();
+        var identityId = Guid.NewGuid();
+        var tariff = new CommerceTariff(Guid.NewGuid(), "Premium 30", 25, "TJS", 30, "private/qr.webp", FixedClock.Now);
+        db.Tariffs.Add(tariff);
+        for (var index = 0; index < 5; index++)
+        {
+            db.PaymentReceipts.Add(CreateReceipt(
+                firstStudentId,
+                tariff,
+                index == 0 ? "shared-key" : $"first-{index}",
+                $"first-fingerprint-{index}"));
+        }
+
+        db.PaymentReceipts.Add(CreateReceipt(secondStudentId, tariff, "shared-key", "second-fingerprint"));
+        await db.SaveChangesAsync();
+        var service = new CommerceService(
+            db,
+            new ExactStudentLookup(new StudentReference(firstStudentId, identityId, "Active")),
+            new FixedClock());
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", identityId.ToString())], "Test"));
+
+        var first = await service.GetCurrentPaymentReceiptsPageAsync(
+            principal,
+            new StudentPaymentReceiptQuery { Limit = 2 },
+            CancellationToken.None);
+        var second = await service.GetCurrentPaymentReceiptsPageAsync(
+            principal,
+            new StudentPaymentReceiptQuery { Limit = 2, Cursor = first.Value!.NextCursor },
+            CancellationToken.None);
+        var third = await service.GetCurrentPaymentReceiptsPageAsync(
+            principal,
+            new StudentPaymentReceiptQuery { Limit = 2, Cursor = second.Value!.NextCursor },
+            CancellationToken.None);
+
+        var ids = first.Value.Items.Concat(second.Value!.Items).Concat(third.Value!.Items).Select(x => x.ReceiptId).ToList();
+        Assert.Equal(5, ids.Count);
+        Assert.Equal(5, ids.Distinct().Count());
+        Assert.Equal(2, await db.PaymentReceipts.CountAsync(x => x.IdempotencyKey == "shared-key"));
+    }
+
     private async Task<Guid> SeedPendingReceiptAsync()
     {
         await using var db = CreateDb();
@@ -107,6 +153,24 @@ public sealed class CommerceConcurrencyIntegrationScenarios(AdeebApiFactory fact
         await db.SaveChangesAsync();
         return receipt.Id;
     }
+
+    private static PaymentReceipt CreateReceipt(
+        Guid studentId,
+        CommerceTariff tariff,
+        string idempotencyKey,
+        string fingerprint) =>
+        new(
+            Guid.NewGuid(),
+            studentId,
+            tariff.Id,
+            tariff.Name,
+            tariff.Price,
+            tariff.Currency,
+            tariff.DurationDays,
+            $"commerce/payment-receipts/test/{Guid.NewGuid():N}.webp",
+            idempotencyKey,
+            FixedClock.Now,
+            fingerprint);
 
     private async Task<Result<PaymentReceiptResponse>> ReviewAsync(Guid receiptId, bool approve, Guid reviewerId)
     {
@@ -143,6 +207,15 @@ public sealed class CommerceConcurrencyIntegrationScenarios(AdeebApiFactory fact
 
         public Task<StudentReference?> FindByStudentIdAsync(Guid studentId, CancellationToken cancellationToken) =>
             Task.FromResult<StudentReference?>(null);
+    }
+
+    private sealed class ExactStudentLookup(StudentReference student) : IStudentLookup
+    {
+        public Task<StudentReference?> FindByIdentityUserIdAsync(Guid identityUserId, CancellationToken cancellationToken) =>
+            Task.FromResult<StudentReference?>(student.IdentityUserId == identityUserId ? student : null);
+
+        public Task<StudentReference?> FindByStudentIdAsync(Guid studentId, CancellationToken cancellationToken) =>
+            Task.FromResult<StudentReference?>(student.StudentId == studentId ? student : null);
     }
 
     private sealed class FixedClock : IDateTimeProvider

@@ -32,12 +32,12 @@ public static class CommerceEndpoints
             .RequireAuthorization();
 
         group.MapGet("/me/payment-receipts", async (
-            int? status,
+            [AsParameters] StudentPaymentReceiptQuery query,
             CommerceService service,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.GetCurrentPaymentReceiptsAsync(context.User, status, ct)).ToHttpResult(context, localizer))
+            (await service.GetCurrentPaymentReceiptsPageAsync(context.User, query, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization();
 
         group.MapPost("/tariffs/{tariffId:guid}/payment-receipts", async (
@@ -124,12 +124,12 @@ public static class CommerceEndpoints
             .RequireAuthorization(Permissions.Commerce.ManageTariffs);
 
         admin.MapGet("/payment-receipts", async (
-            int? status,
+            [AsParameters] AdminPaymentReceiptQuery query,
             CommerceService service,
             HttpContext context,
             IMessageLocalizer localizer,
             CancellationToken ct) =>
-            (await service.GetPaymentReceiptsAsync(status, ct)).ToHttpResult(context, localizer))
+            (await service.GetPaymentReceiptsPageAsync(query, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization(Permissions.Commerce.ViewPaymentReceipts);
 
         admin.MapGet("/payment-receipts/{receiptId:guid}/image", async (

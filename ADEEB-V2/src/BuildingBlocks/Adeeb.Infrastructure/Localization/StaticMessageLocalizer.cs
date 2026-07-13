@@ -130,7 +130,12 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.Image.TooLarge"] = "Андозаи расм аз ҳад зиёд аст",
             ["Commerce.Receipt.Image.Corrupted"] = "Расми чек вайрон аст",
             ["Commerce.Image.Dimensions.Invalid"] = "Андозаҳои расм аз ҳад зиёданд",
-            ["Commerce.Receipt.ImageNotFound"] = "Расми чек ёфт нашуд"
+            ["Commerce.Receipt.ImageNotFound"] = "Расми чек ёфт нашуд",
+            ["Commerce.Receipt.Status.Invalid"] = "Ҳолати чек нодуруст аст",
+            ["Pagination.Limit.Invalid"] = "Ҳадди саҳифа нодуруст аст",
+            ["Pagination.Cursor.Invalid"] = "Курсори саҳифа нодуруст аст",
+            ["DateRange.Invalid"] = "Фосилаи сана нодуруст аст",
+            ["Idempotency.PayloadMismatch"] = "Калиди такрорӣ бо маълумоти дигар истифода шуд"
         },
         ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -194,7 +199,12 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.Image.TooLarge"] = "Размер изображения слишком большой",
             ["Commerce.Receipt.Image.Corrupted"] = "Изображение чека повреждено",
             ["Commerce.Image.Dimensions.Invalid"] = "Размеры изображения превышают допустимые",
-            ["Commerce.Receipt.ImageNotFound"] = "Изображение чека не найдено"
+            ["Commerce.Receipt.ImageNotFound"] = "Изображение чека не найдено",
+            ["Commerce.Receipt.Status.Invalid"] = "Статус чека недействителен",
+            ["Pagination.Limit.Invalid"] = "Лимит страницы недействителен",
+            ["Pagination.Cursor.Invalid"] = "Курсор страницы недействителен",
+            ["DateRange.Invalid"] = "Диапазон дат недействителен",
+            ["Idempotency.PayloadMismatch"] = "Ключ идемпотентности использован с другими данными"
         },
         ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -258,7 +268,12 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.Image.TooLarge"] = "Image is too large",
             ["Commerce.Receipt.Image.Corrupted"] = "Receipt image is corrupted",
             ["Commerce.Image.Dimensions.Invalid"] = "Image dimensions exceed the allowed limits",
-            ["Commerce.Receipt.ImageNotFound"] = "Receipt image was not found"
+            ["Commerce.Receipt.ImageNotFound"] = "Receipt image was not found",
+            ["Commerce.Receipt.Status.Invalid"] = "Payment receipt status is invalid",
+            ["Pagination.Limit.Invalid"] = "Page limit is invalid",
+            ["Pagination.Cursor.Invalid"] = "Page cursor is invalid",
+            ["DateRange.Invalid"] = "Date range is invalid",
+            ["Idempotency.PayloadMismatch"] = "Idempotency key was used with a different payload"
         }
     };
     public string this[string key]

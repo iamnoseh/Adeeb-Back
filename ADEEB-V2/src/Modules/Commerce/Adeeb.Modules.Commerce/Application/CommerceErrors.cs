@@ -20,4 +20,9 @@ public static class CommerceErrors
     public static readonly Error ImageTooLarge = Error.Validation("commerce.image.too_large", "Commerce.Image.TooLarge");
     public static readonly Error ImageDimensionsInvalid = Error.Validation("commerce.image.dimensions.invalid", "Commerce.Image.Dimensions.Invalid");
     public static readonly Error ReceiptImageNotFound = Error.NotFound("commerce.receipt.image_not_found", "Commerce.Receipt.ImageNotFound");
+    public static readonly Error ReceiptStatusInvalid = Error.Validation("commerce.receipt.status.invalid", "Commerce.Receipt.Status.Invalid");
+    public static readonly Error PaginationLimitInvalid = Error.Validation("pagination.limit.invalid", "Pagination.Limit.Invalid");
+    public static readonly Error PaginationCursorInvalid = Error.Validation("pagination.cursor.invalid", "Pagination.Cursor.Invalid");
+    public static readonly Error DateRangeInvalid = Error.Validation("date_range.invalid", "DateRange.Invalid");
+    public static readonly Error IdempotencyPayloadMismatch = Error.Conflict("idempotency.payload_mismatch", "Idempotency.PayloadMismatch");
 }
