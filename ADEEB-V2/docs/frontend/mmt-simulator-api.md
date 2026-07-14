@@ -24,6 +24,15 @@ The frontend workflow is:
 The simulator does not calculate answers or run an exam. Its result is advisory, not an
 official admission result.
 
+## Localization
+
+Send `X-Adeeb-Language: tg-TJ` or `ru-RU`. Cluster, university, city, and specialty
+names/descriptions are resolved in that language with Tajik fallback. Admin create and
+update operations edit the translation for the current request language; a newly
+created or imported legacy value initializes both languages so reads never return an
+empty required name. Error titles are localized, while stable `code` values never
+change by language.
+
 ## Authentication And Authorization
 
 Send `Authorization: Bearer <access-token>` on every route in this document.
@@ -60,13 +69,13 @@ Example response:
     {
       "id": "10000000-0000-0000-0000-000000000001",
       "universityId": "20000000-0000-0000-0000-000000000001",
-      "universityName": "Tajik National University",
+      "universityName": "Донишгоҳи миллии Тоҷикистон",
       "specialtyId": "30000000-0000-0000-0000-000000000001",
       "specialtyCode": "LAW-01",
-      "specialtyName": "Law",
+      "specialtyName": "Ҳуқуқшиносӣ",
       "mmtClusterId": "40000000-0000-0000-0000-000000000002",
       "clusterCode": "C2",
-      "clusterName": "Cluster 2",
+      "clusterName": "Кластери 2",
       "admissionType": 0,
       "studyForm": 0,
       "studyLanguage": 0,

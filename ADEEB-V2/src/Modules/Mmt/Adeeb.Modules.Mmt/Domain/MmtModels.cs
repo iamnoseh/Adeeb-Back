@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Adeeb.Application.Abstractions.Localization;
 using Adeeb.SharedKernel.Domain;
 
 namespace Adeeb.Modules.Mmt.Domain;
@@ -34,19 +35,29 @@ public sealed class MmtCluster : Entity
     }
 
     public string Name { get; private set; } = string.Empty;
+    public string NameRu { get; private set; } = string.Empty;
     public string Code { get; private set; } = string.Empty;
     public string? Description { get; private set; }
+    public string? DescriptionRu { get; private set; }
     public bool IsActive { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
     public void Update(string name, string code, string? description, bool isActive, DateTimeOffset now)
+        => UpdateTranslation(SupportedLanguage.Tajik, name, description, code, isActive, now, initializeMissing: true);
+
+    public void UpdateTranslation(SupportedLanguage language, string name, string? description, string code, bool isActive, DateTimeOffset now, bool initializeMissing = false)
     {
-        Name = MmtNormalization.Name(name);
+        var normalizedName = MmtNormalization.Name(name);
+        var normalizedDescription = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        if (language == SupportedLanguage.Russian) { NameRu = normalizedName; DescriptionRu = normalizedDescription; }
+        else { Name = normalizedName; Description = normalizedDescription; }
+        if (initializeMissing || string.IsNullOrWhiteSpace(NameRu)) { NameRu = normalizedName; DescriptionRu = normalizedDescription; }
         Code = MmtNormalization.Code(code);
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         IsActive = isActive;
         UpdatedAtUtc = now;
     }
+    public string NameFor(SupportedLanguage language) => language == SupportedLanguage.Russian && !string.IsNullOrWhiteSpace(NameRu) ? NameRu : Name;
+    public string? DescriptionFor(SupportedLanguage language) => language == SupportedLanguage.Russian ? DescriptionRu ?? Description : Description;
     public void SetActive(bool active, DateTimeOffset now) { IsActive = active; UpdatedAtUtc = now; }
 }
 
@@ -61,25 +72,36 @@ public sealed class University : Entity
     }
 
     public string FullName { get; private set; } = string.Empty;
+    public string FullNameRu { get; private set; } = string.Empty;
     public string NormalizedFullName { get; private set; } = string.Empty;
     public string? ShortName { get; private set; }
+    public string? ShortNameRu { get; private set; }
     public string City { get; private set; } = string.Empty;
+    public string CityRu { get; private set; } = string.Empty;
     public UniversityType Type { get; private set; }
     public string? LogoUrl { get; private set; }
     public bool IsActive { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
     public void Update(string fullName, string? shortName, string city, UniversityType type, string? logoUrl, bool isActive, DateTimeOffset now)
+        => UpdateTranslation(SupportedLanguage.Tajik, fullName, shortName, city, type, logoUrl, isActive, now, initializeMissing: true);
+
+    public void UpdateTranslation(SupportedLanguage language, string fullName, string? shortName, string city, UniversityType type, string? logoUrl, bool isActive, DateTimeOffset now, bool initializeMissing = false)
     {
-        FullName = MmtNormalization.Name(fullName);
-        NormalizedFullName = MmtNormalization.NameKey(fullName);
-        ShortName = string.IsNullOrWhiteSpace(shortName) ? null : MmtNormalization.Name(shortName);
-        City = MmtNormalization.Name(city);
+        var normalizedFullName = MmtNormalization.Name(fullName);
+        var normalizedShortName = string.IsNullOrWhiteSpace(shortName) ? null : MmtNormalization.Name(shortName);
+        var normalizedCity = MmtNormalization.Name(city);
+        if (language == SupportedLanguage.Russian) { FullNameRu = normalizedFullName; ShortNameRu = normalizedShortName; CityRu = normalizedCity; }
+        else { FullName = normalizedFullName; ShortName = normalizedShortName; City = normalizedCity; NormalizedFullName = MmtNormalization.NameKey(fullName); }
+        if (initializeMissing || string.IsNullOrWhiteSpace(FullNameRu)) { FullNameRu = normalizedFullName; ShortNameRu = normalizedShortName; CityRu = normalizedCity; }
         Type = type;
         LogoUrl = string.IsNullOrWhiteSpace(logoUrl) ? null : logoUrl.Trim();
         IsActive = isActive;
         UpdatedAtUtc = now;
     }
+    public string FullNameFor(SupportedLanguage language) => language == SupportedLanguage.Russian && !string.IsNullOrWhiteSpace(FullNameRu) ? FullNameRu : FullName;
+    public string? ShortNameFor(SupportedLanguage language) => language == SupportedLanguage.Russian ? ShortNameRu ?? ShortName : ShortName;
+    public string CityFor(SupportedLanguage language) => language == SupportedLanguage.Russian && !string.IsNullOrWhiteSpace(CityRu) ? CityRu : City;
     public void SetActive(bool active, DateTimeOffset now) { IsActive = active; UpdatedAtUtc = now; }
 }
 
@@ -95,18 +117,28 @@ public sealed class Specialty : Entity
 
     public string Code { get; private set; } = string.Empty;
     public string Name { get; private set; } = string.Empty;
+    public string NameRu { get; private set; } = string.Empty;
     public string? Description { get; private set; }
+    public string? DescriptionRu { get; private set; }
     public bool IsActive { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
     public void Update(string code, string name, string? description, bool isActive, DateTimeOffset now)
+        => UpdateTranslation(SupportedLanguage.Tajik, code, name, description, isActive, now, initializeMissing: true);
+
+    public void UpdateTranslation(SupportedLanguage language, string code, string name, string? description, bool isActive, DateTimeOffset now, bool initializeMissing = false)
     {
         Code = MmtNormalization.Code(code);
-        Name = MmtNormalization.Name(name);
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        var normalizedName = MmtNormalization.Name(name);
+        var normalizedDescription = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        if (language == SupportedLanguage.Russian) { NameRu = normalizedName; DescriptionRu = normalizedDescription; }
+        else { Name = normalizedName; Description = normalizedDescription; }
+        if (initializeMissing || string.IsNullOrWhiteSpace(NameRu)) { NameRu = normalizedName; DescriptionRu = normalizedDescription; }
         IsActive = isActive;
         UpdatedAtUtc = now;
     }
+    public string NameFor(SupportedLanguage language) => language == SupportedLanguage.Russian && !string.IsNullOrWhiteSpace(NameRu) ? NameRu : Name;
+    public string? DescriptionFor(SupportedLanguage language) => language == SupportedLanguage.Russian ? DescriptionRu ?? Description : Description;
     public void SetActive(bool active, DateTimeOffset now) { IsActive = active; UpdatedAtUtc = now; }
 }
 

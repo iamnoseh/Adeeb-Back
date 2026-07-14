@@ -276,6 +276,80 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Idempotency.PayloadMismatch"] = "Idempotency key was used with a different payload"
         }
     };
+    private static readonly Dictionary<string, Dictionary<string, string>> LocalizedMmtMessages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["tg-TJ"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["MMT.ClusterNotFound"] = "Кластери ММТ ёфт нашуд",
+            ["MMT.UniversityNotFound"] = "Донишгоҳ ёфт нашуд",
+            ["MMT.SpecialtyNotFound"] = "Ихтисос ёфт нашуд",
+            ["MMT.ProgramNotFound"] = "Барномаи қабул ёфт нашуд",
+            ["MMT.ScoreNotFound"] = "Балли гузариш ёфт нашуд",
+            ["MMT.ClusterCodeExists"] = "Рамзи кластер аллакай мавҷуд аст",
+            ["MMT.UniversityExists"] = "Донишгоҳ аллакай мавҷуд аст",
+            ["MMT.SpecialtyCodeExists"] = "Рамзи ихтисос аллакай мавҷуд аст",
+            ["MMT.ProgramExists"] = "Барномаи қабул аллакай мавҷуд аст",
+            ["MMT.ScoreExists"] = "Балли ин сол аллакай мавҷуд аст",
+            ["MMT.ReferenceInactive"] = "Маълумоти вобастаи барнома бояд мавҷуд ва фаъол бошад",
+            ["MMT.PublishInvalid"] = "Барномаро дар ҳолати ҷорӣ нашр кардан мумкин нест",
+            ["MMT.ImportFileInvalid"] = "Файли воридот нодуруст аст",
+            ["MMT.ImportExistingScore"] = "Файл балли гузариши мавҷударо дар бар мегирад",
+            ["MMT.ImportConflict"] = "Маълумот ҳангоми воридот тағйир ёфт; пешнамоиши нав созед",
+            ["MMT.YearInvalid"] = "Сол бояд аз 2000 то 2100 бошад",
+            ["MMT.SeatsInvalid"] = "Шумораи ҷойҳо манфӣ буда наметавонад",
+            ["MMT.ScoreInvalid"] = "Балли гузариш нодуруст аст",
+            ["MMT.EnumInvalid"] = "Қимати интихобшуда нодуруст аст",
+            ["MMT.ValueTooLong"] = "Қимат аз дарозии иҷозашуда зиёд аст",
+            ["MMT.StudentProfileNotFound"] = "Профили фаъоли ММТ ёфт нашуд",
+            ["MMT.EvaluationNotFound"] = "Арзёбии ММТ ёфт нашуд",
+            ["MMT.AdmissionYearUnavailable"] = "Соли қабули дархостшуда ҳоло дастрас нест",
+            ["MMT.GoalProgramInvalid"] = "Барномаи ҳадаф ба кластер ва соли қабул мувофиқ нест",
+            ["MMT.ChoiceProgramInvalid"] = "Ҳар интихоб бояд барномаи фаъол ва нашршудаи кластеру соли профил бошад",
+            ["MMT.TooManyChoices"] = "На бештар аз 12 интихоб иҷозат аст",
+            ["MMT.DuplicateChoiceProgram"] = "Як барномаро ду бор интихоб кардан мумкин нест",
+            ["MMT.DuplicateChoicePriority"] = "Афзалиятҳои интихоб бояд ягона бошанд",
+            ["MMT.InvalidChoiceOrder"] = "Афзалиятҳо бояд пайдарпай аз 1 оғоз шаванд",
+            ["MMT.ChoicesRequired"] = "Пеш аз симулятсия ақаллан як барномаро интихоб кунед",
+            ["MMT.ProfileConflict"] = "Профил ҳамзамон тағйир ёфт; саҳифаро нав кунед",
+            ["MMT.ChoiceUpdateConflict"] = "Интихобҳо ҳамзамон тағйир ёфтанд; саҳифаро нав кунед"
+        },
+        ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["MMT.ClusterNotFound"] = "Кластер ММТ не найден",
+            ["MMT.UniversityNotFound"] = "Университет не найден",
+            ["MMT.SpecialtyNotFound"] = "Специальность не найдена",
+            ["MMT.ProgramNotFound"] = "Программа поступления не найдена",
+            ["MMT.ScoreNotFound"] = "Проходной балл не найден",
+            ["MMT.ClusterCodeExists"] = "Код кластера уже существует",
+            ["MMT.UniversityExists"] = "Университет уже существует",
+            ["MMT.SpecialtyCodeExists"] = "Код специальности уже существует",
+            ["MMT.ProgramExists"] = "Программа поступления уже существует",
+            ["MMT.ScoreExists"] = "Балл за этот год уже существует",
+            ["MMT.ReferenceInactive"] = "Связанные справочники программы должны существовать и быть активными",
+            ["MMT.PublishInvalid"] = "Программу нельзя опубликовать в текущем состоянии",
+            ["MMT.ImportFileInvalid"] = "Файл импорта некорректен",
+            ["MMT.ImportExistingScore"] = "Импорт содержит существующий проходной балл",
+            ["MMT.ImportConflict"] = "Данные изменились во время импорта; создайте новый предпросмотр",
+            ["MMT.YearInvalid"] = "Год должен быть от 2000 до 2100",
+            ["MMT.SeatsInvalid"] = "Количество мест не может быть отрицательным",
+            ["MMT.ScoreInvalid"] = "Проходной балл некорректен",
+            ["MMT.EnumInvalid"] = "Выбранное значение некорректно",
+            ["MMT.ValueTooLong"] = "Значение превышает допустимую длину",
+            ["MMT.StudentProfileNotFound"] = "Активный профиль ММТ не найден",
+            ["MMT.EvaluationNotFound"] = "Оценивание ММТ не найдено",
+            ["MMT.AdmissionYearUnavailable"] = "Запрошенный год поступления сейчас недоступен",
+            ["MMT.GoalProgramInvalid"] = "Целевая программа не соответствует кластеру и году поступления",
+            ["MMT.ChoiceProgramInvalid"] = "Каждый выбор должен быть активной опубликованной программой кластера и года профиля",
+            ["MMT.TooManyChoices"] = "Разрешено не более 12 вариантов",
+            ["MMT.DuplicateChoiceProgram"] = "Одну программу нельзя выбрать дважды",
+            ["MMT.DuplicateChoicePriority"] = "Приоритеты вариантов должны быть уникальными",
+            ["MMT.InvalidChoiceOrder"] = "Приоритеты должны идти подряд, начиная с 1",
+            ["MMT.ChoicesRequired"] = "Перед симуляцией выберите хотя бы одну программу",
+            ["MMT.ProfileConflict"] = "Профиль был изменён одновременно; обновите страницу",
+            ["MMT.ChoiceUpdateConflict"] = "Варианты были изменены одновременно; обновите страницу"
+        }
+    };
+
     private static readonly Dictionary<string, string> MmtMessages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["MMT.ClusterNotFound"] = "MMT cluster was not found",
@@ -328,6 +402,11 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             if (ContentMessages.TryGetValue(culture, out var contentLocalized) && contentLocalized.TryGetValue(key, out var contentMessage))
             {
                 return contentMessage;
+            }
+
+            if (LocalizedMmtMessages.TryGetValue(culture, out var mmtLocalized) && mmtLocalized.TryGetValue(key, out var mmtMessage))
+            {
+                return mmtMessage;
             }
 
             if (Messages["tg-TJ"].TryGetValue(key, out var fallback))

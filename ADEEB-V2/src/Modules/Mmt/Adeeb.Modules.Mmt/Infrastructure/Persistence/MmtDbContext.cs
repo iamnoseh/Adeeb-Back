@@ -39,8 +39,10 @@ internal sealed class MmtClusterConfiguration : IEntityTypeConfiguration<MmtClus
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasColumnName("id");
         b.Property(x => x.Name).HasColumnName("name").HasMaxLength(160).IsRequired();
+        b.Property(x => x.NameRu).HasColumnName("name_ru").HasMaxLength(160).IsRequired();
         b.Property(x => x.Code).HasColumnName("code").HasMaxLength(40).IsRequired();
         b.Property(x => x.Description).HasColumnName("description").HasMaxLength(2000);
+        b.Property(x => x.DescriptionRu).HasColumnName("description_ru").HasMaxLength(2000);
         b.Property(x => x.IsActive).HasColumnName("is_active");
         b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
         b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
@@ -57,9 +59,12 @@ internal sealed class UniversityConfiguration : IEntityTypeConfiguration<Univers
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasColumnName("id");
         b.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(300).IsRequired();
+        b.Property(x => x.FullNameRu).HasColumnName("full_name_ru").HasMaxLength(300).IsRequired();
         b.Property(x => x.NormalizedFullName).HasColumnName("normalized_full_name").HasMaxLength(300).IsRequired();
         b.Property(x => x.ShortName).HasColumnName("short_name").HasMaxLength(120);
+        b.Property(x => x.ShortNameRu).HasColumnName("short_name_ru").HasMaxLength(120);
         b.Property(x => x.City).HasColumnName("city").HasMaxLength(120).IsRequired();
+        b.Property(x => x.CityRu).HasColumnName("city_ru").HasMaxLength(120).IsRequired();
         b.Property(x => x.Type).HasColumnName("type").HasConversion<string>().HasMaxLength(24);
         b.Property(x => x.LogoUrl).HasColumnName("logo_url").HasMaxLength(512);
         b.Property(x => x.IsActive).HasColumnName("is_active");
@@ -79,7 +84,9 @@ internal sealed class SpecialtyConfiguration : IEntityTypeConfiguration<Specialt
         b.Property(x => x.Id).HasColumnName("id");
         b.Property(x => x.Code).HasColumnName("code").HasMaxLength(60).IsRequired();
         b.Property(x => x.Name).HasColumnName("name").HasMaxLength(240).IsRequired();
+        b.Property(x => x.NameRu).HasColumnName("name_ru").HasMaxLength(240).IsRequired();
         b.Property(x => x.Description).HasColumnName("description").HasMaxLength(2000);
+        b.Property(x => x.DescriptionRu).HasColumnName("description_ru").HasMaxLength(2000);
         b.Property(x => x.IsActive).HasColumnName("is_active");
         b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
         b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");

@@ -1,3 +1,5 @@
+using System.Globalization;
+using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Mmt.Application;
 using Adeeb.Modules.Mmt.Application.Import;
@@ -21,6 +23,29 @@ public sealed class MmtModuleTests
         Assert.True((await service.CreateClusterAsync(new("Cluster 2", " c2 ", null), default)).IsSuccess);
         var duplicate = await service.CreateClusterAsync(new("Other", "C2", null), default);
         Assert.Equal(MmtErrors.DuplicateCluster.Code, duplicate.Error?.Code);
+    }
+
+    [Fact]
+    public async Task Catalog_reads_resolve_the_current_request_language()
+    {
+        await using var db = Db();
+        var cluster = new MmtCluster(Guid.NewGuid(), "Кластери 2", "C2", "Тавсиф", Now);
+        cluster.UpdateTranslation(SupportedLanguage.Russian, "Кластер 2", "Описание", "C2", true, Now);
+        db.Clusters.Add(cluster);
+        await db.SaveChangesAsync();
+
+        var previous = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("ru-RU");
+            var result = await new MmtCatalogService(db, new Clock()).GetClusterAsync(cluster.Id, default);
+            Assert.Equal("Кластер 2", result.Value!.Name);
+            Assert.Equal("Описание", result.Value.Description);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = previous;
+        }
     }
 
     [Fact]

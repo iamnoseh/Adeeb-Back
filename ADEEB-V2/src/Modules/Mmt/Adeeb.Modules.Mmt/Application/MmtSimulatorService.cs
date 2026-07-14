@@ -173,8 +173,8 @@ public sealed class MmtSimulatorService(
             goalMissing, readiness, messageKey, now);
         var snapshots = calculations.Select(x => new MmtAdmissionChoiceSnapshot(
             Guid.NewGuid(), evaluationId, x.Choice.PriorityOrder, x.Choice.AdmissionProgramId,
-            x.Choice.AdmissionProgram.University.FullName, x.Choice.AdmissionProgram.Specialty.Code,
-            x.Choice.AdmissionProgram.Specialty.Name, x.Choice.AdmissionProgram.MmtCluster.Code,
+            x.Choice.AdmissionProgram.University.FullNameFor(MmtCatalogService.CurrentLanguage), x.Choice.AdmissionProgram.Specialty.Code,
+            x.Choice.AdmissionProgram.Specialty.NameFor(MmtCatalogService.CurrentLanguage), x.Choice.AdmissionProgram.MmtCluster.Code,
             x.Choice.AdmissionProgram.AdmissionType, x.Choice.AdmissionProgram.StudyForm,
             x.Choice.AdmissionProgram.StudyLanguage, x.Choice.AdmissionProgram.AdmissionYear,
             x.Latest, x.Threshold, request.TotalScore,
@@ -261,9 +261,9 @@ public sealed class MmtSimulatorService(
             x.Id,
             x.PriorityOrder,
             new AdmissionProgramListItemDto(
-                x.AdmissionProgram.Id, x.AdmissionProgram.UniversityId, x.AdmissionProgram.University.FullName,
-                x.AdmissionProgram.SpecialtyId, x.AdmissionProgram.Specialty.Code, x.AdmissionProgram.Specialty.Name,
-                x.AdmissionProgram.MmtClusterId, x.AdmissionProgram.MmtCluster.Code, x.AdmissionProgram.MmtCluster.Name,
+                x.AdmissionProgram.Id, x.AdmissionProgram.UniversityId, x.AdmissionProgram.University.FullNameFor(MmtCatalogService.CurrentLanguage),
+                x.AdmissionProgram.SpecialtyId, x.AdmissionProgram.Specialty.Code, x.AdmissionProgram.Specialty.NameFor(MmtCatalogService.CurrentLanguage),
+                x.AdmissionProgram.MmtClusterId, x.AdmissionProgram.MmtCluster.Code, x.AdmissionProgram.MmtCluster.NameFor(MmtCatalogService.CurrentLanguage),
                 (int)x.AdmissionProgram.AdmissionType, (int)x.AdmissionProgram.StudyForm, (int)x.AdmissionProgram.StudyLanguage,
                 x.AdmissionProgram.AdmissionYear, x.AdmissionProgram.SeatsCount, x.AdmissionProgram.IsPublished,
                 x.AdmissionProgram.IsActive, x.AdmissionProgram.PassingScores.OrderByDescending(s => s.Year)

@@ -134,7 +134,7 @@ public sealed class AdmissionProgramService(
         if (f.StudyLanguage.HasValue) q = q.Where(x => (int)x.StudyLanguage == f.StudyLanguage);
         if (admin && f.IsPublished.HasValue) q = q.Where(x => x.IsPublished == f.IsPublished);
         if (admin && f.IsActive.HasValue) q = q.Where(x => x.IsActive == f.IsActive);
-        if (!string.IsNullOrWhiteSpace(f.Search)) { var s = f.Search.Trim().ToLower(); q = q.Where(x => x.University.FullName.ToLower().Contains(s) || x.Specialty.Name.ToLower().Contains(s) || x.Specialty.Code.ToLower().Contains(s)); }
+        if (!string.IsNullOrWhiteSpace(f.Search)) { var s = f.Search.Trim().ToLower(); q = q.Where(x => x.University.FullName.ToLower().Contains(s) || x.University.FullNameRu.ToLower().Contains(s) || x.Specialty.Name.ToLower().Contains(s) || x.Specialty.NameRu.ToLower().Contains(s) || x.Specialty.Code.ToLower().Contains(s)); }
         return q;
     }
     private static IReadOnlyDictionary<string, IReadOnlyList<Adeeb.SharedKernel.Errors.Error>>? ValidateFilter(AdmissionProgramFilter f)
@@ -153,7 +153,7 @@ public sealed class AdmissionProgramService(
     private int CurrentAdmissionYear => options.CurrentAdmissionYear ?? clock.UtcNow.Year;
     private static Result<T> Invalid<T>(Result validation) => Result<T>.ValidationFailure(validation.ValidationErrors!);
     private static PassingScoreHistoryDto ToDto(PassingScoreHistory x) => new(x.Id, x.AdmissionProgramId, x.Year, x.PassingScore, x.SeatsCount, x.Source, x.Note, x.CreatedAtUtc, x.UpdatedAtUtc);
-    private static AdmissionProgramListItemDto ToListDto(AdmissionProgram x) => new(x.Id, x.UniversityId, x.University.FullName, x.SpecialtyId, x.Specialty.Code, x.Specialty.Name, x.MmtClusterId, x.MmtCluster.Code, x.MmtCluster.Name, (int)x.AdmissionType, (int)x.StudyForm, (int)x.StudyLanguage, x.AdmissionYear, x.SeatsCount, x.IsPublished, x.IsActive, x.PassingScores.OrderByDescending(s => s.Year).Select(s => (decimal?)s.PassingScore).FirstOrDefault());
+    private static AdmissionProgramListItemDto ToListDto(AdmissionProgram x) => new(x.Id, x.UniversityId, x.University.FullNameFor(MmtCatalogService.CurrentLanguage), x.SpecialtyId, x.Specialty.Code, x.Specialty.NameFor(MmtCatalogService.CurrentLanguage), x.MmtClusterId, x.MmtCluster.Code, x.MmtCluster.NameFor(MmtCatalogService.CurrentLanguage), (int)x.AdmissionType, (int)x.StudyForm, (int)x.StudyLanguage, x.AdmissionYear, x.SeatsCount, x.IsPublished, x.IsActive, x.PassingScores.OrderByDescending(s => s.Year).Select(s => (decimal?)s.PassingScore).FirstOrDefault());
     private static AdmissionProgramDto ToDetailsDto(AdmissionProgram x)
     {
         var analytics = Analytics(x.PassingScores.OrderByDescending(s => s.Year).Select(s => s.PassingScore).Take(3).ToList());

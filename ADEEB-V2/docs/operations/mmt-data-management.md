@@ -41,10 +41,15 @@ simulation. Admin catalog queries may inspect any valid year from 2000 through 2
 
 ## Migrations
 
-Apply both migrations, in order:
+Apply the MMT migrations in order:
 
 1. `20260714065717_AddMmtDataManagement`
 2. `20260714104237_AddMmtSimulatorPhase2`
+3. `20260714124749_AddMmtLocalization`
+
+The localization migration backfills Russian fields from existing values before
+removing temporary column defaults. Existing rows therefore remain readable and can
+be translated incrementally through language-specific admin updates.
 
 With the API configuration available, this command applies every pending MMT migration:
 
