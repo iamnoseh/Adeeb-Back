@@ -57,7 +57,21 @@ public static class ProductionHttpExtensions
             context.Response.Headers["X-Content-Type-Options"] = "nosniff";
             context.Response.Headers["Referrer-Policy"] = "no-referrer";
             context.Response.Headers["X-Frame-Options"] = "DENY";
-            context.Response.Headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'";
+
+            var path = context.Request.Path.Value;
+            var isSwagger = path != null && (
+                path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/openapi", StringComparison.OrdinalIgnoreCase));
+
+            if (isSwagger)
+            {
+                context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'";
+            }
+            else
+            {
+                context.Response.Headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'";
+            }
+
             context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
             await next(context);
         });

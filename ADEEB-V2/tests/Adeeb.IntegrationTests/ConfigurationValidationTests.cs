@@ -114,6 +114,33 @@ public sealed class ConfigurationValidationTests
     }
 
     [Theory]
+    [InlineData("/swagger")]
+    [InlineData("/swagger/index.html")]
+    [InlineData("/openapi/v2.json")]
+    public async Task Production_http_relaxes_csp_for_swagger_and_openapi(string path)
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddProductionHttp(configuration, new FakeHostEnvironment("Testing"));
+        await using var provider = services.BuildServiceProvider();
+        var app = new ApplicationBuilder(provider);
+        app.UseProductionHttp();
+        app.Run(context => context.Response.StartAsync());
+        var pipeline = app.Build();
+        var context = new DefaultHttpContext { RequestServices = provider };
+        context.Request.Path = path;
+        context.Response.Body = new MemoryStream();
+
+        await pipeline(context);
+
+        var csp = context.Response.Headers["Content-Security-Policy"].ToString();
+        Assert.Contains("default-src 'self'", csp, StringComparison.Ordinal);
+        Assert.Contains("script-src 'self' 'unsafe-inline'", csp, StringComparison.Ordinal);
+        Assert.Contains("style-src 'self' 'unsafe-inline'", csp, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("contains spaces")]
     [InlineData("contains/slash")]
