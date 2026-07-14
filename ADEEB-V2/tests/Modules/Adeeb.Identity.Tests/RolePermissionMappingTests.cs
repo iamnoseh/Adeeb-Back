@@ -25,4 +25,14 @@ public sealed class RolePermissionMappingTests
     {
         Assert.Equal(Permissions.All.Order(), RolePermissionMapping.GetPermissions(UserRole.SuperAdmin).Order());
     }
+
+    [Fact]
+    public void Mmt_management_is_limited_to_admin_and_super_admin()
+    {
+        Assert.Contains(Permissions.Mmt.Manage, RolePermissionMapping.GetPermissions(UserRole.Admin));
+        Assert.Contains(Permissions.Mmt.Import, RolePermissionMapping.GetPermissions(UserRole.Admin));
+        Assert.Contains(Permissions.Mmt.Manage, RolePermissionMapping.GetPermissions(UserRole.SuperAdmin));
+        Assert.DoesNotContain(Permissions.Mmt.Manage, RolePermissionMapping.GetPermissions(UserRole.ContentAdmin));
+        Assert.DoesNotContain(Permissions.Mmt.Manage, RolePermissionMapping.GetPermissions(UserRole.User));
+    }
 }

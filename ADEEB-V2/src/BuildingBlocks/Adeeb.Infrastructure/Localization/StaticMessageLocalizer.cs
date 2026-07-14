@@ -276,6 +276,29 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Idempotency.PayloadMismatch"] = "Idempotency key was used with a different payload"
         }
     };
+    private static readonly Dictionary<string, string> MmtMessages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["MMT.ClusterNotFound"] = "MMT cluster was not found",
+        ["MMT.UniversityNotFound"] = "University was not found",
+        ["MMT.SpecialtyNotFound"] = "Specialty was not found",
+        ["MMT.ProgramNotFound"] = "Admission program was not found",
+        ["MMT.ScoreNotFound"] = "Passing score was not found",
+        ["MMT.ClusterCodeExists"] = "MMT cluster code already exists",
+        ["MMT.UniversityExists"] = "University already exists",
+        ["MMT.SpecialtyCodeExists"] = "Specialty code already exists",
+        ["MMT.ProgramExists"] = "Admission program already exists",
+        ["MMT.ScoreExists"] = "Passing score already exists for this year",
+        ["MMT.ReferenceInactive"] = "Admission program references must exist and be active",
+        ["MMT.PublishInvalid"] = "Admission program cannot be published in its current state",
+        ["MMT.ImportExistingScore"] = "Import contains an existing passing score",
+        ["MMT.ImportConflict"] = "Import conflicted with another data change; retry with a fresh preview",
+        ["MMT.YearInvalid"] = "Year must be between 2000 and 2100",
+        ["MMT.SeatsInvalid"] = "Seats count cannot be negative",
+        ["MMT.ScoreInvalid"] = "Passing score is invalid",
+        ["MMT.EnumInvalid"] = "Selected value is invalid",
+        ["MMT.ValueTooLong"] = "Value exceeds the allowed length"
+    };
+
     public string this[string key]
     {
         get
@@ -296,7 +319,12 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
                 return fallback;
             }
 
-            return ContentMessages["tg-TJ"].TryGetValue(key, out var contentFallback) ? contentFallback : key;
+            if (ContentMessages["tg-TJ"].TryGetValue(key, out var contentFallback))
+            {
+                return contentFallback;
+            }
+
+            return MmtMessages.GetValueOrDefault(key, key);
         }
     }
 }
