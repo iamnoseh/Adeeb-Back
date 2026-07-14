@@ -3,6 +3,7 @@ using Adeeb.Application.Abstractions.Storage;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Commerce.Application;
 using Adeeb.Modules.Commerce.Application.Storage;
+using Adeeb.Modules.Commerce.Application.PaymentReceipts;
 using Adeeb.Modules.Commerce.Application.Auditing;
 using Adeeb.Modules.Commerce.Contracts;
 using Adeeb.Modules.Commerce.Domain.Tariffs;
@@ -58,6 +59,19 @@ public sealed class ReceiptImageSecurityTests
     }
 
     [Fact]
+    public async Task Actual_stream_size_cannot_bypass_limit_with_false_declared_length()
+    {
+        var content = new byte[(int)ReceiptImageProcessor.MaxFileSize + 1];
+
+        var result = await new ReceiptImageProcessor().ProcessAsync(
+            new MemoryStream(content),
+            declaredLength: 1,
+            CancellationToken.None);
+
+        Assert.Equal(CommerceErrors.ImageTooLarge.Code, result.Error!.Code);
+    }
+
+    [Fact]
     public async Task ValidImage_IsReencodedAsWebpAndMetadataIsRemoved()
     {
         await using var source = new MemoryStream();
@@ -76,6 +90,41 @@ public sealed class ReceiptImageSecurityTests
         using var decoded = Image.Load(result.Value.Content);
         Assert.Null(decoded.Metadata.ExifProfile);
         Assert.Null(decoded.Metadata.XmpProfile);
+    }
+
+    [Fact]
+    public async Task Magic_bytes_are_used_instead_of_a_claimed_extension()
+    {
+        await using var pngWithJpegName = new MemoryStream();
+        using (var image = new Image<Rgba32>(2, 2, Color.White))
+        {
+            await image.SaveAsPngAsync(pngWithJpegName);
+        }
+
+        pngWithJpegName.Position = 0;
+        var accepted = await new ReceiptImageProcessor().ProcessAsync(
+            pngWithJpegName,
+            pngWithJpegName.Length,
+            CancellationToken.None);
+
+        Assert.True(accepted.IsSuccess);
+        Assert.Equal("image/webp", accepted.Value!.ContentType);
+    }
+
+    [Fact]
+    public async Task Valid_maximum_width_boundary_is_accepted()
+    {
+        await using var source = new MemoryStream();
+        using (var image = new Image<Rgba32>(ReceiptImageProcessor.MaxWidth, 1, Color.White))
+        {
+            await image.SaveAsPngAsync(source);
+        }
+
+        source.Position = 0;
+        var result = await new ReceiptImageProcessor().ProcessAsync(source, source.Length, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(ReceiptImageProcessor.MaxWidth, result.Value!.Width);
     }
 
     [Fact]
@@ -103,7 +152,7 @@ public sealed class ReceiptImageSecurityTests
         db.Tariffs.Add(tariff);
         await db.SaveChangesAsync();
         var storage = new RecordingStorage();
-        var service = new CommerceService(
+        var useCases = new PaymentReceiptUseCases(
             db,
             new FixedStudentLookup(new StudentReference(studentId, identityId, "Active")),
             new FixedClock(),
@@ -113,8 +162,8 @@ public sealed class ReceiptImageSecurityTests
         var principal = Principal(identityId);
         var request = new SubmitPaymentReceiptFormRequest { IdempotencyKey = "same-key" };
 
-        var first = await service.SubmitCurrentReceiptAsync(principal, tariff.Id, request, new MemoryStream([1]), 1, CancellationToken.None);
-        var second = await service.SubmitCurrentReceiptAsync(principal, tariff.Id, request, new MemoryStream([1]), 1, CancellationToken.None);
+        var first = await useCases.SubmitAsync(principal, tariff.Id, request, new MemoryStream([1]), 1, CancellationToken.None);
+        var second = await useCases.SubmitAsync(principal, tariff.Id, request, new MemoryStream([1]), 1, CancellationToken.None);
 
         Assert.True(first.IsSuccess);
         Assert.True(second.IsSuccess);
@@ -142,7 +191,7 @@ public sealed class ReceiptImageSecurityTests
             .Options;
         await using var db = new CommerceDbContext(options);
         var storage = new RecordingStorage();
-        var service = new CommerceService(
+        var useCases = new PaymentReceiptUseCases(
             db,
             new FixedStudentLookup(new StudentReference(studentId, identityId, "Active")),
             new FixedClock(),
@@ -150,7 +199,7 @@ public sealed class ReceiptImageSecurityTests
             storage,
             new RecordingAudit());
 
-        await Assert.ThrowsAsync<DbUpdateException>(() => service.SubmitCurrentReceiptAsync(
+        await Assert.ThrowsAsync<DbUpdateException>(() => useCases.SubmitAsync(
             Principal(identityId),
             tariff.Id,
             new SubmitPaymentReceiptFormRequest { IdempotencyKey = "db-failure" },

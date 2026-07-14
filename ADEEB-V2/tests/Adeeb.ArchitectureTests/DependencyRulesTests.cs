@@ -252,4 +252,17 @@ public sealed class DependencyRulesTests
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
     }
+
+    [Fact]
+    public void Focused_commerce_use_cases_must_not_delegate_to_legacy_commerce_service()
+    {
+        var result = Types.InAssembly(typeof(CommerceEndpoints).Assembly)
+            .That()
+            .ResideInNamespaceMatching(@"Adeeb\.Modules\.Commerce\.Application\.(Tariffs|Entitlements|PaymentReceipts).*")
+            .ShouldNot()
+            .HaveDependencyOn("Adeeb.Modules.Commerce.Application.CommerceService")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
 }
