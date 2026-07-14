@@ -12,7 +12,7 @@ Rendering historical receipts from the current tariff row silently rewrites hist
 
 Persist an immutable tariff snapshot on each payment receipt: tariff name, price, ISO-style currency code, and duration days. Receipt creation copies normalized values from the active tariff. Review and entitlement calculation use the receipt snapshot, never the current tariff.
 
-Price columns use explicit `numeric(18,2)` precision. Currency is trimmed, uppercased, and restricted initially to `TJS`, `USD`, and `RUB`. Historical Commerce entities use restrictive/no-action foreign-key deletion behavior and are archived rather than hard-deleted.
+Amounts use precision 18 and scale 2, with a maximum of `9999999999999999.99`. Application and domain rules reject values carrying more than two fractional digits. PostgreSQL stores `numeric` with explicit positivity, maximum, and `scale(...) <= 2` checks so direct writes are rejected rather than silently rounded. Currency is trimmed, uppercased, and restricted initially to `TJS`, `USD`, and `RUB`.
 
 ## Alternatives Considered
 

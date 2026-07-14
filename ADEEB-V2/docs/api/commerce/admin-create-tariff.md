@@ -31,6 +31,7 @@ Not applicable.
 ## 12. Request Body
 Multipart fields: `Name`, `Price`, `Currency`, `DurationDays`, optional `Status`, required `QrImage`.
 ## 13. Field Rules
+`Price` must be greater than zero, no greater than `9999999999999999.99`, and contain at most two fractional digits. Values with additional fractional precision are rejected rather than rounded.
 Price and duration must be positive. Currency is a 3-letter code. QR image is required; jpg, jpeg, png, webp; max 10 MB.
 ## 14. Success Response
 `200 OK` created tariff.

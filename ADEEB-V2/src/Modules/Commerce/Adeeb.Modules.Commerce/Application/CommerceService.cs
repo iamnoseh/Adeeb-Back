@@ -495,6 +495,7 @@ public sealed class CommerceService(
             return Result<PaymentReceiptResponse>.Failure(CommerceErrors.ReceiptNotFound);
         }
 
+        await StudentEntitlementLock.AcquireAsync(db, receipt.StudentId, cancellationToken);
         var now = clock.UtcNow;
         var transition = receipt.Approve(reviewerUserId.Value, now, request.Note);
         if (transition.IsFailure)
@@ -601,6 +602,11 @@ public sealed class CommerceService(
             return Result<StudentEntitlementResponse>.Failure(CommerceErrors.StudentNotFound);
         }
 
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        await StudentEntitlementLock.AcquireAsync(db, studentId, cancellationToken);
+
         var idempotencyKey = request.IdempotencyKey.Trim();
         var existing = await db.StudentEntitlements.AsNoTracking()
             .SingleOrDefaultAsync(x => x.IdempotencyKey == idempotencyKey, cancellationToken);
@@ -635,9 +641,18 @@ public sealed class CommerceService(
         try
         {
             await db.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
         }
         catch (DbUpdateException ex) when (PostgresExceptionHelper.IsUniqueViolation(ex, CommerceDatabaseConstraints.StudentEntitlementIdempotencyKeyUnique))
         {
+            if (transaction is not null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
+
             db.ChangeTracker.Clear();
             var raced = await db.StudentEntitlements.AsNoTracking()
                 .SingleAsync(x => x.IdempotencyKey == idempotencyKey, cancellationToken);

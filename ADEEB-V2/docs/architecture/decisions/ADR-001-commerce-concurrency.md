@@ -12,6 +12,8 @@ Application-only status checks are subject to races. Two requests can load the s
 
 Use PostgreSQL-backed optimistic concurrency for `PaymentReceipt`, preferring the Npgsql `xmin` row version mapping supported by the installed provider. Execute receipt transition, entitlement creation, audit creation, and persistence in one explicit transaction.
 
+Entitlement-period mutations additionally acquire a transaction-scoped PostgreSQL advisory lock derived from `StudentId`. The lock is acquired before reading the latest active expiry. This serializes purchases for one student across API instances while allowing different students to proceed independently.
+
 Domain transition methods return stable `Result` failures for expected final-state conflicts. Persistence maps concurrency and relevant unique-constraint failures to stable `409 Conflict` errors. A filtered unique index on non-null `StudentEntitlement.SourcePaymentReceiptId` is the final duplicate-entitlement guard.
 
 Concurrency tests use separate scopes and DbContexts against real PostgreSQL, coordinate simultaneous starts, and assert responses plus final receipt, entitlement, and audit state.
@@ -21,6 +23,7 @@ Concurrency tests use separate scopes and DbContexts against real PostgreSQL, co
 - In-memory locks: rejected because they do not coordinate multiple API instances.
 - Serializable isolation for every Commerce mutation: rejected as unnecessarily broad and likely to increase contention.
 - Pessimistic row locks only: viable, but optimistic concurrency plus a uniqueness constraint gives explicit conflict behavior with less lock duration.
+- In-memory per-student locks: rejected because they do not coordinate multiple API instances.
 - Application-only idempotency: rejected because it cannot replace database invariants.
 
 ## Consequences

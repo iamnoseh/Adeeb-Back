@@ -39,9 +39,9 @@ public sealed class CommerceTariff : Entity
             throw new ArgumentException("Tariff name is invalid.", nameof(name));
         }
 
-        if (price <= 0)
+        if (!CommerceMoney.IsValid(price))
         {
-            throw new ArgumentException("Tariff price must be positive.", nameof(price));
+            throw new ArgumentException("Tariff price must use the supported monetary precision.", nameof(price));
         }
 
         if (!SupportedCurrencies.TryNormalize(currency, out var normalizedCurrency))

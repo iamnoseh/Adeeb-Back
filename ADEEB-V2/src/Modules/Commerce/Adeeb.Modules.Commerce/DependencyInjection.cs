@@ -7,6 +7,7 @@ using Adeeb.Modules.Commerce.Application.Storage;
 using Adeeb.Modules.Commerce.Application.Auditing;
 using Adeeb.Modules.Commerce.Application.Caching;
 using Adeeb.Modules.Commerce.Application.Entitlements;
+using Adeeb.Modules.Commerce.Application.LegacyFiles;
 using Adeeb.Modules.Commerce.Application.PaymentReceipts;
 using Adeeb.Modules.Commerce.Application.Tariffs;
 using Adeeb.Modules.Commerce.Infrastructure.Caching;
@@ -39,6 +40,8 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(PrivateFileStorageOptions.SectionName))
             .Validate(x => x.Provider is "Local" or "S3", "PrivateFileStorage:Provider must be Local or S3.")
             .ValidateOnStart();
+        services.AddOptions<LegacyReceiptMigrationOptions>()
+            .Bind(configuration.GetSection(LegacyReceiptMigrationOptions.SectionName));
         if (string.Equals(storage.Provider, "S3", StringComparison.Ordinal))
         {
             if (string.IsNullOrWhiteSpace(storage.Bucket) ||
@@ -78,9 +81,11 @@ public static class DependencyInjection
         services.AddScoped<PaymentReceiptUseCases>();
         services.AddScoped<EntitlementUseCases>();
         services.AddScoped<CommerceImageStorage>();
+        services.AddScoped<LegacyReceiptFileMigrator>();
         services.AddHealthChecks()
             .AddCheck<PrivateFileStorageHealthCheck>("private-file-storage", tags: ["storage", "ready"]);
         services.AddHostedService<OrphanReceiptFileCleanupService>();
+        services.AddHostedService<LegacyReceiptMigrationHostedService>();
         return services;
     }
 }

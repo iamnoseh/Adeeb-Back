@@ -53,11 +53,13 @@ internal sealed class CommerceTariffConfiguration : IEntityTypeConfiguration<Com
 {
     public void Configure(EntityTypeBuilder<CommerceTariff> builder)
     {
-        builder.ToTable("tariffs");
+        builder.ToTable("tariffs", table => table.HasCheckConstraint(
+            CommerceDatabaseConstraints.TariffPriceValid,
+            "price > 0 AND price <= 9999999999999999.99 AND scale(price) <= 2"));
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id");
         builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(CommerceTariff.NameMaxLength).IsRequired();
-        builder.Property(x => x.Price).HasColumnName("price").HasPrecision(18, 2).IsRequired();
+        builder.Property(x => x.Price).HasColumnName("price").HasColumnType("numeric").IsRequired();
         builder.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(CommerceTariff.CurrencyMaxLength).IsRequired();
         builder.Property(x => x.DurationDays).HasColumnName("duration_days").IsRequired();
         builder.Property(x => x.QrImageUrl).HasColumnName("qr_image_url").HasMaxLength(CommerceTariff.QrImageUrlMaxLength).IsRequired();
@@ -72,13 +74,15 @@ internal sealed class PaymentReceiptConfiguration : IEntityTypeConfiguration<Pay
 {
     public void Configure(EntityTypeBuilder<PaymentReceipt> builder)
     {
-        builder.ToTable("payment_receipts");
+        builder.ToTable("payment_receipts", table => table.HasCheckConstraint(
+            CommerceDatabaseConstraints.ReceiptPriceSnapshotValid,
+            "price_snapshot > 0 AND price_snapshot <= 9999999999999999.99 AND scale(price_snapshot) <= 2"));
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id");
         builder.Property(x => x.StudentId).HasColumnName("student_id").IsRequired();
         builder.Property(x => x.TariffId).HasColumnName("tariff_id").IsRequired();
         builder.Property(x => x.TariffNameSnapshot).HasColumnName("tariff_name_snapshot").HasMaxLength(CommerceTariff.NameMaxLength).IsRequired();
-        builder.Property(x => x.PriceSnapshot).HasColumnName("price_snapshot").HasPrecision(18, 2).IsRequired();
+        builder.Property(x => x.PriceSnapshot).HasColumnName("price_snapshot").HasColumnType("numeric").IsRequired();
         builder.Property(x => x.CurrencySnapshot).HasColumnName("currency_snapshot").HasMaxLength(CommerceTariff.CurrencyMaxLength).IsRequired();
         builder.Property(x => x.DurationDaysSnapshot).HasColumnName("duration_days_snapshot").IsRequired();
         builder.Property(x => x.ReceiptImageObjectKey).HasColumnName("receipt_image_object_key").HasMaxLength(PaymentReceipt.ReceiptImageObjectKeyMaxLength).IsRequired();

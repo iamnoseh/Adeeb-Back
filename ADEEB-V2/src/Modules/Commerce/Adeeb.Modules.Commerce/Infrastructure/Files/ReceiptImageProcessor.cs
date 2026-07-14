@@ -4,6 +4,7 @@ using Adeeb.Modules.Commerce.Application.Storage;
 using Adeeb.SharedKernel.Results;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Formats;
 
 namespace Adeeb.Modules.Commerce.Infrastructure.Files;
 
@@ -36,11 +37,21 @@ public sealed class ReceiptImageProcessor : IReceiptImageProcessor
         try
         {
             using var source = new MemoryStream((int)declaredLength);
-            await input.CopyToAsync(source, cancellationToken);
-            if (source.Length == 0 || source.Length > MaxFileSize)
+            var buffer = new byte[81920];
+            int read;
+            while ((read = await input.ReadAsync(buffer, cancellationToken)) > 0)
             {
-                return Result<ValidatedReceiptImage>.Failure(
-                    source.Length == 0 ? CommerceErrors.ReceiptImageRequired : CommerceErrors.ImageTooLarge);
+                if (source.Length + read > MaxFileSize)
+                {
+                    return Result<ValidatedReceiptImage>.Failure(CommerceErrors.ImageTooLarge);
+                }
+
+                await source.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            }
+
+            if (source.Length == 0)
+            {
+                return Result<ValidatedReceiptImage>.Failure(CommerceErrors.ReceiptImageRequired);
             }
 
             var bytes = source.ToArray();
@@ -50,12 +61,18 @@ public sealed class ReceiptImageProcessor : IReceiptImageProcessor
                 return Result<ValidatedReceiptImage>.Failure(CommerceErrors.ReceiptImageInvalidType);
             }
 
-            using var image = Image.Load(bytes);
-            if (image.Width > MaxWidth || image.Height > MaxHeight || (long)image.Width * image.Height > MaxPixels)
+            var decoderOptions = new DecoderOptions
+            {
+                SkipMetadata = true,
+                MaxFrames = 1
+            };
+            var info = Image.Identify(decoderOptions, bytes);
+            if (info.Width > MaxWidth || info.Height > MaxHeight || (long)info.Width * info.Height > MaxPixels)
             {
                 return Result<ValidatedReceiptImage>.Failure(CommerceErrors.ImageDimensionsInvalid);
             }
 
+            using var image = Image.Load(decoderOptions, bytes);
             image.Metadata.ExifProfile = null;
             image.Metadata.IccProfile = null;
             image.Metadata.XmpProfile = null;

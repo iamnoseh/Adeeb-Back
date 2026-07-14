@@ -45,9 +45,9 @@ public sealed class PaymentReceipt : Entity
             throw new ArgumentException("Tariff snapshot name is invalid.", nameof(tariffNameSnapshot));
         }
 
-        if (priceSnapshot <= 0)
+        if (!CommerceMoney.IsValid(priceSnapshot))
         {
-            throw new ArgumentException("Tariff snapshot price must be positive.", nameof(priceSnapshot));
+            throw new ArgumentException("Tariff snapshot price must use the supported monetary precision.", nameof(priceSnapshot));
         }
 
         if (!SupportedCurrencies.TryNormalize(currencySnapshot, out var normalizedCurrency))
@@ -106,6 +106,17 @@ public sealed class PaymentReceipt : Entity
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
     public uint Version { get; private set; }
+
+    public void CompleteLegacyImageMigration(string objectKey, DateTimeOffset now)
+    {
+        if (string.IsNullOrWhiteSpace(objectKey) || objectKey.Trim().Length > ReceiptImageObjectKeyMaxLength)
+        {
+            throw new ArgumentException("Receipt image object key is invalid.", nameof(objectKey));
+        }
+
+        ReceiptImageObjectKey = objectKey.Trim();
+        UpdatedAtUtc = now;
+    }
 
     public Result Approve(Guid reviewerUserId, DateTimeOffset now, string? note)
     {

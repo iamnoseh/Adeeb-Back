@@ -15,7 +15,7 @@ internal static class Validation
             errors["name"] = [Error.Validation("commerce.tariff.name.invalid", "Commerce.Tariff.Name.Invalid")];
         }
 
-        if (request.Price is null or <= 0)
+        if (request.Price is null || !Domain.CommerceMoney.IsValid(request.Price.Value))
         {
             errors["price"] = [Error.Validation("commerce.tariff.price.invalid", "Commerce.Tariff.Price.Invalid")];
         }

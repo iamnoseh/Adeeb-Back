@@ -8,6 +8,7 @@ using Adeeb.Modules.AcademicCatalog.Infrastructure.Persistence;
 using Adeeb.Modules.Commerce;
 using Adeeb.Modules.Commerce.Endpoints;
 using Adeeb.Modules.Commerce.Infrastructure.Persistence;
+using Adeeb.Modules.Commerce.Infrastructure.Files;
 using Adeeb.Modules.Identity;
 using Adeeb.Modules.Identity.Endpoints;
 using Adeeb.Modules.Identity.Infrastructure.Persistence;
@@ -80,6 +81,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseLegacyReceiptPublicAccessBlock();
 app.UseStaticFiles();
 app.UseAuthorization();
 app.UseRateLimiter();
