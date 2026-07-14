@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Testcontainers.PostgreSql;
+using Npgsql;
 
 namespace Adeeb.IntegrationTests;
 
@@ -22,6 +23,28 @@ public sealed class AdeebApiFactory : WebApplicationFactory<Program>, IAsyncLife
     {
         await _postgres.DisposeAsync();
         await base.DisposeAsync();
+    }
+
+    public async Task ResetDatabaseAsync(CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            DO $$
+            DECLARE table_list text;
+            BEGIN
+                SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
+                INTO table_list
+                FROM pg_tables
+                WHERE schemaname = ANY (ARRAY['identity', 'academic', 'question_bank', 'students', 'commerce']);
+
+                IF table_list IS NOT NULL THEN
+                    EXECUTE 'TRUNCATE TABLE ' || table_list || ' RESTART IDENTITY CASCADE';
+                END IF;
+            END $$;
+            """;
+        await using var connection = new NpgsqlConnection(ConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -44,6 +67,8 @@ public sealed class AdeebApiFactory : WebApplicationFactory<Program>, IAsyncLife
                 ["Jwt:AccessTokenMinutes"] = "10",
                 ["RefreshTokens:LifetimeDays"] = "30",
                 ["RefreshTokens:TokenBytes"] = "64",
+                ["PrivateFileStorage:Provider"] = "Local",
+                ["PrivateFileStorage:LocalRoot"] = Path.Combine(Path.GetTempPath(), "adeeb-integration-private", Guid.NewGuid().ToString("N")),
                 ["Proxy:ForwardLimit"] = "1",
                 ["Proxy:KnownProxies:0"] = "127.0.0.1",
                 ["Proxy:KnownNetworks:0"] = "10.0.0.0/8"

@@ -8,8 +8,12 @@ Use user-secrets or environment variables for local values:
 dotnet user-secrets set "ConnectionStrings:Identity" "Host=localhost;Port=5432;Database=adeeb_v2;Username=<user>;Password=<password>" --project src/Hosts/Adeeb.Api/Adeeb.Api.csproj
 dotnet user-secrets set "ConnectionStrings:AcademicCatalog" "Host=localhost;Port=5432;Database=adeeb_v2;Username=<user>;Password=<password>" --project src/Hosts/Adeeb.Api/Adeeb.Api.csproj
 dotnet user-secrets set "ConnectionStrings:QuestionBank" "Host=localhost;Port=5432;Database=adeeb_v2;Username=<user>;Password=<password>" --project src/Hosts/Adeeb.Api/Adeeb.Api.csproj
+dotnet user-secrets set "ConnectionStrings:Students" "Host=localhost;Port=5432;Database=adeeb_v2;Username=<user>;Password=<password>" --project src/Hosts/Adeeb.Api/Adeeb.Api.csproj
+dotnet user-secrets set "ConnectionStrings:Commerce" "Host=localhost;Port=5432;Database=adeeb_v2;Username=<user>;Password=<password>" --project src/Hosts/Adeeb.Api/Adeeb.Api.csproj
 dotnet user-secrets set "Jwt:SigningKey" "<at-least-32-characters-non-default-secret>" --project src/Hosts/Adeeb.Api/Adeeb.Api.csproj
 ```
+
+The local Docker compose file uses `Username=postgres;Password=postgres` for development only.
 
 Optional local seed administrator values:
 

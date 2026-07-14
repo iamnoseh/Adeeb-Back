@@ -27,17 +27,21 @@ Errors use request localization.
 ## 10. Path Parameters
 Not applicable.
 ## 11. Query Parameters
-Optional `status`: `1 Pending`, `2 Approved`, `3 Rejected`.
+Optional `status`: `Pending`, `Approved`, `Rejected` (numeric values `1`, `2`, `3` are also accepted).
+
+`limit`: optional page size from `1` to `100`, default `30`.
+
+`cursor`: optional opaque `nextCursor` value returned by the previous page.
 ## 12. Request Body
 Not applicable.
 ## 13. Field Rules
-Invalid status values are ignored and return all current student receipts.
+Invalid status, limit, or cursor values return `422` and are never silently ignored.
 ## 14. Success Response
-`200 OK` array of payment receipt responses.
+`200 OK` cursor envelope with `items`, `nextCursor`, and `hasMore`. Items return the tariff name, price, currency, and duration captured when that receipt was submitted.
 ## 15. Error Responses
-`401 Unauthorized`, `409 Conflict` when no active student persona exists.
+`401 Unauthorized`, `409 Conflict` when no active student persona exists, and `422 Unprocessable Entity` for invalid query values.
 ## 16. Stable Error Codes
-`commerce.student_required`.
+`commerce.student_required`, `commerce.receipt.status.invalid`, `pagination.limit.invalid`, `pagination.cursor.invalid`.
 ## 17. Frontend Behavior
 Use this endpoint to show Pending, Approved, and Rejected receipt states after upload.
 ## 18. Retry Policy
@@ -54,3 +58,5 @@ Student uploads a receipt, then opens payment history to see `Pending`.
 `POST /api/v2/commerce/tariffs/{tariffId}/payment-receipts`.
 ## 24. Change History
 2026-07-11: Added current student payment receipt history.
+2026-07-13: Receipt history now reads immutable tariff snapshots rather than current tariffs.
+2026-07-13: Added validated cursor pagination with a default page size of 30.

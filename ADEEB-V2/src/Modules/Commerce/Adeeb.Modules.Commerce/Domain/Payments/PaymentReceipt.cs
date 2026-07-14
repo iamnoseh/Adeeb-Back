@@ -1,16 +1,29 @@
 using Adeeb.SharedKernel.Domain;
+using Adeeb.SharedKernel.Results;
+using Adeeb.Modules.Commerce.Domain;
 
 namespace Adeeb.Modules.Commerce.Domain.Payments;
 
 public sealed class PaymentReceipt : Entity
 {
-    public const int ReceiptImageUrlMaxLength = 512;
+    public const int ReceiptImageObjectKeyMaxLength = 512;
     public const int AdminNoteMaxLength = 512;
     public const int IdempotencyKeyMaxLength = 128;
 
     private PaymentReceipt() { }
 
-    public PaymentReceipt(Guid id, Guid studentId, Guid tariffId, string receiptImageUrl, string idempotencyKey, DateTimeOffset now)
+    public PaymentReceipt(
+        Guid id,
+        Guid studentId,
+        Guid tariffId,
+        string tariffNameSnapshot,
+        decimal priceSnapshot,
+        string currencySnapshot,
+        short durationDaysSnapshot,
+        string receiptImageObjectKey,
+        string idempotencyKey,
+        DateTimeOffset now,
+        string requestFingerprint = "legacy")
     {
         if (id == Guid.Empty)
         {
@@ -27,9 +40,29 @@ public sealed class PaymentReceipt : Entity
             throw new ArgumentException("Tariff id is required.", nameof(tariffId));
         }
 
-        if (string.IsNullOrWhiteSpace(receiptImageUrl) || receiptImageUrl.Trim().Length > ReceiptImageUrlMaxLength)
+        if (string.IsNullOrWhiteSpace(tariffNameSnapshot) || tariffNameSnapshot.Trim().Length > Tariffs.CommerceTariff.NameMaxLength)
         {
-            throw new ArgumentException("Receipt image URL is invalid.", nameof(receiptImageUrl));
+            throw new ArgumentException("Tariff snapshot name is invalid.", nameof(tariffNameSnapshot));
+        }
+
+        if (!CommerceMoney.IsValid(priceSnapshot))
+        {
+            throw new ArgumentException("Tariff snapshot price must use the supported monetary precision.", nameof(priceSnapshot));
+        }
+
+        if (!SupportedCurrencies.TryNormalize(currencySnapshot, out var normalizedCurrency))
+        {
+            throw new ArgumentException("Tariff snapshot currency is unsupported.", nameof(currencySnapshot));
+        }
+
+        if (durationDaysSnapshot <= 0)
+        {
+            throw new ArgumentException("Tariff snapshot duration must be positive.", nameof(durationDaysSnapshot));
+        }
+
+        if (string.IsNullOrWhiteSpace(receiptImageObjectKey) || receiptImageObjectKey.Trim().Length > ReceiptImageObjectKeyMaxLength)
+        {
+            throw new ArgumentException("Receipt image object key is invalid.", nameof(receiptImageObjectKey));
         }
 
         if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Trim().Length > IdempotencyKeyMaxLength)
@@ -37,11 +70,21 @@ public sealed class PaymentReceipt : Entity
             throw new ArgumentException("Idempotency key is invalid.", nameof(idempotencyKey));
         }
 
+        if (string.IsNullOrWhiteSpace(requestFingerprint) || requestFingerprint.Trim().Length > 128)
+        {
+            throw new ArgumentException("Request fingerprint is invalid.", nameof(requestFingerprint));
+        }
+
         Id = id;
         StudentId = studentId;
         TariffId = tariffId;
-        ReceiptImageUrl = receiptImageUrl.Trim();
+        TariffNameSnapshot = tariffNameSnapshot.Trim();
+        PriceSnapshot = priceSnapshot;
+        CurrencySnapshot = normalizedCurrency;
+        DurationDaysSnapshot = durationDaysSnapshot;
+        ReceiptImageObjectKey = receiptImageObjectKey.Trim();
         IdempotencyKey = idempotencyKey.Trim();
+        RequestFingerprint = requestFingerprint.Trim();
         Status = PaymentReceiptStatus.Pending;
         CreatedAtUtc = now;
         UpdatedAtUtc = now;
@@ -49,41 +92,82 @@ public sealed class PaymentReceipt : Entity
 
     public Guid StudentId { get; private set; }
     public Guid TariffId { get; private set; }
-    public string ReceiptImageUrl { get; private set; } = string.Empty;
+    public string TariffNameSnapshot { get; private set; } = string.Empty;
+    public decimal PriceSnapshot { get; private set; }
+    public string CurrencySnapshot { get; private set; } = "TJS";
+    public short DurationDaysSnapshot { get; private set; }
+    public string ReceiptImageObjectKey { get; private set; } = string.Empty;
     public string IdempotencyKey { get; private set; } = string.Empty;
+    public string RequestFingerprint { get; private set; } = string.Empty;
     public PaymentReceiptStatus Status { get; private set; }
     public string? AdminNote { get; private set; }
     public Guid? ReviewedByUserId { get; private set; }
     public DateTimeOffset? ReviewedAtUtc { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
+    public uint Version { get; private set; }
 
-    public void Approve(Guid reviewerUserId, DateTimeOffset now, string? note)
+    public void CompleteLegacyImageMigration(string objectKey, DateTimeOffset now)
     {
-        EnsurePending();
+        if (string.IsNullOrWhiteSpace(objectKey) || objectKey.Trim().Length > ReceiptImageObjectKeyMaxLength)
+        {
+            throw new ArgumentException("Receipt image object key is invalid.", nameof(objectKey));
+        }
+
+        ReceiptImageObjectKey = objectKey.Trim();
+        UpdatedAtUtc = now;
+    }
+
+    public Result Approve(Guid reviewerUserId, DateTimeOffset now, string? note)
+    {
+        var canReview = EnsurePending();
+        if (canReview.IsFailure)
+        {
+            return canReview;
+        }
+
+        if (reviewerUserId == Guid.Empty)
+        {
+            return Result.Failure(PaymentReceiptErrors.ReviewerRequired);
+        }
+
         Status = PaymentReceiptStatus.Approved;
         AdminNote = NormalizeNote(note);
         ReviewedByUserId = reviewerUserId;
         ReviewedAtUtc = now;
         UpdatedAtUtc = now;
+        return Result.Success();
     }
 
-    public void Reject(Guid reviewerUserId, DateTimeOffset now, string? note)
+    public Result Reject(Guid reviewerUserId, DateTimeOffset now, string? note)
     {
-        EnsurePending();
+        var canReview = EnsurePending();
+        if (canReview.IsFailure)
+        {
+            return canReview;
+        }
+
+        if (reviewerUserId == Guid.Empty)
+        {
+            return Result.Failure(PaymentReceiptErrors.ReviewerRequired);
+        }
+
         Status = PaymentReceiptStatus.Rejected;
         AdminNote = NormalizeNote(note);
         ReviewedByUserId = reviewerUserId;
         ReviewedAtUtc = now;
         UpdatedAtUtc = now;
+        return Result.Success();
     }
 
-    private void EnsurePending()
+    private Result EnsurePending()
     {
         if (Status != PaymentReceiptStatus.Pending)
         {
-            throw new InvalidOperationException("Only pending receipts can be reviewed.");
+            return Result.Failure(PaymentReceiptErrors.AlreadyReviewed);
         }
+
+        return Result.Success();
     }
 
     private static string? NormalizeNote(string? note) =>

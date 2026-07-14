@@ -12,6 +12,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="SixLabors.ImageSharp" />
+    <PackageReference Include="AWSSDK.S3" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Adeeb.Application.Abstractions\Adeeb.Application.Abstractions.csproj" />

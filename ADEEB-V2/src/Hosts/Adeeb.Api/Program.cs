@@ -8,6 +8,7 @@ using Adeeb.Modules.AcademicCatalog.Infrastructure.Persistence;
 using Adeeb.Modules.Commerce;
 using Adeeb.Modules.Commerce.Endpoints;
 using Adeeb.Modules.Commerce.Infrastructure.Persistence;
+using Adeeb.Modules.Commerce.Infrastructure.Files;
 using Adeeb.Modules.Identity;
 using Adeeb.Modules.Identity.Endpoints;
 using Adeeb.Modules.Identity.Infrastructure.Persistence;
@@ -26,11 +27,12 @@ using System.Globalization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAdeebInfrastructure();
+builder.Services.AddProductionHttp(builder.Configuration, builder.Environment);
 builder.Services.AddProxyConfiguration(builder.Configuration);
 builder.Services.AddAdeebLocalization();
-builder.Services.AddAdeebRateLimiting(builder.Environment);
+builder.Services.AddAdeebRateLimiting(builder.Configuration, builder.Environment);
 builder.Services.AddAdeebSwagger();
-builder.Services.AddAdeebOpenTelemetry();
+builder.Services.AddAdeebOpenTelemetry(builder.Configuration, builder.Environment);
 builder.Services.AddAdeebHealthChecks(builder.Configuration);
 builder.Services.AddDatabaseInitializationOptions(builder.Configuration);
 
@@ -40,16 +42,14 @@ builder.Services.AddQuestionBankModule(builder.Configuration);
 builder.Services.AddStudentsModule(builder.Configuration);
 builder.Services.AddCommerceModule(builder.Configuration);
 builder.Services.AddAdeebDocumentation(builder.Configuration);
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("ContentAdmin", policy => policy.RequireRole("SuperAdmin", "Admin"));
-});
+builder.Services.AddAdeebAuthorization();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
+app.UseProductionHttp();
 app.UseAuthentication();
 app.UseRequestLocalization();
 
@@ -81,6 +81,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseLegacyReceiptPublicAccessBlock();
 app.UseStaticFiles();
 app.UseAuthorization();
 app.UseRateLimiter();

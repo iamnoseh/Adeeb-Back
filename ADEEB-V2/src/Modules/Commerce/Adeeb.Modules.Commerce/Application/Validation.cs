@@ -15,14 +15,14 @@ internal static class Validation
             errors["name"] = [Error.Validation("commerce.tariff.name.invalid", "Commerce.Tariff.Name.Invalid")];
         }
 
-        if (request.Price is null or <= 0)
+        if (request.Price is null || !Domain.CommerceMoney.IsValid(request.Price.Value))
         {
             errors["price"] = [Error.Validation("commerce.tariff.price.invalid", "Commerce.Tariff.Price.Invalid")];
         }
 
-        if (string.IsNullOrWhiteSpace(request.Currency) || request.Currency.Trim().Length != Domain.Tariffs.CommerceTariff.CurrencyMaxLength)
+        if (!Domain.SupportedCurrencies.TryNormalize(request.Currency, out _))
         {
-            errors["currency"] = [Error.Validation("commerce.tariff.currency.invalid", "Commerce.Tariff.Currency.Invalid")];
+            errors["currency"] = [Error.Validation("commerce.tariff.currency.unsupported", "Commerce.Tariff.Currency.Unsupported")];
         }
 
         if (request.DurationDays is null or <= 0)

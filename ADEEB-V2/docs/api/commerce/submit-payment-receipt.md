@@ -36,13 +36,13 @@ Multipart fields:
 ## 13. Field Rules
 `IdempotencyKey` is required and must be at most 128 characters.
 
-Receipt image is required. Allowed types: jpg, jpeg, png, webp. Max size: 10 MB.
+Receipt image is required. Source formats are JPEG, PNG, and WebP. The API verifies signatures, decodes the image, limits it to 6000 pixels per axis and 24 million pixels total, removes metadata, and re-encodes it as WebP. Max input size: 10 MB.
 ## 14. Success Response
-`200 OK` payment receipt with `status: Pending`.
+`200 OK` payment receipt with `status: Pending` and `receiptImageAvailable: true`. No storage object key or public image URL is returned. Tariff name, price, currency, and duration are immutable submission-time snapshot values.
 ## 15. Error Responses
 `401`, `404`, `409`, `422` ProblemDetails.
 ## 16. Stable Error Codes
-`commerce.student_required`, `commerce.tariff_not_found`, `commerce.idempotency_key.invalid`, `commerce.idempotency_key.in_use`, `commerce.receipt.image.required`, `commerce.receipt.image.invalid_type`, `commerce.image.too_large`.
+`commerce.student_required`, `commerce.tariff_not_found`, `commerce.idempotency_key.invalid`, `idempotency.payload_mismatch`, `commerce.receipt.image.required`, `commerce.receipt.image.invalid_type`, `commerce.image.too_large`.
 ## 17. Frontend Behavior
 After upload, show pending review state until admin approves or rejects.
 ## 18. Retry Policy
@@ -50,12 +50,15 @@ If upload result is unknown, retry with the same idempotency key.
 ## 19. Caching
 Do not cache mutation response.
 ## 20. Idempotency
-Idempotent by `IdempotencyKey` for the same student and tariff.
+Idempotent by `IdempotencyKey` within the authenticated student scope. A request fingerprint binds the key to the tariff and normalized image content. The same key and payload returns the original receipt; reuse with a different tariff or image returns `idempotency.payload_mismatch`. A retry returns the original receipt snapshot even if the tariff later changes.
 ## 21. Security Notes
-The client cannot choose `studentId`; it comes from JWT and Students.
+The client cannot choose `studentId`; it comes from JWT and Students. The client filename is ignored, and receipt evidence is stored outside `wwwroot`. Supported currencies are `TJS`, `USD`, and `RUB`.
 ## 22. Example Flow
 Student scans QR, pays, uploads check image, waits for review.
 ## 23. Related Endpoints
 `GET /api/v2/commerce/tariffs`, `GET /api/v2/commerce/me/entitlements`.
 ## 24. Change History
 2026-07-11: Added manual receipt submission.
+2026-07-13: Preserved immutable tariff snapshots on payment receipts.
+2026-07-13: Moved receipt images to validated private storage with cleanup on failure.
+2026-07-13: Scoped idempotency keys per student and bound retries to a request fingerprint.

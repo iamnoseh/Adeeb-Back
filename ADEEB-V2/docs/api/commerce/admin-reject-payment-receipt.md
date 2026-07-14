@@ -17,7 +17,7 @@ Commerce.
 ## 5. Authentication
 Bearer access token required.
 ## 6. Authorization
-`ContentAdmin` policy.
+`commerce.payment_receipts.review` permission. Finance administrators may review; content and support administrators may not.
 ## 7. Rate Limit
 Default admin limits.
 ## 8. Localization
@@ -37,7 +37,7 @@ Note is optional and max 512 characters.
 ## 15. Error Responses
 `401`, `403`, `404`, `409`, `422` ProblemDetails.
 ## 16. Stable Error Codes
-`commerce.receipt_not_found`, `commerce.receipt_already_reviewed`, `commerce.review_note.invalid`, `commerce.reviewer_required`.
+`commerce.receipt_not_found`, `commerce.receipt_already_reviewed`, `commerce.receipt_concurrency_conflict`, `commerce.review_note.invalid`, `commerce.reviewer_required`.
 ## 17. Frontend Behavior
 After reject, student remains Free unless another active entitlement exists.
 ## 18. Retry Policy
@@ -45,12 +45,13 @@ Safe to retry only if the first result is unknown; reviewed receipts return conf
 ## 19. Caching
 Refresh admin receipt list.
 ## 20. Idempotency
-Rejecting an already reviewed receipt returns conflict.
+Review persistence uses a transaction and PostgreSQL optimistic concurrency. Rejecting an already or concurrently reviewed receipt returns `409`.
 ## 21. Security Notes
-Reject does not delete uploaded evidence.
+Reject does not delete uploaded evidence. Concurrent approve/reject attempts cannot produce two final decisions.
 ## 22. Example Flow
 Admin sees unreadable check and rejects with note.
 ## 23. Related Endpoints
 `GET /api/v2/admin/commerce/payment-receipts`.
 ## 24. Change History
 2026-07-11: Added receipt rejection.
+2026-07-13: Added transactional optimistic concurrency.

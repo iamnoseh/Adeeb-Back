@@ -10,6 +10,19 @@ public static class CommerceErrors
     public static readonly Error IdempotencyKeyInUse = Error.Conflict("commerce.idempotency_key.in_use", "Commerce.IdempotencyKey.InUse");
     public static readonly Error TariffNotFound = Error.NotFound("commerce.tariff_not_found", "Commerce.TariffNotFound");
     public static readonly Error ReceiptNotFound = Error.NotFound("commerce.receipt_not_found", "Commerce.ReceiptNotFound");
-    public static readonly Error ReceiptAlreadyReviewed = Error.Conflict("commerce.receipt_already_reviewed", "Commerce.ReceiptAlreadyReviewed");
-    public static readonly Error ReviewerRequired = Error.Unauthorized("commerce.reviewer_required", "Commerce.ReviewerRequired");
+    public static readonly Error ReceiptAlreadyReviewed = Domain.Payments.PaymentReceiptErrors.AlreadyReviewed;
+    public static readonly Error ReceiptConcurrencyConflict = Error.Conflict("commerce.receipt_concurrency_conflict", "Commerce.ReceiptConcurrencyConflict");
+    public static readonly Error EntitlementAlreadyCreated = Error.Conflict("commerce.entitlement_already_created", "Commerce.EntitlementAlreadyCreated");
+    public static readonly Error ReviewerRequired = Domain.Payments.PaymentReceiptErrors.ReviewerRequired;
+    public static readonly Error ReceiptImageRequired = Error.Validation("commerce.receipt.image.required", "Commerce.Receipt.Image.Required");
+    public static readonly Error ReceiptImageInvalidType = Error.Validation("commerce.receipt.image.invalid_type", "Commerce.Receipt.Image.InvalidType");
+    public static readonly Error ReceiptImageCorrupted = Error.Validation("commerce.receipt.image.corrupted", "Commerce.Receipt.Image.Corrupted");
+    public static readonly Error ImageTooLarge = Error.Validation("commerce.image.too_large", "Commerce.Image.TooLarge");
+    public static readonly Error ImageDimensionsInvalid = Error.Validation("commerce.image.dimensions.invalid", "Commerce.Image.Dimensions.Invalid");
+    public static readonly Error ReceiptImageNotFound = Error.NotFound("commerce.receipt.image_not_found", "Commerce.Receipt.ImageNotFound");
+    public static readonly Error ReceiptStatusInvalid = Error.Validation("commerce.receipt.status.invalid", "Commerce.Receipt.Status.Invalid");
+    public static readonly Error PaginationLimitInvalid = Error.Validation("pagination.limit.invalid", "Pagination.Limit.Invalid");
+    public static readonly Error PaginationCursorInvalid = Error.Validation("pagination.cursor.invalid", "Pagination.Cursor.Invalid");
+    public static readonly Error DateRangeInvalid = Error.Validation("date_range.invalid", "DateRange.Invalid");
+    public static readonly Error IdempotencyPayloadMismatch = Error.Conflict("idempotency.payload_mismatch", "Idempotency.PayloadMismatch");
 }

@@ -113,10 +113,13 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.TariffNotFound"] = "Тариф ёфт нашуд",
             ["Commerce.ReceiptNotFound"] = "Чеки пардохт ёфт нашуд",
             ["Commerce.ReceiptAlreadyReviewed"] = "Чеки пардохт аллакай санҷида шудааст",
+            ["Commerce.ReceiptConcurrencyConflict"] = "Чеки пардохт ҳамзамон аз тарафи дигар санҷида шуд",
+            ["Commerce.EntitlementAlreadyCreated"] = "Дастрасӣ барои ин чек аллакай сохта шудааст",
             ["Commerce.ReviewerRequired"] = "Маълумоти санҷанда лозим аст",
             ["Commerce.Tariff.Name.Invalid"] = "Номи тариф нодуруст аст",
             ["Commerce.Tariff.Price.Invalid"] = "Нархи тариф нодуруст аст",
             ["Commerce.Tariff.Currency.Invalid"] = "Асъори тариф нодуруст аст",
+            ["Commerce.Tariff.Currency.Unsupported"] = "Асъори тариф дастгирӣ намешавад",
             ["Commerce.Tariff.Duration.Invalid"] = "Давомнокии тариф нодуруст аст",
             ["Commerce.Tariff.QrImage.Required"] = "Расми QR-код лозим аст",
             ["Commerce.Tariff.Status.Invalid"] = "Ҳолати тариф нодуруст аст",
@@ -124,7 +127,15 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.ReviewNote.Invalid"] = "Эзоҳи санҷиш нодуруст аст",
             ["Commerce.QrImage.InvalidType"] = "Навъи расми QR-код нодуруст аст",
             ["Commerce.Receipt.Image.InvalidType"] = "Навъи расми чек нодуруст аст",
-            ["Commerce.Image.TooLarge"] = "Андозаи расм аз ҳад зиёд аст"
+            ["Commerce.Image.TooLarge"] = "Андозаи расм аз ҳад зиёд аст",
+            ["Commerce.Receipt.Image.Corrupted"] = "Расми чек вайрон аст",
+            ["Commerce.Image.Dimensions.Invalid"] = "Андозаҳои расм аз ҳад зиёданд",
+            ["Commerce.Receipt.ImageNotFound"] = "Расми чек ёфт нашуд",
+            ["Commerce.Receipt.Status.Invalid"] = "Ҳолати чек нодуруст аст",
+            ["Pagination.Limit.Invalid"] = "Ҳадди саҳифа нодуруст аст",
+            ["Pagination.Cursor.Invalid"] = "Курсори саҳифа нодуруст аст",
+            ["DateRange.Invalid"] = "Фосилаи сана нодуруст аст",
+            ["Idempotency.PayloadMismatch"] = "Калиди такрорӣ бо маълумоти дигар истифода шуд"
         },
         ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -171,10 +182,13 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.TariffNotFound"] = "Тариф не найден",
             ["Commerce.ReceiptNotFound"] = "Чек платежа не найден",
             ["Commerce.ReceiptAlreadyReviewed"] = "Чек платежа уже проверен",
+            ["Commerce.ReceiptConcurrencyConflict"] = "Чек одновременно проверен другим пользователем",
+            ["Commerce.EntitlementAlreadyCreated"] = "Доступ для этого чека уже создан",
             ["Commerce.ReviewerRequired"] = "Требуются данные проверяющего",
             ["Commerce.Tariff.Name.Invalid"] = "Название тарифа недействительно",
             ["Commerce.Tariff.Price.Invalid"] = "Цена тарифа недействительна",
             ["Commerce.Tariff.Currency.Invalid"] = "Валюта тарифа недействительна",
+            ["Commerce.Tariff.Currency.Unsupported"] = "Валюта тарифа не поддерживается",
             ["Commerce.Tariff.Duration.Invalid"] = "Длительность тарифа недействительна",
             ["Commerce.Tariff.QrImage.Required"] = "Требуется изображение QR-кода",
             ["Commerce.Tariff.Status.Invalid"] = "Статус тарифа недействителен",
@@ -182,7 +196,15 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.ReviewNote.Invalid"] = "Комментарий проверки недействителен",
             ["Commerce.QrImage.InvalidType"] = "Тип изображения QR-кода недействителен",
             ["Commerce.Receipt.Image.InvalidType"] = "Тип изображения чека недействителен",
-            ["Commerce.Image.TooLarge"] = "Размер изображения слишком большой"
+            ["Commerce.Image.TooLarge"] = "Размер изображения слишком большой",
+            ["Commerce.Receipt.Image.Corrupted"] = "Изображение чека повреждено",
+            ["Commerce.Image.Dimensions.Invalid"] = "Размеры изображения превышают допустимые",
+            ["Commerce.Receipt.ImageNotFound"] = "Изображение чека не найдено",
+            ["Commerce.Receipt.Status.Invalid"] = "Статус чека недействителен",
+            ["Pagination.Limit.Invalid"] = "Лимит страницы недействителен",
+            ["Pagination.Cursor.Invalid"] = "Курсор страницы недействителен",
+            ["DateRange.Invalid"] = "Диапазон дат недействителен",
+            ["Idempotency.PayloadMismatch"] = "Ключ идемпотентности использован с другими данными"
         },
         ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -229,10 +251,13 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.TariffNotFound"] = "Tariff was not found",
             ["Commerce.ReceiptNotFound"] = "Payment receipt was not found",
             ["Commerce.ReceiptAlreadyReviewed"] = "Payment receipt has already been reviewed",
+            ["Commerce.ReceiptConcurrencyConflict"] = "Payment receipt was reviewed concurrently",
+            ["Commerce.EntitlementAlreadyCreated"] = "Entitlement already exists for this payment receipt",
             ["Commerce.ReviewerRequired"] = "Reviewer identity is required",
             ["Commerce.Tariff.Name.Invalid"] = "Tariff name is invalid",
             ["Commerce.Tariff.Price.Invalid"] = "Tariff price is invalid",
             ["Commerce.Tariff.Currency.Invalid"] = "Tariff currency is invalid",
+            ["Commerce.Tariff.Currency.Unsupported"] = "Tariff currency is not supported",
             ["Commerce.Tariff.Duration.Invalid"] = "Tariff duration is invalid",
             ["Commerce.Tariff.QrImage.Required"] = "QR image is required",
             ["Commerce.Tariff.Status.Invalid"] = "Tariff status is invalid",
@@ -240,7 +265,15 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Commerce.ReviewNote.Invalid"] = "Review note is invalid",
             ["Commerce.QrImage.InvalidType"] = "QR image type is invalid",
             ["Commerce.Receipt.Image.InvalidType"] = "Receipt image type is invalid",
-            ["Commerce.Image.TooLarge"] = "Image is too large"
+            ["Commerce.Image.TooLarge"] = "Image is too large",
+            ["Commerce.Receipt.Image.Corrupted"] = "Receipt image is corrupted",
+            ["Commerce.Image.Dimensions.Invalid"] = "Image dimensions exceed the allowed limits",
+            ["Commerce.Receipt.ImageNotFound"] = "Receipt image was not found",
+            ["Commerce.Receipt.Status.Invalid"] = "Payment receipt status is invalid",
+            ["Pagination.Limit.Invalid"] = "Page limit is invalid",
+            ["Pagination.Cursor.Invalid"] = "Page cursor is invalid",
+            ["DateRange.Invalid"] = "Date range is invalid",
+            ["Idempotency.PayloadMismatch"] = "Idempotency key was used with a different payload"
         }
     };
     public string this[string key]

@@ -23,6 +23,77 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Adeeb.Modules.Commerce.Domain.Auditing.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("action");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("ip_address");
+
+                    b.Property<string>("NewValuesJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("new_values_json");
+
+                    b.Property<string>("OldValuesJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("old_values_json");
+
+                    b.Property<string>("ResourceId")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("resource_id");
+
+                    b.Property<string>("ResourceType")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("resource_type");
+
+                    b.Property<Guid?>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("user_agent");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId", "CreatedAtUtc")
+                        .HasDatabaseName("ix_commerce_audit_actor_created");
+
+                    b.HasIndex("ResourceType", "ResourceId", "CreatedAtUtc")
+                        .HasDatabaseName("ix_commerce_audit_resource_created");
+
+                    b.ToTable("audit_logs", "commerce");
+                });
+
             modelBuilder.Entity("Adeeb.Modules.Commerce.Domain.Entitlements.StudentEntitlement", b =>
                 {
                     b.Property<Guid>("Id")
@@ -61,6 +132,10 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("source");
 
+                    b.Property<Guid?>("SourcePaymentReceiptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_payment_receipt_id");
+
                     b.Property<DateTimeOffset>("StartsAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("starts_at_utc");
@@ -82,6 +157,11 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                     b.HasIndex("IdempotencyKey")
                         .IsUnique()
                         .HasDatabaseName("ux_commerce_student_entitlements_idempotency_key");
+
+                    b.HasIndex("SourcePaymentReceiptId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_commerce_entitlements_source_payment_receipt_id")
+                        .HasFilter("source_payment_receipt_id IS NOT NULL");
 
                     b.HasIndex("StudentId", "Kind", "Status")
                         .HasDatabaseName("ix_commerce_student_entitlements_student_kind_status");
@@ -105,17 +185,37 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");
 
+                    b.Property<string>("CurrencySnapshot")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency_snapshot");
+
+                    b.Property<short>("DurationDaysSnapshot")
+                        .HasColumnType("smallint")
+                        .HasColumnName("duration_days_snapshot");
+
                     b.Property<string>("IdempotencyKey")
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("idempotency_key");
 
-                    b.Property<string>("ReceiptImageUrl")
+                    b.Property<decimal>("PriceSnapshot")
+                        .HasColumnType("numeric")
+                        .HasColumnName("price_snapshot");
+
+                    b.Property<string>("ReceiptImageObjectKey")
                         .IsRequired()
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)")
-                        .HasColumnName("receipt_image_url");
+                        .HasColumnName("receipt_image_object_key");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("request_fingerprint");
 
                     b.Property<DateTimeOffset?>("ReviewedAtUtc")
                         .HasColumnType("timestamp with time zone")
@@ -137,15 +237,37 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("tariff_id");
 
+                    b.Property<string>("TariffNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("tariff_name_snapshot");
+
                     b.Property<DateTimeOffset>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at_utc");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("IdempotencyKey")
+                    b.HasIndex("CreatedAtUtc", "Id")
+                        .IsDescending()
+                        .HasDatabaseName("ix_commerce_receipts_pending_created_id")
+                        .HasFilter("status = 1");
+
+                    b.HasIndex("ReviewedByUserId", "ReviewedAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_commerce_receipts_reviewer_reviewed")
+                        .HasFilter("reviewed_by_user_id IS NOT NULL");
+
+                    b.HasIndex("StudentId", "IdempotencyKey")
                         .IsUnique()
-                        .HasDatabaseName("ux_commerce_payment_receipts_idempotency_key");
+                        .HasDatabaseName("ux_commerce_payment_receipts_student_idempotency_key");
 
                     b.HasIndex("StudentId", "Status")
                         .HasDatabaseName("ix_commerce_payment_receipts_student_status");
@@ -153,7 +275,22 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                     b.HasIndex("TariffId", "Status")
                         .HasDatabaseName("ix_commerce_payment_receipts_tariff_status");
 
-                    b.ToTable("payment_receipts", "commerce");
+                    b.HasIndex("Status", "CreatedAtUtc", "Id")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("ix_commerce_receipts_status_created_id");
+
+                    b.HasIndex("StudentId", "CreatedAtUtc", "Id")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("ix_commerce_receipts_student_created_id");
+
+                    b.HasIndex("StudentId", "Status", "CreatedAtUtc", "Id")
+                        .IsDescending(false, false, true, true)
+                        .HasDatabaseName("ix_commerce_receipts_student_status_created_id");
+
+                    b.ToTable("payment_receipts", "commerce", t =>
+                        {
+                            t.HasCheckConstraint("ck_commerce_receipts_price_snapshot_valid", "price_snapshot > 0 AND price_snapshot <= 9999999999999999.99 AND scale(price_snapshot) <= 2");
+                        });
                 });
 
             modelBuilder.Entity("Adeeb.Modules.Commerce.Domain.Tariffs.CommerceTariff", b =>
@@ -184,8 +321,7 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                         .HasColumnName("name");
 
                     b.Property<decimal>("Price")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)")
+                        .HasColumnType("numeric")
                         .HasColumnName("price");
 
                     b.Property<string>("QrImageUrl")
@@ -207,7 +343,10 @@ namespace Adeeb.Modules.Commerce.Infrastructure.Persistence.Migrations
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_commerce_tariffs_status");
 
-                    b.ToTable("tariffs", "commerce");
+                    b.ToTable("tariffs", "commerce", t =>
+                        {
+                            t.HasCheckConstraint("ck_commerce_tariffs_price_valid", "price > 0 AND price <= 9999999999999999.99 AND scale(price) <= 2");
+                        });
                 });
 #pragma warning restore 612, 618
         }

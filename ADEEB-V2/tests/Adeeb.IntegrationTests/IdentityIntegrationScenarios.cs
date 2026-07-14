@@ -10,9 +10,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Adeeb.IntegrationTests;
 
-public sealed class IdentityIntegrationScenarios(AdeebApiFactory factory) : IClassFixture<AdeebApiFactory>
+public sealed class IdentityIntegrationScenarios(AdeebApiFactory factory) : IClassFixture<AdeebApiFactory>, IAsyncLifetime
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    public async Task InitializeAsync()
+    {
+        using var client = factory.CreateClient();
+        await factory.ResetDatabaseAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task Jwt_principal_exists_before_localization_reads_language_claim()

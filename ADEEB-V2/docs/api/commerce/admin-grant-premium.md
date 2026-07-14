@@ -30,7 +30,7 @@ Bearer access token required.
 
 ## 6. Authorization
 
-`ContentAdmin` policy. Current roles: `SuperAdmin`, `Admin`.
+`commerce.entitlements.grant` permission.
 
 ## 7. Rate Limit
 
@@ -101,7 +101,7 @@ Repeating the same `idempotencyKey` returns the original entitlement.
 
 `401 Unauthorized` when the access token is missing or invalid.
 
-`403 Forbidden` when the user lacks the `ContentAdmin` policy.
+`403 Forbidden` when the user lacks `commerce.entitlements.grant`.
 
 `404 Not Found` when the target active student does not exist.
 

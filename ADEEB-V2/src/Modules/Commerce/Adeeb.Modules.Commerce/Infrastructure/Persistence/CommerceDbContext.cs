@@ -1,4 +1,5 @@
 using Adeeb.Modules.Commerce.Domain.Entitlements;
+using Adeeb.Modules.Commerce.Domain.Auditing;
 using Adeeb.Modules.Commerce.Domain.Payments;
 using Adeeb.Modules.Commerce.Domain.Tariffs;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
     public DbSet<StudentEntitlement> StudentEntitlements => Set<StudentEntitlement>();
     public DbSet<CommerceTariff> Tariffs => Set<CommerceTariff>();
     public DbSet<PaymentReceipt> PaymentReceipts => Set<PaymentReceipt>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -18,6 +20,32 @@ public sealed class CommerceDbContext(DbContextOptions<CommerceDbContext> option
         modelBuilder.ApplyConfiguration(new StudentEntitlementConfiguration());
         modelBuilder.ApplyConfiguration(new CommerceTariffConfiguration());
         modelBuilder.ApplyConfiguration(new PaymentReceiptConfiguration());
+        modelBuilder.ApplyConfiguration(new AuditLogConfiguration());
+    }
+}
+
+internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
+{
+    public void Configure(EntityTypeBuilder<AuditLog> builder)
+    {
+        builder.ToTable("audit_logs");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id");
+        builder.Property(x => x.ActorUserId).HasColumnName("actor_user_id");
+        builder.Property(x => x.Action).HasColumnName("action").HasMaxLength(AuditLog.ActionMaxLength).IsRequired();
+        builder.Property(x => x.ResourceType).HasColumnName("resource_type").HasMaxLength(AuditLog.ResourceTypeMaxLength).IsRequired();
+        builder.Property(x => x.ResourceId).HasColumnName("resource_id").HasMaxLength(AuditLog.ResourceIdMaxLength).IsRequired();
+        builder.Property(x => x.StudentId).HasColumnName("student_id");
+        builder.Property(x => x.OldValuesJson).HasColumnName("old_values_json").HasColumnType("jsonb");
+        builder.Property(x => x.NewValuesJson).HasColumnName("new_values_json").HasColumnType("jsonb");
+        builder.Property(x => x.IpAddress).HasColumnName("ip_address").HasMaxLength(AuditLog.IpAddressMaxLength);
+        builder.Property(x => x.UserAgent).HasColumnName("user_agent").HasMaxLength(AuditLog.UserAgentMaxLength);
+        builder.Property(x => x.CorrelationId).HasColumnName("correlation_id").HasMaxLength(AuditLog.CorrelationIdMaxLength);
+        builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
+        builder.HasIndex(x => new { x.ResourceType, x.ResourceId, x.CreatedAtUtc })
+            .HasDatabaseName("ix_commerce_audit_resource_created");
+        builder.HasIndex(x => new { x.ActorUserId, x.CreatedAtUtc })
+            .HasDatabaseName("ix_commerce_audit_actor_created");
     }
 }
 
@@ -25,11 +53,13 @@ internal sealed class CommerceTariffConfiguration : IEntityTypeConfiguration<Com
 {
     public void Configure(EntityTypeBuilder<CommerceTariff> builder)
     {
-        builder.ToTable("tariffs");
+        builder.ToTable("tariffs", table => table.HasCheckConstraint(
+            CommerceDatabaseConstraints.TariffPriceValid,
+            "price > 0 AND price <= 9999999999999999.99 AND scale(price) <= 2"));
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id");
         builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(CommerceTariff.NameMaxLength).IsRequired();
-        builder.Property(x => x.Price).HasColumnName("price").HasPrecision(18, 2).IsRequired();
+        builder.Property(x => x.Price).HasColumnName("price").HasColumnType("numeric").IsRequired();
         builder.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(CommerceTariff.CurrencyMaxLength).IsRequired();
         builder.Property(x => x.DurationDays).HasColumnName("duration_days").IsRequired();
         builder.Property(x => x.QrImageUrl).HasColumnName("qr_image_url").HasMaxLength(CommerceTariff.QrImageUrlMaxLength).IsRequired();
@@ -44,24 +74,49 @@ internal sealed class PaymentReceiptConfiguration : IEntityTypeConfiguration<Pay
 {
     public void Configure(EntityTypeBuilder<PaymentReceipt> builder)
     {
-        builder.ToTable("payment_receipts");
+        builder.ToTable("payment_receipts", table => table.HasCheckConstraint(
+            CommerceDatabaseConstraints.ReceiptPriceSnapshotValid,
+            "price_snapshot > 0 AND price_snapshot <= 9999999999999999.99 AND scale(price_snapshot) <= 2"));
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).HasColumnName("id");
         builder.Property(x => x.StudentId).HasColumnName("student_id").IsRequired();
         builder.Property(x => x.TariffId).HasColumnName("tariff_id").IsRequired();
-        builder.Property(x => x.ReceiptImageUrl).HasColumnName("receipt_image_url").HasMaxLength(PaymentReceipt.ReceiptImageUrlMaxLength).IsRequired();
+        builder.Property(x => x.TariffNameSnapshot).HasColumnName("tariff_name_snapshot").HasMaxLength(CommerceTariff.NameMaxLength).IsRequired();
+        builder.Property(x => x.PriceSnapshot).HasColumnName("price_snapshot").HasColumnType("numeric").IsRequired();
+        builder.Property(x => x.CurrencySnapshot).HasColumnName("currency_snapshot").HasMaxLength(CommerceTariff.CurrencyMaxLength).IsRequired();
+        builder.Property(x => x.DurationDaysSnapshot).HasColumnName("duration_days_snapshot").IsRequired();
+        builder.Property(x => x.ReceiptImageObjectKey).HasColumnName("receipt_image_object_key").HasMaxLength(PaymentReceipt.ReceiptImageObjectKeyMaxLength).IsRequired();
         builder.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(PaymentReceipt.IdempotencyKeyMaxLength).IsRequired();
+        builder.Property(x => x.RequestFingerprint).HasColumnName("request_fingerprint").HasMaxLength(128).IsRequired();
         builder.Property(x => x.Status).HasColumnName("status").HasConversion<int>().IsRequired();
         builder.Property(x => x.AdminNote).HasColumnName("admin_note").HasMaxLength(PaymentReceipt.AdminNoteMaxLength);
         builder.Property(x => x.ReviewedByUserId).HasColumnName("reviewed_by_user_id");
         builder.Property(x => x.ReviewedAtUtc).HasColumnName("reviewed_at_utc");
         builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
         builder.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc").IsRequired();
+        builder.Property(x => x.Version).IsRowVersion();
         builder.HasIndex(x => new { x.StudentId, x.Status }).HasDatabaseName("ix_commerce_payment_receipts_student_status");
         builder.HasIndex(x => new { x.TariffId, x.Status }).HasDatabaseName("ix_commerce_payment_receipts_tariff_status");
-        builder.HasIndex(x => x.IdempotencyKey)
+        builder.HasIndex(x => new { x.StudentId, x.CreatedAtUtc, x.Id })
+            .IsDescending(false, true, true)
+            .HasDatabaseName("ix_commerce_receipts_student_created_id");
+        builder.HasIndex(x => new { x.StudentId, x.Status, x.CreatedAtUtc, x.Id })
+            .IsDescending(false, false, true, true)
+            .HasDatabaseName("ix_commerce_receipts_student_status_created_id");
+        builder.HasIndex(x => new { x.Status, x.CreatedAtUtc, x.Id })
+            .IsDescending(false, true, true)
+            .HasDatabaseName("ix_commerce_receipts_status_created_id");
+        builder.HasIndex(x => new { x.CreatedAtUtc, x.Id })
+            .IsDescending(true, true)
+            .HasFilter("status = 1")
+            .HasDatabaseName("ix_commerce_receipts_pending_created_id");
+        builder.HasIndex(x => new { x.ReviewedByUserId, x.ReviewedAtUtc })
+            .IsDescending(false, true)
+            .HasFilter("reviewed_by_user_id IS NOT NULL")
+            .HasDatabaseName("ix_commerce_receipts_reviewer_reviewed");
+        builder.HasIndex(x => new { x.StudentId, x.IdempotencyKey })
             .IsUnique()
-            .HasDatabaseName(CommerceDatabaseConstraints.PaymentReceiptIdempotencyKeyUnique);
+            .HasDatabaseName(CommerceDatabaseConstraints.PaymentReceiptIdempotencyScopeUnique);
     }
 }
 
@@ -79,6 +134,7 @@ internal sealed class StudentEntitlementConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.StartsAtUtc).HasColumnName("starts_at_utc").IsRequired();
         builder.Property(x => x.ExpiresAtUtc).HasColumnName("expires_at_utc");
         builder.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(128).IsRequired();
+        builder.Property(x => x.SourcePaymentReceiptId).HasColumnName("source_payment_receipt_id");
         builder.Property(x => x.RevokeReason).HasColumnName("revoke_reason").HasMaxLength(256);
         builder.Property(x => x.RevokedAtUtc).HasColumnName("revoked_at_utc");
         builder.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").IsRequired();
@@ -88,5 +144,9 @@ internal sealed class StudentEntitlementConfiguration : IEntityTypeConfiguration
             .HasDatabaseName(CommerceDatabaseConstraints.StudentEntitlementIdempotencyKeyUnique);
         builder.HasIndex(x => new { x.StudentId, x.Kind, x.Status })
             .HasDatabaseName(CommerceDatabaseConstraints.StudentEntitlementStudentKindStatus);
+        builder.HasIndex(x => x.SourcePaymentReceiptId)
+            .IsUnique()
+            .HasFilter("source_payment_receipt_id IS NOT NULL")
+            .HasDatabaseName(CommerceDatabaseConstraints.StudentEntitlementSourcePaymentReceiptUnique);
     }
 }

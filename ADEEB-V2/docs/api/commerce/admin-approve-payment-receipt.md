@@ -9,7 +9,7 @@ status: stable
 ## 1. Endpoint
 `POST /api/v2/admin/commerce/payment-receipts/{receiptId}/approve`
 ## 2. Purpose
-Approves a submitted receipt and grants premium for the selected tariff duration.
+Approves a submitted receipt and grants premium for the immutable duration captured when the receipt was submitted.
 ## 3. Status
 Stable.
 ## 4. Module
@@ -17,7 +17,7 @@ Commerce.
 ## 5. Authentication
 Bearer access token required.
 ## 6. Authorization
-`ContentAdmin` policy.
+`commerce.payment_receipts.review` permission. Finance administrators may review; content and support administrators may not.
 ## 7. Rate Limit
 Default admin limits.
 ## 8. Localization
@@ -37,7 +37,7 @@ Note is optional and max 512 characters.
 ## 15. Error Responses
 `401`, `403`, `404`, `409`, `422` ProblemDetails.
 ## 16. Stable Error Codes
-`commerce.receipt_not_found`, `commerce.receipt_already_reviewed`, `commerce.review_note.invalid`, `commerce.reviewer_required`.
+`commerce.receipt_not_found`, `commerce.receipt_already_reviewed`, `commerce.receipt_concurrency_conflict`, `commerce.entitlement_already_created`, `commerce.review_note.invalid`, `commerce.reviewer_required`.
 ## 17. Frontend Behavior
 After approve, refresh receipt list and the student's entitlement state.
 ## 18. Retry Policy
@@ -45,12 +45,14 @@ Safe to retry only if the first result is unknown; reviewed receipts return conf
 ## 19. Caching
 Invalidate entitlement summary after success.
 ## 20. Idempotency
-Approval creates a premium entitlement with an internal receipt-based idempotency key.
+Approval, entitlement creation, and persistence execute in one transaction. A unique database constraint allows at most one entitlement per receipt.
 ## 21. Security Notes
-Approval is an admin decision, not automated payment verification.
+Approval is an admin decision, not automated payment verification. Concurrent review attempts produce one committed final state and a stable `409` for the loser.
 ## 22. Example Flow
 Admin compares check image with bank record, then approves.
 ## 23. Related Endpoints
 `GET /api/v2/commerce/me/entitlements`.
 ## 24. Change History
 2026-07-11: Added receipt approval.
+2026-07-13: Added transactional optimistic concurrency and receipt-entitlement uniqueness.
+2026-07-13: Entitlement duration now comes from the receipt snapshot, not the current tariff.

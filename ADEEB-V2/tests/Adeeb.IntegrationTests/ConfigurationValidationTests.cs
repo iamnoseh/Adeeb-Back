@@ -2,9 +2,13 @@ using Adeeb.Api.Configuration;
 using Adeeb.Application.Abstractions.Students;
 using Adeeb.Modules.Students.Application;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 
 namespace Adeeb.IntegrationTests;
 
@@ -16,7 +20,7 @@ public sealed class ConfigurationValidationTests
     [InlineData("not-an-ip", false)]
     public void Proxy_known_proxy_values_are_validated(string value, bool expected)
     {
-        Assert.Equal(expected, ForwardedHeadersExtensions.TryParseProxy(value, out _));
+        Assert.Equal(expected, Adeeb.Api.Configuration.ForwardedHeadersExtensions.TryParseProxy(value, out _));
     }
 
     [Theory]
@@ -27,7 +31,7 @@ public sealed class ConfigurationValidationTests
     [InlineData("not-a-network", false)]
     public void Proxy_known_network_values_are_validated_as_cidr(string value, bool expected)
     {
-        Assert.Equal(expected, ForwardedHeadersExtensions.TryParseNetwork(value, out _));
+        Assert.Equal(expected, Adeeb.Api.Configuration.ForwardedHeadersExtensions.TryParseNetwork(value, out _));
     }
 
     [Fact]
@@ -68,5 +72,61 @@ public sealed class ConfigurationValidationTests
                 Environment.SetEnvironmentVariable(key, value);
             }
         }
+    }
+
+    [Fact]
+    public void Production_rejects_wildcard_allowed_hosts()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["AllowedHosts"] = "*" })
+            .Build();
+        var services = new ServiceCollection();
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            services.AddProductionHttp(configuration, new FakeHostEnvironment(Environments.Production)));
+
+        Assert.Contains("AllowedHosts", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Production_http_adds_safe_correlation_and_security_headers()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddProductionHttp(configuration, new FakeHostEnvironment("Testing"));
+        await using var provider = services.BuildServiceProvider();
+        var app = new ApplicationBuilder(provider);
+        app.UseProductionHttp();
+        app.Run(context => context.Response.StartAsync());
+        var pipeline = app.Build();
+        var context = new DefaultHttpContext { RequestServices = provider };
+        context.Request.Headers["X-Correlation-ID"] = "request_123";
+        context.Response.Body = new MemoryStream();
+
+        await pipeline(context);
+
+        Assert.Equal("request_123", context.TraceIdentifier);
+        Assert.Equal("request_123", context.Response.Headers["X-Correlation-ID"]);
+        Assert.Equal("nosniff", context.Response.Headers["X-Content-Type-Options"]);
+        Assert.Equal("DENY", context.Response.Headers["X-Frame-Options"]);
+        Assert.Contains("frame-ancestors 'none'", context.Response.Headers["Content-Security-Policy"].ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("contains spaces")]
+    [InlineData("contains/slash")]
+    public void Unsafe_correlation_ids_are_rejected(string value)
+    {
+        Assert.False(ProductionHttpExtensions.IsSafeCorrelationId(value));
+    }
+
+    private sealed class FakeHostEnvironment(string environmentName) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = environmentName;
+        public string ApplicationName { get; set; } = "Adeeb.IntegrationTests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 }

@@ -1,4 +1,5 @@
 using Adeeb.SharedKernel.Domain;
+using Adeeb.Modules.Commerce.Domain;
 
 namespace Adeeb.Modules.Commerce.Domain.Tariffs;
 
@@ -38,12 +39,12 @@ public sealed class CommerceTariff : Entity
             throw new ArgumentException("Tariff name is invalid.", nameof(name));
         }
 
-        if (price <= 0)
+        if (!CommerceMoney.IsValid(price))
         {
-            throw new ArgumentException("Tariff price must be positive.", nameof(price));
+            throw new ArgumentException("Tariff price must use the supported monetary precision.", nameof(price));
         }
 
-        if (string.IsNullOrWhiteSpace(currency) || currency.Trim().Length != CurrencyMaxLength)
+        if (!SupportedCurrencies.TryNormalize(currency, out var normalizedCurrency))
         {
             throw new ArgumentException("Currency is invalid.", nameof(currency));
         }
@@ -60,7 +61,7 @@ public sealed class CommerceTariff : Entity
 
         Name = name.Trim();
         Price = price;
-        Currency = currency.Trim().ToUpperInvariant();
+        Currency = normalizedCurrency;
         DurationDays = durationDays;
         QrImageUrl = qrImageUrl.Trim();
         Status = status;

@@ -14,7 +14,8 @@ public sealed class StudentEntitlement : Entity
         DateTimeOffset startsAtUtc,
         DateTimeOffset? expiresAtUtc,
         string idempotencyKey,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        Guid? sourcePaymentReceiptId = null)
     {
         if (id == Guid.Empty)
         {
@@ -44,6 +45,7 @@ public sealed class StudentEntitlement : Entity
         StartsAtUtc = startsAtUtc;
         ExpiresAtUtc = expiresAtUtc;
         IdempotencyKey = idempotencyKey.Trim();
+        SourcePaymentReceiptId = sourcePaymentReceiptId;
         CreatedAtUtc = now;
         UpdatedAtUtc = now;
     }
@@ -55,6 +57,7 @@ public sealed class StudentEntitlement : Entity
     public DateTimeOffset StartsAtUtc { get; private set; }
     public DateTimeOffset? ExpiresAtUtc { get; private set; }
     public string IdempotencyKey { get; private set; } = string.Empty;
+    public Guid? SourcePaymentReceiptId { get; private set; }
     public string? RevokeReason { get; private set; }
     public DateTimeOffset? RevokedAtUtc { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
