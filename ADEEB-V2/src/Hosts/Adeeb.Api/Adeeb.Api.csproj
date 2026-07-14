@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\Modules\AcademicCatalog\Adeeb.Modules.AcademicCatalog\Adeeb.Modules.AcademicCatalog.csproj" />
     <ProjectReference Include="..\..\Modules\Commerce\Adeeb.Modules.Commerce\Adeeb.Modules.Commerce.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Adeeb.Modules.Identity\Adeeb.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\Modules\Mmt\Adeeb.Modules.Mmt\Adeeb.Modules.Mmt.csproj" />
     <ProjectReference Include="..\..\Modules\QuestionBank\Adeeb.Modules.QuestionBank\Adeeb.Modules.QuestionBank.csproj" />
     <ProjectReference Include="..\..\Modules\Students\Adeeb.Modules.Students\Adeeb.Modules.Students.csproj" />
   </ItemGroup>

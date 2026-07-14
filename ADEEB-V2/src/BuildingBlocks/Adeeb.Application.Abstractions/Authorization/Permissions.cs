@@ -7,6 +7,13 @@ public static class AdeebClaimNames
 
 public static class Permissions
 {
+    public static class Mmt
+    {
+        public const string Manage = "mmt.manage";
+        public const string Import = "mmt.import";
+        public static readonly IReadOnlyList<string> All = [Manage, Import];
+    }
+
     public static class Commerce
     {
         public const string ViewTariffs = "commerce.tariffs.view";
@@ -46,6 +53,7 @@ public static class Permissions
 
     public static readonly IReadOnlyList<string> All =
     [
+        .. Mmt.All,
         .. Commerce.All,
         QuestionBank.View,
         QuestionBank.Manage,

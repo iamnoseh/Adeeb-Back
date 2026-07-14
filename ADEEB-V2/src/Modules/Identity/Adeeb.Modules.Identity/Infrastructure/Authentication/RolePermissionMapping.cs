@@ -16,7 +16,8 @@ public static class RolePermissionMapping
             Permissions.AcademicCatalog.Manage,
             Permissions.QuestionBank.View,
             Permissions.QuestionBank.Manage,
-            Permissions.QuestionBank.Import
+            Permissions.QuestionBank.Import,
+            .. Permissions.Mmt.All
         ],
         UserRole.ContentAdmin =>
         [

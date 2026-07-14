@@ -4,6 +4,7 @@ using Adeeb.Modules.Commerce.Domain.Entitlements;
 using Adeeb.Modules.Commerce.Endpoints;
 using Adeeb.Modules.QuestionBank.Domain;
 using Adeeb.Modules.Students.Domain.Students;
+using Adeeb.Modules.Mmt.Domain;
 using Adeeb.SharedKernel.Results;
 using NetArchTest.Rules;
 
@@ -11,6 +12,34 @@ namespace Adeeb.ArchitectureTests;
 
 public sealed class DependencyRulesTests
 {
+    [Fact]
+    public void Mmt_domain_must_not_depend_on_infrastructure_or_frameworks()
+    {
+        var result = Types.InAssembly(typeof(MmtCluster).Assembly)
+            .That().ResideInNamespaceMatching(@"Adeeb\.Modules\.Mmt\.Domain.*")
+            .ShouldNot().HaveDependencyOnAny("Microsoft.EntityFrameworkCore", "Microsoft.AspNetCore", "Npgsql", "Adeeb.Modules.Mmt.Infrastructure")
+            .GetResult();
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Mmt_module_must_not_depend_on_other_modules()
+    {
+        var result = Types.InAssembly(typeof(MmtCluster).Assembly)
+            .ShouldNot().HaveDependencyOnAny("Adeeb.Modules.Identity", "Adeeb.Modules.AcademicCatalog", "Adeeb.Modules.QuestionBank", "Adeeb.Modules.Students", "Adeeb.Modules.Commerce")
+            .GetResult();
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Other_modules_must_not_depend_on_mmt_infrastructure()
+    {
+        var result = Types.InAssemblies([typeof(User).Assembly, typeof(Subject).Assembly, typeof(Question).Assembly, typeof(Student).Assembly, typeof(StudentEntitlement).Assembly])
+            .ShouldNot().HaveDependencyOn("Adeeb.Modules.Mmt.Infrastructure")
+            .GetResult();
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
     [Fact]
     public void Identity_domain_must_not_depend_on_infrastructure_or_frameworks()
     {
@@ -44,7 +73,8 @@ public sealed class DependencyRulesTests
                 "Adeeb.Modules.AcademicCatalog",
                 "Adeeb.Modules.QuestionBank",
                 "Adeeb.Modules.Students",
-                "Adeeb.Modules.Commerce")
+                "Adeeb.Modules.Commerce",
+                "Adeeb.Modules.Mmt")
             .GetResult();
 
         Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));

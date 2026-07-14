@@ -44,6 +44,7 @@ public sealed class ConfigurationValidationTests
             ["ConnectionStrings__QuestionBank"] = "Host=localhost;Port=5432;Database=adeeb_tests;Username=postgres",
             ["ConnectionStrings__Students"] = "Host=localhost;Port=5432;Database=adeeb_tests;Username=postgres",
             ["ConnectionStrings__Commerce"] = "Host=localhost;Port=5432;Database=adeeb_tests;Username=postgres",
+            ["ConnectionStrings__Mmt"] = "Host=localhost;Port=5432;Database=adeeb_tests;Username=postgres",
             ["DatabaseInitialization__AutoMigrate"] = "false",
             ["DatabaseInitialization__Seed"] = "false",
             ["Jwt__Issuer"] = "https://tests.adeeb.tj",
