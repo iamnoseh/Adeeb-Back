@@ -4,18 +4,23 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using Adeeb.Application.Abstractions.Authorization;
+using Adeeb.Modules.Identity.Contracts;
+using Adeeb.Modules.Identity.Infrastructure.Persistence;
 using Adeeb.Modules.Commerce.Contracts;
 using Adeeb.Modules.Commerce.Domain.Payments;
 using Adeeb.Modules.Commerce.Domain.Tariffs;
 using Adeeb.Modules.Commerce.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Adeeb.IntegrationTests;
 
 public sealed class CommerceAuthorizationIntegrationScenarios(AdeebApiFactory factory) : IClassFixture<AdeebApiFactory>, IAsyncLifetime
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     public async Task InitializeAsync()
     {
         using var client = factory.CreateClient();
@@ -54,6 +59,43 @@ public sealed class CommerceAuthorizationIntegrationScenarios(AdeebApiFactory fa
         Assert.Equal(1, await db.AuditLogs.CountAsync(x => x.ResourceId == receiptId.ToString()));
     }
 
+    [Fact]
+    public async Task Persisted_roles_drive_login_refresh_permissions_and_http_authorization()
+    {
+        var anonymous = factory.CreateClient();
+        var user = await RegisterAsync(anonymous, "plain-commerce@adeeb.tj");
+        var financeBeforeRoleChange = await RegisterAsync(anonymous, "finance-commerce@adeeb.tj");
+        var content = await RegisterAsync(anonymous, "content-commerce@adeeb.tj");
+        await SetRoleAsync(financeBeforeRoleChange.User.Id, "FinanceAdmin");
+        await SetRoleAsync(content.User.Id, "ContentAdmin");
+
+        var financeLogin = await LoginAsync(anonymous, financeBeforeRoleChange.User.Email);
+        var contentLogin = await LoginAsync(anonymous, content.User.Email);
+        var refreshedFinance = await RefreshAsync(anonymous, financeBeforeRoleChange.Tokens.RefreshToken);
+        var expectedFinancePermissions = Permissions.Commerce.All.OrderBy(x => x).ToArray();
+
+        Assert.Empty(PermissionsFrom(user.Tokens.AccessToken));
+        Assert.Empty(PermissionsFrom(financeBeforeRoleChange.Tokens.AccessToken));
+        Assert.Equal(expectedFinancePermissions, PermissionsFrom(financeLogin.Tokens.AccessToken).OrderBy(x => x));
+        Assert.Equal(expectedFinancePermissions, PermissionsFrom(refreshedFinance.Tokens.AccessToken).OrderBy(x => x));
+        Assert.DoesNotContain(Permissions.QuestionBank.Manage, PermissionsFrom(financeLogin.Tokens.AccessToken));
+        Assert.DoesNotContain(Permissions.Commerce.ReviewPaymentReceipts, PermissionsFrom(contentLogin.Tokens.AccessToken));
+
+        var userClient = AuthenticatedClient(user.Tokens.AccessToken);
+        Assert.Equal(HttpStatusCode.Forbidden, (await userClient.GetAsync("/api/v2/admin/commerce/payment-receipts")).StatusCode);
+
+        var receiptId = await SeedPendingReceiptAsync();
+        var contentClient = AuthenticatedClient(contentLogin.Tokens.AccessToken);
+        Assert.Equal(HttpStatusCode.Forbidden, (await contentClient.PostAsJsonAsync(
+            $"/api/v2/admin/commerce/payment-receipts/{receiptId}/approve",
+            new ReviewPaymentReceiptRequest("forbidden"))).StatusCode);
+
+        var financeClient = AuthenticatedClient(financeLogin.Tokens.AccessToken);
+        Assert.Equal(HttpStatusCode.OK, (await financeClient.PostAsJsonAsync(
+            $"/api/v2/admin/commerce/payment-receipts/{receiptId}/approve",
+            new ReviewPaymentReceiptRequest("verified"))).StatusCode);
+    }
+
     private async Task<Guid> SeedPendingReceiptAsync()
     {
         await using var db = CreateDb();
@@ -82,6 +124,52 @@ public sealed class CommerceAuthorizationIntegrationScenarios(AdeebApiFactory fa
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token(role, permissions));
         return client;
     }
+
+    private HttpClient AuthenticatedClient(string accessToken)
+    {
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        return client;
+    }
+
+    private async Task SetRoleAsync(Guid userId, string role)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        await db.Database.ExecuteSqlInterpolatedAsync($"UPDATE identity.users SET role = {role} WHERE id = {userId}");
+    }
+
+    private static async Task<AuthResponse> RegisterAsync(HttpClient client, string email)
+    {
+        var response = await client.PostAsJsonAsync("/api/v2/auth/register", AdeebApiFactory.RegisterRequest(email));
+        return await ReadAsync<AuthResponse>(response);
+    }
+
+    private static async Task<AuthResponse> LoginAsync(HttpClient client, string email)
+    {
+        var response = await client.PostAsJsonAsync("/api/v2/auth/login", AdeebApiFactory.LoginRequest(email));
+        return await ReadAsync<AuthResponse>(response);
+    }
+
+    private static async Task<AuthResponse> RefreshAsync(HttpClient client, string refreshToken)
+    {
+        var response = await client.PostAsJsonAsync("/api/v2/auth/refresh", new RefreshTokenRequest(refreshToken));
+        return await ReadAsync<AuthResponse>(response);
+    }
+
+    private static async Task<T> ReadAsync<T>(HttpResponseMessage response)
+    {
+        var content = await response.Content.ReadAsStringAsync();
+        response.EnsureSuccessStatusCode();
+        return JsonSerializer.Deserialize<T>(content, JsonOptions)
+            ?? throw new InvalidOperationException($"Could not deserialize response: {content}");
+    }
+
+    private static IReadOnlyList<string> PermissionsFrom(string token) =>
+        new JwtSecurityTokenHandler().ReadJwtToken(token).Claims
+            .Where(x => x.Type == AdeebClaimNames.Permission)
+            .Select(x => x.Value)
+            .ToList();
 
     private static string Token(string role, IEnumerable<string> permissions)
     {
