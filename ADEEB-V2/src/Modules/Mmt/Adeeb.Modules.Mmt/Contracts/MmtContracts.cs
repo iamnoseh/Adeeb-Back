@@ -63,3 +63,28 @@ public sealed record MmtImportPreviewResultDto(int TotalRows, int ValidRowsCount
     int DuplicateRowsCount, IReadOnlyList<MmtImportRowPreviewDto> Rows);
 public sealed record MmtImportResultDto(int ProcessedRows, int ImportedPrograms, int InsertedScores, int UpdatedScores,
     int SkippedScores, int InvalidRows, IReadOnlyList<MmtImportRowPreviewDto> Rows);
+
+public sealed record UpsertStudentMmtProfileDto(Guid MmtClusterId, int? AdmissionYear, Guid? GoalAdmissionProgramId);
+public sealed record StudentMmtProfileDto(Guid Id, Guid UserId, MmtClusterDto Cluster, int AdmissionYear,
+    Guid? GoalAdmissionProgramId, bool IsActive, int ChoicesCount, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
+public sealed record AdmissionChoiceInputDto(Guid AdmissionProgramId, int PriorityOrder);
+public sealed record UpsertAdmissionChoicesDto(IReadOnlyList<AdmissionChoiceInputDto> Choices);
+public sealed record StudentAdmissionChoiceDto(Guid Id, int PriorityOrder, AdmissionProgramListItemDto AdmissionProgram,
+    DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
+public sealed record SimulateMmtEvaluationDto(decimal TotalScore);
+public sealed record MmtAdmissionChoiceSnapshotDto(Guid Id, int PriorityOrder, Guid AdmissionProgramId,
+    string UniversityName, string SpecialtyCode, string SpecialtyName, string ClusterCode, int AdmissionType,
+    int StudyForm, int StudyLanguage, int AdmissionYear, decimal? PassingScoreUsed,
+    decimal? ConservativeThresholdUsed, decimal StudentScore, bool IsAccepted, decimal? MissingScore);
+public sealed record MmtEvaluationListItemDto(Guid Id, decimal TotalScore, int AdmissionYear, Guid ClusterId,
+    DateTimeOffset EvaluatedAtUtc, int? AcceptedChoicePriority, Guid? AcceptedAdmissionProgramId,
+    decimal? MissingScoreForGoal, decimal? ReadinessPercentage, string MotivationalMessageKey);
+public sealed record MmtEvaluationDto(Guid Id, Guid UserId, Guid StudentMmtProfileId, Guid? ExamSessionId,
+    decimal TotalScore, int AdmissionYear, Guid ClusterId, DateTimeOffset EvaluatedAtUtc,
+    int? AcceptedChoicePriority, Guid? AcceptedAdmissionProgramId, decimal? MissingScoreForGoal,
+    decimal? ReadinessPercentage, string MotivationalMessageKey, DateTimeOffset CreatedAtUtc,
+    IReadOnlyList<MmtAdmissionChoiceSnapshotDto> Choices);
+public sealed record StudentMmtProfileFilter(Guid? UserId = null, int? AdmissionYear = null, bool? IsActive = null,
+    int Page = 1, int PageSize = 20);
+public sealed record MmtEvaluationFilter(Guid? UserId = null, Guid? StudentMmtProfileId = null,
+    int? AdmissionYear = null, int Page = 1, int PageSize = 20);

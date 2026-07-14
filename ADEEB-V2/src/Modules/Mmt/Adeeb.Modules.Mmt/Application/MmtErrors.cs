@@ -19,4 +19,18 @@ public static class MmtErrors
     public static readonly Error ImportFileInvalid = Error.Validation("mmt.import_file_invalid", "MMT.ImportFileInvalid");
     public static readonly Error ImportExistingScore = Error.Conflict("mmt.import_existing_score", "MMT.ImportExistingScore");
     public static readonly Error ImportConflict = Error.Conflict("mmt.import_conflict", "MMT.ImportConflict");
+    public static readonly Error UserRequired = Error.Unauthorized("mmt.user_required", "Auth.InvalidCredentials");
+    public static readonly Error StudentProfileNotFound = Error.NotFound("mmt.student_profile_not_found", "MMT.StudentProfileNotFound");
+    public static readonly Error EvaluationNotFound = Error.NotFound("mmt.evaluation_not_found", "MMT.EvaluationNotFound");
+    public static readonly Error AdmissionYearUnavailable = Error.Conflict("mmt.admission_year_unavailable", "MMT.AdmissionYearUnavailable");
+    public static readonly Error GoalProgramInvalid = Error.Conflict("mmt.goal_program_invalid", "MMT.GoalProgramInvalid");
+    public static readonly Error ChoiceProgramInvalid = Error.Conflict("mmt.choice_program_invalid", "MMT.ChoiceProgramInvalid");
+    public static readonly Error TooManyChoices = Error.Validation("mmt.too_many_choices", "MMT.TooManyChoices");
+    public static readonly Error DuplicateChoiceProgram = Error.Validation("mmt.duplicate_choice_program", "MMT.DuplicateChoiceProgram");
+    public static readonly Error DuplicateChoicePriority = Error.Validation("mmt.duplicate_choice_priority", "MMT.DuplicateChoicePriority");
+    public static readonly Error InvalidChoiceOrder = Error.Validation("mmt.invalid_choice_order", "MMT.InvalidChoiceOrder");
+    public static readonly Error ChoicesRequired = Error.Conflict("mmt.choices_required", "MMT.ChoicesRequired");
+    public static readonly Error EvaluationScoreInvalid = Error.Validation("mmt.evaluation_score_invalid", "MMT.ScoreInvalid");
+    public static readonly Error ProfileConflict = Error.Conflict("mmt.profile_conflict", "MMT.ProfileConflict");
+    public static readonly Error ChoiceUpdateConflict = Error.Conflict("mmt.choice_update_conflict", "MMT.ChoiceUpdateConflict");
 }

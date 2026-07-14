@@ -296,7 +296,23 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
         ["MMT.SeatsInvalid"] = "Seats count cannot be negative",
         ["MMT.ScoreInvalid"] = "Passing score is invalid",
         ["MMT.EnumInvalid"] = "Selected value is invalid",
-        ["MMT.ValueTooLong"] = "Value exceeds the allowed length"
+        ["MMT.ValueTooLong"] = "Value exceeds the allowed length",
+        ["MMT.StudentProfileNotFound"] = "Active MMT profile was not found",
+        ["MMT.EvaluationNotFound"] = "MMT evaluation was not found",
+        ["MMT.AdmissionYearUnavailable"] = "The requested MMT admission year is not currently available",
+        ["MMT.GoalProgramInvalid"] = "Goal admission program does not match the selected cluster and admission year",
+        ["MMT.ChoiceProgramInvalid"] = "Every choice must be an active published program for the profile cluster and year",
+        ["MMT.TooManyChoices"] = "At most 12 admission choices are allowed",
+        ["MMT.DuplicateChoiceProgram"] = "An admission program cannot be selected more than once",
+        ["MMT.DuplicateChoicePriority"] = "Admission choice priorities must be unique",
+        ["MMT.InvalidChoiceOrder"] = "Admission choices must use consecutive priorities starting at 1",
+        ["MMT.ChoicesRequired"] = "Select at least one admission choice before running the simulation",
+        ["MMT.Accepted"] = "Your score reaches the threshold for one of your priority choices",
+        ["MMT.NearMiss"] = "You are close to your target; focused progress can bridge the remaining gap",
+        ["MMT.ProgressNeeded"] = "Keep building your score step by step toward your admission goal",
+        ["MMT.NoThresholdData"] = "Passing-score data is not available yet; your progress has still been saved",
+        ["MMT.ProfileConflict"] = "The MMT profile changed concurrently; reload and try again",
+        ["MMT.ChoiceUpdateConflict"] = "Admission choices changed concurrently; reload and try again"
     };
 
     public string this[string key]

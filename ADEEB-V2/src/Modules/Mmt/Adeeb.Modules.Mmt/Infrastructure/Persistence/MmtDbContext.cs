@@ -11,6 +11,10 @@ public sealed class MmtDbContext(DbContextOptions<MmtDbContext> options) : DbCon
     public DbSet<Specialty> Specialties => Set<Specialty>();
     public DbSet<AdmissionProgram> AdmissionPrograms => Set<AdmissionProgram>();
     public DbSet<PassingScoreHistory> PassingScores => Set<PassingScoreHistory>();
+    public DbSet<StudentMmtProfile> StudentProfiles => Set<StudentMmtProfile>();
+    public DbSet<StudentAdmissionChoice> StudentAdmissionChoices => Set<StudentAdmissionChoice>();
+    public DbSet<MmtExamEvaluation> ExamEvaluations => Set<MmtExamEvaluation>();
+    public DbSet<MmtAdmissionChoiceSnapshot> AdmissionChoiceSnapshots => Set<MmtAdmissionChoiceSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,6 +24,10 @@ public sealed class MmtDbContext(DbContextOptions<MmtDbContext> options) : DbCon
         modelBuilder.ApplyConfiguration(new SpecialtyConfiguration());
         modelBuilder.ApplyConfiguration(new AdmissionProgramConfiguration());
         modelBuilder.ApplyConfiguration(new PassingScoreConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentMmtProfileConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentAdmissionChoiceConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtExamEvaluationConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtAdmissionChoiceSnapshotConfiguration());
     }
 }
 
