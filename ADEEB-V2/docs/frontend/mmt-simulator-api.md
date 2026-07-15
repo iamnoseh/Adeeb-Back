@@ -24,6 +24,23 @@ The frontend workflow is:
 The simulator does not calculate answers or run an exam. Its result is advisory, not an
 official admission result.
 
+## Correct MMT Domain
+
+`Specialty` is reusable and `University` is an institution. Neither owns a passing
+score. `AdmissionProgram` is the selectable combination of University + Specialty +
+Cluster + AdmissionType + StudyForm + StudyLanguage + AdmissionYear. Student choices
+therefore always send `admissionProgramId`.
+
+`PassingScoreHistory` belongs to that admission program and is unique by year and
+distribution round. The same specialty can have different scores in different
+universities, and Budget/Contract, form, or language variants at one university are
+separate programs. For example: Law at DMT Budget 2025 Main = 288, Law at DMT Contract
+2025 Main = 231, and Law at Khujand State University Budget 2025 Main = 260.
+
+The simulator currently calculates thresholds only from `DistributionRound.Main`.
+Other rounds remain visible historical data. Passing scores and simulation results are
+advisory and do not guarantee official admission.
+
 ## Localization
 
 Send `X-Adeeb-Language: tg-TJ` or `ru-RU`. Cluster, university, city, and specialty
@@ -64,7 +81,7 @@ select another user's profile or history by supplying a user ID.
 
 Supported list filters are `clusterId`, `universityId`, `specialtyId`,
 `admissionType`, `studyForm`, `studyLanguage`, `search`, `page`, and `pageSize`.
-`pageSize` is clamped to 1-100. The backend always restricts student results to the
+`pageSize` defaults to 10 and is clamped to 1-50. The backend always restricts student results to the
 active `Mmt:CurrentAdmissionYear` and to active/published programs with active
 references. The student client must not try to override the year or status.
 
@@ -94,7 +111,7 @@ Example response:
     }
   ],
   "page": 1,
-  "pageSize": 20,
+  "pageSize": 10,
   "totalCount": 1
 }
 ```
@@ -290,6 +307,11 @@ Catalog lists accept `search`, `isActive`, `page`, and `pageSize`.
 Admin program lists support all fields in `AdmissionProgramFilter`, including
 `admissionYear`, `isPublished`, and `isActive`.
 
+Passing-score create/update DTOs include integer `distributionRound`. Existing clients
+that omit it remain compatible and create a Main-distribution row. A program may have
+Main and Repeat scores for the same year; only a duplicate of the same program, year,
+and round returns `mmt.score_exists`.
+
 ### Excel import
 
 | Method | Path | Notes |
@@ -439,7 +461,7 @@ Each input item contains non-null `admissionProgramId` (UUID) and `priorityOrder
 ### PagedResponse
 
 Every paged response contains `items`, `page`, `pageSize`, and `totalCount`. Requested
-page values below 1 become 1; page size is clamped to 1-100.
+page values below 1 become 1; page size defaults to 10 and is clamped to 1-50.
 
 ### ProblemDetails
 
@@ -508,6 +530,15 @@ found `404`, conflict `409`, unauthorized `401`, forbidden `403`.
 | 0 | SkipExisting |
 | 1 | UpdateExisting |
 | 2 | FailOnExisting |
+
+### DistributionRound
+
+| Value | Name |
+|---:|---|
+| 0 | Main |
+| 1 | Repeat |
+| 2 | Additional |
+| 3 | Other |
 
 ## Frontend Validation Rules
 
@@ -583,7 +614,7 @@ code because the backend does not reveal internal catalog state to student route
 | `mmt.profile_conflict` | 409 | Concurrent active-profile creation/update; reload and retry |
 | `mmt.choice_update_conflict` | 409 | Concurrent choice replacement; reload and retry |
 | `mmt.program_exists` | 409 | Duplicate admin admission program |
-| `mmt.score_exists` | 409 | Duplicate program/year passing score |
+| `mmt.score_exists` | 409 | Duplicate program/year/distribution-round passing score |
 | `mmt.import_file_invalid` | 422 | Workbook/form input invalid; inspect `errors` |
 | `mmt.import_existing_score` | 409 | `FailOnExisting` found an existing score |
 | `mmt.import_conflict` | 409 | Concurrent catalog/import write; preview fresh data and retry |

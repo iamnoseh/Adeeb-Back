@@ -16,6 +16,8 @@ public static class MmtEndpoints
     {
         var admin = app.MapGroup("/api/v2/admin/mmt").WithTags("MMT Data Management").RequireAuthorization(Permissions.Mmt.Manage);
         MapClusters(admin); MapUniversities(admin); MapSpecialties(admin); MapPrograms(admin); MapImport(admin); MapSimulatorAdmin(admin);
+        admin.MapGet("/dashboard", async (MmtDashboardService service, CancellationToken ct) =>
+            Results.Ok(await service.GetAsync(ct)));
         var student = app.MapGroup("/api/v2/mmt/admission-programs").WithTags("MMT Admissions").RequireAuthorization();
         student.MapGet("/", async ([AsParameters] AdmissionProgramFilter filter, AdmissionProgramService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await service.GetProgramsAsync(filter, false, CurrentLanguage(c), ct)).ToHttpResult(c, l));
         student.MapGet("/{id:guid}", async (Guid id, AdmissionProgramService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await service.GetProgramAsync(id, false, CurrentLanguage(c), ct)).ToHttpResult(c, l));
@@ -98,6 +100,8 @@ public static class MmtEndpoints
             (await s.GetAdminProfilesAsync(q, ct)).ToHttpResult(c, l));
         root.MapGet("/student-profiles/{id:guid}", async (Guid id, MmtSimulatorService s, HttpContext c, IMessageLocalizer l, CancellationToken ct) =>
             (await s.GetAdminProfileAsync(id, ct)).ToHttpResult(c, l));
+        root.MapGet("/student-profiles/{id:guid}/choices", async (Guid id, MmtSimulatorService s, HttpContext c, IMessageLocalizer l, CancellationToken ct) =>
+            (await s.GetAdminChoicesAsync(id, ct)).ToHttpResult(c, l));
         root.MapGet("/evaluations", async ([AsParameters] MmtEvaluationFilter q, MmtSimulatorService s, HttpContext c, IMessageLocalizer l, CancellationToken ct) =>
             (await s.GetAdminEvaluationsAsync(q, ct)).ToHttpResult(c, l));
         root.MapGet("/evaluations/{id:guid}", async (Guid id, MmtSimulatorService s, HttpContext c, IMessageLocalizer l, CancellationToken ct) =>

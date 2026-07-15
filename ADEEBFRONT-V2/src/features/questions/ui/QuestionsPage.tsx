@@ -10,7 +10,7 @@ import type { QuestionListQuery } from '@/features/questions/model/question.type
 import { appConfig } from '@/shared/config/env'
 import { localizedName } from '@/shared/i18n/localized-content'
 import { Button } from '@/shared/ui/Button'
-import { Input } from '@/shared/ui/Input'
+import { AdminListToolbar, useColumnVisibility, type AdminListColumn } from '@/shared/ui/AdminListToolbar'
 import { SelectField } from '@/shared/ui/SelectField'
 import { EmptyState, ErrorState } from '@/shared/ui/StateBlock'
 import { Table, TableShell } from '@/shared/ui/Table'
@@ -20,10 +20,19 @@ export function QuestionsPage() {
   const [params, setParams] = useSearchParams()
   const queryClient = useQueryClient()
   const listQuery = toQuestionListQuery(params)
+  const columns: AdminListColumn[] = [
+    { id: 'question', label: t('question'), locked: true },
+    { id: 'subject', label: t('parentSubject') },
+    { id: 'type', label: t('type') },
+    { id: 'difficulty', label: t('difficulty') },
+    { id: 'status', label: t('status') },
+    { id: 'actions', label: t('actions'), locked: true },
+  ]
+  const columnVisibility = useColumnVisibility('adeeb.columns.questions', columns)
 
   const subjectsQuery = useQuery({
-    queryKey: subjectKeys.list({ pageSize: 100 }),
-    queryFn: () => subjectsApi.list({ pageSize: 100 }),
+    queryKey: subjectKeys.list({ pageSize: 50 }),
+    queryFn: () => subjectsApi.list({ pageSize: 50 }),
   })
   const questionsQuery = useQuery({
     queryKey: questionKeys.list(listQuery),
@@ -52,7 +61,7 @@ export function QuestionsPage() {
 
   const questions = questionsQuery.data?.items ?? []
   const page = questionsQuery.data?.page ?? listQuery.page ?? 1
-  const pageSize = questionsQuery.data?.pageSize ?? listQuery.pageSize ?? 20
+  const pageSize = questionsQuery.data?.pageSize ?? listQuery.pageSize ?? 10
   const totalCount = questionsQuery.data?.totalCount ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const subjectsById = new Map((subjectsQuery.data?.items ?? []).map((subject) => [subject.id, subject]))
@@ -75,15 +84,31 @@ export function QuestionsPage() {
     { value: '2', label: t('difficultyMedium') },
     { value: '3', label: t('difficultyHard') },
   ]
+  const filterCount = ['subjectId', 'type', 'difficulty'].filter((key) => params.has(key)).length
 
   return (
     <div className="grid gap-4">
-      <div className="app-surface grid gap-3 rounded-lg p-4 md:grid-cols-4">
-        <Input placeholder={t('search')} value={params.get('search') ?? ''} onChange={(event) => updateParam('search', event.target.value)} />
-        <SelectField value={params.get('subjectId') ?? ''} options={subjectOptions} onValueChange={(value) => updateParam('subjectId', value)} />
-        <SelectField value={params.get('type') ?? ''} options={typeOptions} onValueChange={(value) => updateParam('type', value)} />
-        <SelectField value={params.get('difficulty') ?? ''} options={difficultyOptions} onValueChange={(value) => updateParam('difficulty', value)} />
-      </div>
+      <AdminListToolbar
+        searchValue={params.get('search') ?? ''}
+        onSearchChange={(value) => updateParam('search', value)}
+        searchPlaceholder={t('search')}
+        filterCount={filterCount}
+        onClearFilters={() => {
+          const next = new URLSearchParams(params)
+          ;['subjectId', 'type', 'difficulty'].forEach((key) => next.delete(key))
+          next.set('page', '1')
+          setParams(next)
+        }}
+        filters={
+          <>
+            <SelectField searchable searchPlaceholder={t('searchInList')} value={params.get('subjectId') ?? ''} options={subjectOptions} onValueChange={(value) => updateParam('subjectId', value)} />
+            <SelectField value={params.get('type') ?? ''} options={typeOptions} onValueChange={(value) => updateParam('type', value)} />
+            <SelectField value={params.get('difficulty') ?? ''} options={difficultyOptions} onValueChange={(value) => updateParam('difficulty', value)} />
+          </>
+        }
+        columns={columns}
+        columnVisibility={columnVisibility}
+      />
 
       {questionsQuery.isLoading ? <div className="text-sm text-[var(--muted)]">{t('questionsLoading')}</div> : null}
       {!questionsQuery.isLoading && questions.length === 0 ? <EmptyState title={t('noQuestions')} description={t('adjustFiltersOrCreateQuestion')} /> : null}
@@ -94,10 +119,10 @@ export function QuestionsPage() {
             <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]">
               <tr>
                 <th className="px-4 py-3">{t('question')}</th>
-                <th className="px-4 py-3">{t('parentSubject')}</th>
-                <th className="px-4 py-3">{t('type')}</th>
-                <th className="px-4 py-3">{t('difficulty')}</th>
-                <th className="px-4 py-3">{t('status')}</th>
+                {columnVisibility.isVisible('subject') ? <th className="px-4 py-3">{t('parentSubject')}</th> : null}
+                {columnVisibility.isVisible('type') ? <th className="px-4 py-3">{t('type')}</th> : null}
+                {columnVisibility.isVisible('difficulty') ? <th className="px-4 py-3">{t('difficulty')}</th> : null}
+                {columnVisibility.isVisible('status') ? <th className="px-4 py-3">{t('status')}</th> : null}
                 <th className="px-4 py-3 text-right">{t('actions')}</th>
               </tr>
             </thead>
@@ -116,15 +141,15 @@ export function QuestionsPage() {
                       <strong className="line-clamp-2">{question.content}</strong>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  {columnVisibility.isVisible('subject') ? <td className="px-4 py-3">
                     {(() => {
                       const subject = subjectsById.get(question.subjectId)
                       return subject ? localizedName(subject.translations, i18n.language, subject.name) : question.subjectId
                     })()}
-                  </td>
-                  <td className="px-4 py-3">{questionTypeLabel(question.type, t)}</td>
-                  <td className="px-4 py-3">{difficultyLabel(question.difficulty, t)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={question.status} /></td>
+                  </td> : null}
+                  {columnVisibility.isVisible('type') ? <td className="px-4 py-3">{questionTypeLabel(question.type, t)}</td> : null}
+                  {columnVisibility.isVisible('difficulty') ? <td className="px-4 py-3">{difficultyLabel(question.difficulty, t)}</td> : null}
+                  {columnVisibility.isVisible('status') ? <td className="px-4 py-3"><StatusBadge status={question.status} /></td> : null}
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
                       <Link className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--text)] no-underline hover:bg-[var(--surface-muted)]" to={`/admin/questions/${question.id}/edit`}>

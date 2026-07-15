@@ -1,7 +1,21 @@
 import { ApiError } from "@/shared/api/problem-details";
 
 export const controlLink =
-  "inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-green px-3 py-2 text-sm font-bold text-[var(--text)] no-underline shadow-sm transition hover:bg-[var(--surface-muted)]";
+  "inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-bold text-[var(--text)] no-underline shadow-sm transition hover:bg-[var(--surface-muted)]";
+
+export const mmtDefaultPageSize = 10;
+
+export function mmtPage(value: string | null) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 1 ? parsed : 1;
+}
+
+export function mmtAdmissionYear(value: string | null) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 2000 && parsed <= 2100
+    ? parsed
+    : undefined;
+}
 
 export function enumLabel(
   labels: readonly string[],

@@ -16,6 +16,12 @@ export function useMmtLabels() {
       t("mmt.enum.english"),
       t("mmt.enum.other"),
     ],
+    distributionRounds: [
+      t("mmt.enum.mainDistribution"),
+      t("mmt.enum.repeatDistribution"),
+      t("mmt.enum.additionalDistribution"),
+      t("mmt.enum.other"),
+    ],
     universityTypes: [
       t("mmt.enum.public"),
       t("mmt.enum.private"),

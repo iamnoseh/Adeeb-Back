@@ -1,8 +1,8 @@
-import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Save } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { mmtApi, mmtKeys } from "@/features/mmt/api/mmt.api";
 import {
   controlLink,
@@ -10,14 +10,10 @@ import {
   numberOrNull,
 } from "@/features/mmt/lib/mmt";
 import { useMmtLabels } from "@/features/mmt/lib/useMmtLabels";
-import type {
-  AdmissionProgramInput,
-  MmtClusterDto,
-  SpecialtyDto,
-  UniversityDto,
-} from "@/features/mmt/model/mmt.types";
+import type { AdmissionProgramInput } from "@/features/mmt/model/mmt.types";
 import { useMmtToast } from "@/features/mmt/model/useMmtToast";
 import { MmtToast } from "@/features/mmt/ui/MmtUi";
+import { MmtReferenceSelect } from "@/features/mmt/ui/MmtReferenceSelect";
 import { Button } from "@/shared/ui/Button";
 import { FormField } from "@/shared/ui/FormField";
 import { Input } from "@/shared/ui/Input";
@@ -29,56 +25,28 @@ export function MmtProgramFormPage() {
   const { t } = useTranslation();
   const labels = useMmtLabels();
   const { programId } = useParams();
+  const [searchParams] = useSearchParams();
   const editing = Boolean(programId);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const toast = useMmtToast();
-  const [universityId, setUniversityId] = useState("");
-  const [specialtyId, setSpecialtyId] = useState("");
+  const presetUniversityId = editing ? "" : searchParams.get("universityId") ?? "";
+  const presetSpecialtyId = editing ? "" : searchParams.get("specialtyId") ?? "";
+  const [universityId, setUniversityId] = useState(presetUniversityId);
+  const [specialtyId, setSpecialtyId] = useState(presetSpecialtyId);
   const [clusterId, setClusterId] = useState("");
   const [admissionType, setAdmissionType] = useState("0");
   const [studyForm, setStudyForm] = useState("0");
   const [studyLanguage, setStudyLanguage] = useState("0");
+  const [admissionYear, setAdmissionYear] = useState("");
   const detail = useQuery({
     queryKey: mmtKeys.program(programId ?? ""),
     queryFn: () => mmtApi.program(programId!),
     enabled: editing,
   });
-  const refs = useQueries({
-    queries: [
-      {
-        queryKey: mmtKeys.catalog("clusters", {
-          isActive: true,
-          pageSize: 100,
-        }),
-        queryFn: () =>
-          mmtApi.catalogList<MmtClusterDto>("clusters", {
-            isActive: true,
-            pageSize: 100,
-          }),
-      },
-      {
-        queryKey: mmtKeys.catalog("universities", {
-          isActive: true,
-          pageSize: 100,
-        }),
-        queryFn: () =>
-          mmtApi.catalogList<UniversityDto>("universities", {
-            isActive: true,
-            pageSize: 100,
-          }),
-      },
-      {
-        queryKey: mmtKeys.catalog("specialties", {
-          isActive: true,
-          pageSize: 100,
-        }),
-        queryFn: () =>
-          mmtApi.catalogList<SpecialtyDto>("specialties", {
-            isActive: true,
-            pageSize: 100,
-          }),
-      },
-    ],
+  const dashboard = useQuery({
+    queryKey: mmtKeys.dashboard(),
+    queryFn: mmtApi.dashboard,
   });
   useEffect(() => {
     if (!detail.data) return;
@@ -88,7 +56,12 @@ export function MmtProgramFormPage() {
     setAdmissionType(String(detail.data.admissionType));
     setStudyForm(String(detail.data.studyForm));
     setStudyLanguage(String(detail.data.studyLanguage));
+    setAdmissionYear(String(detail.data.admissionYear));
   }, [detail.data]);
+  useEffect(() => {
+    if (!editing && !admissionYear && dashboard.data)
+      setAdmissionYear(String(dashboard.data.currentAdmissionYear));
+  }, [admissionYear, dashboard.data, editing]);
   const mutation = useMutation({
     mutationFn: (input: AdmissionProgramInput) =>
       editing
@@ -97,7 +70,13 @@ export function MmtProgramFormPage() {
             isActive: detail.data?.isActive ?? true,
           })
         : mmtApi.createProgram(input),
-    onSuccess: (program) => navigate(`/admin/mmt/programs/${program.id}`),
+    onSuccess: async (program) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["mmt", "programs"] }),
+        queryClient.invalidateQueries({ queryKey: mmtKeys.dashboard() }),
+      ]);
+      navigate(`/admin/mmt/programs/${program.id}`);
+    },
     onError: (error) =>
       toast.error(errorMessage(error, t("mmt.requestFailed"))),
   });
@@ -123,7 +102,7 @@ export function MmtProgramFormPage() {
       admissionType: Number(admissionType),
       studyForm: Number(studyForm),
       studyLanguage: Number(studyLanguage),
-      admissionYear: Number(data.get("admissionYear")),
+      admissionYear: Number(admissionYear),
       seatsCount: numberOrNull(data.get("seatsCount")),
       isPublished: data.get("isPublished") === "on",
     });
@@ -145,40 +124,27 @@ export function MmtProgramFormPage() {
       >
         <div className="grid gap-4 md:grid-cols-3">
           <FormField label={t("mmt.university")}>
-            <SelectField
+            <MmtReferenceSelect
+              kind="universities"
               value={universityId}
-              options={
-                refs[1].data?.items.map((item) => ({
-                  value: item.id,
-                  label: item.fullName,
-                })) ?? []
-              }
               placeholder={t("mmt.selectUniversity")}
               onValueChange={setUniversityId}
+              disabled={Boolean(presetUniversityId)}
             />
           </FormField>
           <FormField label={t("mmt.specialty")}>
-            <SelectField
+            <MmtReferenceSelect
+              kind="specialties"
               value={specialtyId}
-              options={
-                refs[2].data?.items.map((item) => ({
-                  value: item.id,
-                  label: `${item.code} · ${item.name}`,
-                })) ?? []
-              }
               placeholder={t("mmt.selectSpecialty")}
               onValueChange={setSpecialtyId}
+              disabled={Boolean(presetSpecialtyId)}
             />
           </FormField>
           <FormField label={t("mmt.cluster")}>
-            <SelectField
+            <MmtReferenceSelect
+              kind="clusters"
               value={clusterId}
-              options={
-                refs[0].data?.items.map((item) => ({
-                  value: item.id,
-                  label: `${item.code} · ${item.name}`,
-                })) ?? []
-              }
               placeholder={t("mmt.selectCluster")}
               onValueChange={setClusterId}
             />
@@ -223,9 +189,8 @@ export function MmtProgramFormPage() {
               type="number"
               min="2000"
               max="2100"
-              defaultValue={
-                program?.admissionYear ?? new Date().getUTCFullYear()
-              }
+              value={admissionYear}
+              onChange={(event) => setAdmissionYear(event.target.value)}
               required
             />
           </FormField>

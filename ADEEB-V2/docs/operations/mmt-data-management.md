@@ -13,6 +13,23 @@ The module does not implement a full exam/question engine. Simulation accepts a 
 score already calculated by another process and must not be presented as an official
 admission decision.
 
+## Correct MMT Domain
+
+- `Specialty` is a reusable academic specialty and does not own a passing score.
+- `University` is an educational institution and does not own a passing score.
+- `AdmissionProgram` is the selectable combination of university, specialty, cluster,
+  admission type, study form, study language, admission year, and seats.
+- `PassingScoreHistory` belongs to exactly one `AdmissionProgram`; its identity within
+  that program is `Year + DistributionRound`.
+- The same specialty may appear at many universities with different scores. The same
+  university/specialty pair may also have separate Budget/Contract, form, and language
+  combinations.
+
+For example, Law at DMT Budget 2025 Main may be 288, Law at DMT Contract 2025 Main
+may be 231, and Law at Khujand State University Budget 2025 Main may be 260. These are
+three different admission programs, not three scores attached to a global specialty.
+Passing scores are historical simulation data and never guarantee official admission.
+
 ## Configuration
 
 Set a dedicated MMT connection string whenever possible:
@@ -46,10 +63,15 @@ Apply the MMT migrations in order:
 1. `20260714065717_AddMmtDataManagement`
 2. `20260714104237_AddMmtSimulatorPhase2`
 3. `20260714124749_AddMmtLocalization`
+4. `20260715072716_AddMmtClusterSubjects`
+5. `20260715105433_AddMmtDistributionRound`
 
 The localization migration backfills Russian fields from existing values before
 removing temporary column defaults. Existing rows therefore remain readable and can
 be translated incrementally through language-specific admin updates.
+
+The distribution-round migration backfills every existing score as `Main`, replaces
+the old program/year unique index, and preserves all score rows.
 
 With the API configuration available, this command applies every pending MMT migration:
 
@@ -96,7 +118,9 @@ Required columns are:
 `Year`, `ClusterCode`, `ClusterName`, `UniversityFullName`,
 `UniversityShortName`, `UniversityCity`, `UniversityType`, `SpecialtyCode`,
 `SpecialtyName`, `AdmissionType`, `StudyForm`, `StudyLanguage`, `SeatsCount`,
-`PassingScore`, `Source`, and `Note`.
+`PassingScore`, `Source`, and `Note`. New templates also include
+`DistributionRound` (`Main`, `Repeat`, `Additional`, or `Other`). For backward
+compatibility, an older workbook without that column is imported as `Main`.
 
 Important form fields:
 
@@ -129,7 +153,7 @@ unpublishes it.
 Use an authenticated student token and call:
 
 ```http
-GET /api/v2/mmt/admission-programs?clusterId={clusterId}&page=1&pageSize=20
+GET /api/v2/mmt/admission-programs?clusterId={clusterId}&page=1&pageSize=10
 ```
 
 A visible program must be active, published, in the configured active admission year,
@@ -137,7 +161,8 @@ and linked to active cluster, university, and specialty records.
 
 ## Passing-Score Corrections
 
-Use `PUT /api/v2/admin/mmt/passing-scores/{id}` to correct a row in place. Use
+Use `PUT /api/v2/admin/mmt/passing-scores/{id}` to correct a row in place. Score
+uniqueness is `AdmissionProgramId + Year + DistributionRound`. Use
 `ExistingScoreMode=1` only when an import is intentionally authoritative. After a
 correction, verify analytics at
 `GET /api/v2/admin/mmt/admission-programs/{id}/passing-scores/analytics`.
@@ -174,8 +199,9 @@ rejected by choice replacement and by simulation.
   clears it; a non-empty list must have unique programs and priorities consecutive from
   1 through its count, with a maximum count of 12.
 - Simulation accepts a total score from 0 through 1,000 with at most two decimal places.
-- The conservative threshold is the maximum of the latest score and the rounded average
-  of the latest three score records.
+- The conservative threshold is the maximum of the latest Main-distribution score and
+  the rounded average of the latest three Main-distribution score records. Repeat,
+  Additional, and Other rounds are retained for history but do not affect simulation.
 - The first ordered choice whose threshold is reached is accepted.
 - Evaluation and all choice snapshots are saved in one repeatable-read transaction.
 - Missing threshold data yields null readiness/missing-score values and

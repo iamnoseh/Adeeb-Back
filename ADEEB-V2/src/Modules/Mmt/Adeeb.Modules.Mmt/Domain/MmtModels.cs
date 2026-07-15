@@ -9,6 +9,7 @@ public enum UniversityType { Public = 0, Private = 1, Other = 2 }
 public enum AdmissionType { Budget = 0, Contract = 1 }
 public enum StudyForm { FullTime = 0, PartTime = 1, Distance = 2, Other = 3 }
 public enum StudyLanguage { Tajik = 0, Russian = 1, English = 2, Other = 3 }
+public enum DistributionRound { Main = 0, Repeat = 1, Additional = 2, Other = 3 }
 public enum ExistingScoreMode { SkipExisting = 0, UpdateExisting = 1, FailOnExisting = 2 }
 
 public static class MmtNormalization
@@ -211,15 +212,17 @@ public sealed class AdmissionProgram : Entity
 public sealed class PassingScoreHistory : Entity
 {
     private PassingScoreHistory() { }
-    public PassingScoreHistory(Guid id, Guid admissionProgramId, int year, decimal passingScore, int? seatsCount, string? source, string? note, DateTimeOffset now)
+    public PassingScoreHistory(Guid id, Guid admissionProgramId, int year, decimal passingScore, int? seatsCount, string? source, string? note, DateTimeOffset now,
+        DistributionRound distributionRound = DistributionRound.Main)
     {
         Id = id;
         AdmissionProgramId = admissionProgramId;
         CreatedAtUtc = now;
-        Update(year, passingScore, seatsCount, source, note, now);
+        Update(year, passingScore, seatsCount, source, note, now, distributionRound);
     }
     public Guid AdmissionProgramId { get; private set; }
     public int Year { get; private set; }
+    public DistributionRound DistributionRound { get; private set; }
     public decimal PassingScore { get; private set; }
     public int? SeatsCount { get; private set; }
     public string? Source { get; private set; }
@@ -227,9 +230,11 @@ public sealed class PassingScoreHistory : Entity
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
     public AdmissionProgram AdmissionProgram { get; private set; } = null!;
-    public void Update(int year, decimal score, int? seats, string? source, string? note, DateTimeOffset now)
+    public void Update(int year, decimal score, int? seats, string? source, string? note, DateTimeOffset now,
+        DistributionRound distributionRound = DistributionRound.Main)
     {
         Year = year;
+        DistributionRound = distributionRound;
         PassingScore = score;
         SeatsCount = seats;
         Source = string.IsNullOrWhiteSpace(source) ? null : source.Trim();

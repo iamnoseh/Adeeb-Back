@@ -3,8 +3,10 @@ import { ArrowLeft, Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { mmtApi, mmtKeys } from "@/features/mmt/api/mmt.api";
-import { compactId, controlLink, errorMessage } from "@/features/mmt/lib/mmt";
+import { compactId, controlLink, enumLabel, errorMessage, mmtAdmissionYear, mmtDefaultPageSize, mmtPage } from "@/features/mmt/lib/mmt";
+import { useMmtLabels } from "@/features/mmt/lib/useMmtLabels";
 import { BooleanBadge, Pagination } from "@/features/mmt/ui/MmtUi";
+import { MmtFilterToolbar, useColumnVisibility, type AdminListColumn } from "@/features/mmt/ui/MmtFilterToolbar";
 import { formatDushanbeDate } from "@/shared/lib/date";
 import { Input } from "@/shared/ui/Input";
 import { PageHeader } from "@/shared/ui/PageHeader";
@@ -15,23 +17,39 @@ import { Table, TableShell } from "@/shared/ui/Table";
 export function MmtProfilesPage() {
   const { t, i18n } = useTranslation();
   const [params, setParams] = useSearchParams();
-  const page = Math.max(1, Number(params.get("page") ?? 1));
+  const page = mmtPage(params.get("page"));
   const filters = {
     userId: params.get("userId") || undefined,
-    admissionYear: numberValue(params.get("admissionYear")),
+    admissionYear: mmtAdmissionYear(params.get("admissionYear")),
     isActive: boolValue(params.get("isActive")),
     page,
-    pageSize: 20,
+    pageSize: mmtDefaultPageSize,
   };
   const query = useQuery({
     queryKey: mmtKeys.profiles(filters),
     queryFn: () => mmtApi.profiles(filters),
   });
+  const columns: AdminListColumn[] = [
+    { id: "user", label: t("mmt.userId"), locked: true },
+    { id: "cluster", label: t("mmt.cluster") }, { id: "year", label: t("mmt.year") },
+    { id: "goal", label: t("mmt.goalProgram") }, { id: "choices", label: t("mmt.choices") },
+    { id: "status", label: t("mmt.status") }, { id: "created", label: t("mmt.created") },
+    { id: "action", label: t("mmt.action"), locked: true },
+  ];
+  const columnVisibility = useColumnVisibility("adeeb.columns.mmt.profiles", columns);
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(params);
+    next.delete("pageSize");
     if (value) next.set(key, value);
     else next.delete(key);
     if (key !== "page") next.set("page", "1");
+    setParams(next);
+  }
+  function clearFilters() {
+    const next = new URLSearchParams();
+    const userId = params.get("userId");
+    if (userId) next.set("userId", userId);
+    next.set("page", "1");
     setParams(next);
   }
   return (
@@ -40,12 +58,7 @@ export function MmtProfilesPage() {
         title={t("mmt.profilesTitle")}
         description={t("mmt.profilesDescription")}
       />
-      <div className="mb-4 grid gap-3 rounded-2xl border border-[var(--border)] bg-white p-4 md:grid-cols-[1fr_180px_220px]">
-        <Input
-          value={params.get("userId") ?? ""}
-          onChange={(event) => setFilter("userId", event.target.value)}
-          placeholder={t("mmt.userId")}
-        />
+      <MmtFilterToolbar searchValue={params.get("userId") ?? ""} onSearchChange={(value) => setFilter("userId", value)} searchPlaceholder={t("mmt.userId")} filterCount={["admissionYear", "isActive"].filter((key) => params.has(key)).length} onClearFilters={clearFilters} columns={columns} columnVisibility={columnVisibility}>
         <Input
           type="number"
           min="2000"
@@ -63,7 +76,7 @@ export function MmtProfilesPage() {
           ]}
           onValueChange={(value) => setFilter("isActive", value)}
         />
-      </div>
+      </MmtFilterToolbar>
       {query.isLoading ? (
         <p className="text-sm text-[var(--muted)]">
           {t("mmt.loadingProfiles")}
@@ -87,12 +100,12 @@ export function MmtProfilesPage() {
             <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]">
               <tr>
                 <th className="px-4 py-3">{t("mmt.userId")}</th>
-                <th className="px-4 py-3">{t("mmt.cluster")}</th>
-                <th className="px-4 py-3">{t("mmt.year")}</th>
-                <th className="px-4 py-3">{t("mmt.goalProgram")}</th>
-                <th className="px-4 py-3">{t("mmt.choices")}</th>
-                <th className="px-4 py-3">{t("mmt.status")}</th>
-                <th className="px-4 py-3">{t("mmt.created")}</th>
+                {columnVisibility.isVisible("cluster") ? <th className="px-4 py-3">{t("mmt.cluster")}</th> : null}
+                {columnVisibility.isVisible("year") ? <th className="px-4 py-3">{t("mmt.year")}</th> : null}
+                {columnVisibility.isVisible("goal") ? <th className="px-4 py-3">{t("mmt.goalProgram")}</th> : null}
+                {columnVisibility.isVisible("choices") ? <th className="px-4 py-3">{t("mmt.choices")}</th> : null}
+                {columnVisibility.isVisible("status") ? <th className="px-4 py-3">{t("mmt.status")}</th> : null}
+                {columnVisibility.isVisible("created") ? <th className="px-4 py-3">{t("mmt.created")}</th> : null}
                 <th className="px-4 py-3 text-right">{t("mmt.action")}</th>
               </tr>
             </thead>
@@ -108,28 +121,28 @@ export function MmtProfilesPage() {
                   >
                     {compactId(profile.userId)}
                   </td>
-                  <td className="px-4 py-3">
+                  {columnVisibility.isVisible("cluster") ? <td className="px-4 py-3">
                     <strong>{profile.cluster.code}</strong>
                     <small className="block text-[var(--muted)]">
                       {profile.cluster.name}
                     </small>
-                  </td>
-                  <td className="px-4 py-3">{profile.admissionYear}</td>
-                  <td
+                  </td> : null}
+                  {columnVisibility.isVisible("year") ? <td className="px-4 py-3">{profile.admissionYear}</td> : null}
+                  {columnVisibility.isVisible("goal") ? <td
                     className="px-4 py-3 font-mono text-xs"
                     title={profile.goalAdmissionProgramId ?? ""}
                   >
                     {compactId(profile.goalAdmissionProgramId)}
-                  </td>
-                  <td className="px-4 py-3 font-bold">
+                  </td> : null}
+                  {columnVisibility.isVisible("choices") ? <td className="px-4 py-3 font-bold">
                     {profile.choicesCount}
-                  </td>
-                  <td className="px-4 py-3">
+                  </td> : null}
+                  {columnVisibility.isVisible("status") ? <td className="px-4 py-3">
                     <BooleanBadge value={profile.isActive} />
-                  </td>
-                  <td className="px-4 py-3 text-xs">
+                  </td> : null}
+                  {columnVisibility.isVisible("created") ? <td className="px-4 py-3 text-xs">
                     {formatDushanbeDate(profile.createdAtUtc, i18n.language)}
-                  </td>
+                  </td> : null}
                   <td className="px-4 py-3 text-right">
                     <Link
                       to={`/admin/mmt/profiles/${profile.id}`}
@@ -142,13 +155,15 @@ export function MmtProfilesPage() {
               ))}
             </tbody>
           </Table>
-          <Pagination
-            page={query.data.page}
-            pageSize={query.data.pageSize}
-            total={query.data.totalCount}
-            onPage={(value) => setFilter("page", String(value))}
-          />
         </TableShell>
+      ) : null}
+      {query.data && query.data.totalCount > query.data.pageSize ? (
+        <Pagination
+          page={query.data.page}
+          pageSize={query.data.pageSize}
+          total={query.data.totalCount}
+          onPage={(value) => setFilter("page", String(value))}
+        />
       ) : null}
     </>
   );
@@ -156,6 +171,7 @@ export function MmtProfilesPage() {
 
 export function MmtProfileDetailPage() {
   const { t, i18n } = useTranslation();
+  const labels = useMmtLabels();
   const { profileId = "" } = useParams();
   const profile = useQuery({
     queryKey: mmtKeys.profile(profileId),
@@ -169,6 +185,11 @@ export function MmtProfileDetailPage() {
     }),
     queryFn: () =>
       mmtApi.evaluations({ studentMmtProfileId: profileId, pageSize: 10 }),
+    enabled: Boolean(profileId),
+  });
+  const choices = useQuery({
+    queryKey: mmtKeys.profileChoices(profileId),
+    queryFn: () => mmtApi.profileChoices(profileId),
     enabled: Boolean(profileId),
   });
   if (profile.isLoading)
@@ -223,9 +244,61 @@ export function MmtProfileDetailPage() {
           value={formatDushanbeDate(item.updatedAtUtc, i18n.language)}
         />
       </section>
-      <div className="mb-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--muted)]">
-        {t("mmt.choicesContractNote")}
-      </div>
+      <h2 className="mb-3 text-lg font-black">{t("mmt.orderedChoices")}</h2>
+      {choices.isLoading ? (
+        <p className="mb-5 text-sm text-[var(--muted)]">{t("mmt.loadingChoices")}</p>
+      ) : null}
+      {choices.isError ? (
+        <div className="mb-5">
+          <ErrorState
+            title={t("mmt.choicesLoadFailed")}
+            description={errorMessage(choices.error, t("mmt.choicesLoadFailed"))}
+          />
+        </div>
+      ) : null}
+      {choices.data?.length === 0 ? (
+        <div className="mb-5">
+          <EmptyState title={t("mmt.noChoices")} description={t("mmt.noChoicesHint")} />
+        </div>
+      ) : null}
+      {choices.data && choices.data.length > 0 ? (
+        <div className="mb-5">
+          <TableShell>
+            <Table>
+              <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]">
+                <tr>
+                  <th className="px-4 py-3">{t("mmt.priority")}</th>
+                  <th className="px-4 py-3">{t("mmt.university")}</th>
+                  <th className="px-4 py-3">{t("mmt.specialty")}</th>
+                  <th className="px-4 py-3">{t("mmt.cluster")}</th>
+                  <th className="px-4 py-3">{t("mmt.admissionType")}</th>
+                  <th className="px-4 py-3">{t("mmt.studyForm")}</th>
+                  <th className="px-4 py-3">{t("mmt.studyLanguage")}</th>
+                  <th className="px-4 py-3">{t("mmt.year")}</th>
+                  <th className="px-4 py-3">{t("mmt.latestScore")}</th>
+                  <th className="px-4 py-3">{t("mmt.status")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {choices.data.map(({ id, priorityOrder, admissionProgram: program }) => (
+                  <tr key={id} className="border-t border-[var(--border)]">
+                    <td className="px-4 py-3 font-black">{priorityOrder}</td>
+                    <td className="px-4 py-3">{program.universityName}</td>
+                    <td className="px-4 py-3"><strong>{program.specialtyCode}</strong><small className="block text-[var(--muted)]">{program.specialtyName}</small></td>
+                    <td className="px-4 py-3"><strong>{program.clusterCode}</strong><small className="block text-[var(--muted)]">{program.clusterName}</small></td>
+                    <td className="px-4 py-3">{enumLabel(labels.admissionTypes, program.admissionType, t("mmt.unknown"))}</td>
+                    <td className="px-4 py-3">{enumLabel(labels.studyForms, program.studyForm, t("mmt.unknown"))}</td>
+                    <td className="px-4 py-3">{enumLabel(labels.studyLanguages, program.studyLanguage, t("mmt.unknown"))}</td>
+                    <td className="px-4 py-3">{program.admissionYear}</td>
+                    <td className="px-4 py-3 font-bold">{program.latestPassingScore?.toFixed(2) ?? "-"}</td>
+                    <td className="px-4 py-3"><div className="flex gap-2"><BooleanBadge value={program.isActive} /><BooleanBadge value={program.isPublished} positive={t("mmt.published")} negative={t("mmt.draft")} /></div></td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableShell>
+        </div>
+      ) : null}
       <h2 className="mb-3 text-lg font-black">{t("mmt.recentEvaluations")}</h2>
       {evaluations.isLoading ? (
         <p className="text-sm text-[var(--muted)]">
@@ -309,11 +382,6 @@ function Info({ label, value }: { label: string; value: string }) {
       <p className="mt-1 break-all font-semibold">{value}</p>
     </div>
   );
-}
-function numberValue(value: string | null) {
-  if (!value) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
 }
 function boolValue(value: string | null) {
   return value === "true" ? true : value === "false" ? false : undefined;

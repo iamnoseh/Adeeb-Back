@@ -67,11 +67,10 @@ export function Pagination({
   const { t } = useTranslation();
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-[var(--border)] px-4 py-3 text-sm">
-      <span className="text-[var(--muted)]">
-        {total} {t("mmt.records")} · {t("mmt.page")} {page} {t("mmt.of")}{" "}
-        {pages}
-      </span>
+    <div className="flex flex-col gap-3 rounded-[1.5rem] bg-white/80 p-3 shadow-sm ring-1 ring-[var(--border)] sm:flex-row sm:items-center sm:justify-between">
+      <p className="px-2 text-sm font-semibold text-[var(--muted)]">
+        {page} / {pages} · {total}
+      </p>
       <div className="flex gap-2">
         <Button
           type="button"

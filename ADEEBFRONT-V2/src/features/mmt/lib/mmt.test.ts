@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { enumLabel, queryString } from "@/features/mmt/lib/mmt";
+import { enumLabel, mmtAdmissionYear, mmtPage, queryString } from "@/features/mmt/lib/mmt";
 import { mmtRu, mmtTg } from "@/shared/i18n/locales/mmt";
 
 describe("MMT contract helpers", () => {
@@ -18,6 +18,15 @@ describe("MMT contract helpers", () => {
     expect(enumLabel(["Буҷавӣ", "Шартномавӣ"], 9, "Номаълум")).toBe(
       "Номаълум (9)",
     );
+  });
+
+  it("normalizes invalid pages and admission years", () => {
+    expect(mmtPage("3")).toBe(3);
+    expect(mmtPage("abc")).toBe(1);
+    expect(mmtPage("0")).toBe(1);
+    expect(mmtAdmissionYear("2026")).toBe(2026);
+    expect(mmtAdmissionYear("1999")).toBeUndefined();
+    expect(mmtAdmissionYear("2026.5")).toBeUndefined();
   });
 
   it("keeps Tajik and Russian translation dictionaries structurally aligned", () => {

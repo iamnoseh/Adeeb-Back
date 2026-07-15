@@ -1,4 +1,12 @@
 export const ruRU = {
+  filters: 'Фильтры',
+  clearFilters: 'Очистить фильтры',
+  columnSettings: 'Настройка колонок',
+  columnVisibility: 'Видимость колонок',
+  resetColumns: 'Сбросить',
+  showAll: 'Показать все',
+  hideOptional: 'Скрыть необязательные',
+  searchInList: 'Поиск в списке...',
   appName: 'Adeeb',
   brandSubtitle: 'Управление',
   languageTg: 'Тоҷикӣ',

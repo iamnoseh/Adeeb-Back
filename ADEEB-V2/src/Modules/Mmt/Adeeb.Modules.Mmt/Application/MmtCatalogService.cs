@@ -17,7 +17,7 @@ public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock, 
         var source = db.Clusters.Include(x => x.Subjects).AsNoTracking();
         if (query.IsActive.HasValue) source = source.Where(x => x.IsActive == query.IsActive);
         if (!string.IsNullOrWhiteSpace(query.Search)) { var s = query.Search.Trim().ToLower(); source = source.Where(x => x.Code.ToLower().Contains(s) || x.Name.ToLower().Contains(s) || x.NameRu.ToLower().Contains(s)); }
-        var page = Math.Max(1, query.Page); var pageSize = Math.Clamp(query.PageSize, 1, 100);
+        var page = MmtPaging.Page(query.Page); var pageSize = MmtPaging.PageSize(query.PageSize);
         var total = await source.CountAsync(ct);
         var clusters = await source.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
         var subjects = await SubjectLookupAsync(clusters.SelectMany(x => x.Subjects).Select(x => x.SubjectId), language, ct);
@@ -152,7 +152,7 @@ public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock, 
     { var entity = await set.FindAsync([id], ct); if (entity is null) return Result.Failure(notFound); update(entity, active); await db.SaveChangesAsync(ct); return Result.Success(); }
     private static Result<T> Invalid<T>(Result validation) => Result<T>.ValidationFailure(validation.ValidationErrors!);
     private static async Task<PagedResponse<TDto>> PageAsync<TEntity, TDto>(IQueryable<TEntity> query, int page, int pageSize, Func<TEntity, TDto> map, CancellationToken ct)
-    { page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 100); var total = await query.CountAsync(ct); var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct); return new(items.Select(map).ToList(), page, pageSize, total); }
+    { page = MmtPaging.Page(page); pageSize = MmtPaging.PageSize(pageSize); var total = await query.CountAsync(ct); var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct); return new(items.Select(map).ToList(), page, pageSize, total); }
     private async Task<bool> SubjectsAreValidAsync(IReadOnlyCollection<Guid> subjectIds, CancellationToken ct)
     {
         if (subjectIds.Any(x => x == Guid.Empty) || subjectIds.Distinct().Count() != subjectIds.Count) return false;

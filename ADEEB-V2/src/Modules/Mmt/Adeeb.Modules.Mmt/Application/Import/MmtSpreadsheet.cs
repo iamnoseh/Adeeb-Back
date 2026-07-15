@@ -10,7 +10,8 @@ namespace Adeeb.Modules.Mmt.Application.Import;
 public sealed class MmtSpreadsheet
 {
     public const int MaxRows = 5000;
-    public static readonly string[] Headers = ["Year", "ClusterCode", "ClusterName", "UniversityFullName", "UniversityShortName", "UniversityCity", "UniversityType", "SpecialtyCode", "SpecialtyName", "AdmissionType", "StudyForm", "StudyLanguage", "SeatsCount", "PassingScore", "Source", "Note"];
+    public static readonly string[] Headers = ["Year", "ClusterCode", "ClusterName", "UniversityFullName", "UniversityShortName", "UniversityCity", "UniversityType", "SpecialtyCode", "SpecialtyName", "AdmissionType", "StudyForm", "StudyLanguage", "SeatsCount", "PassingScore", "DistributionRound", "Source", "Note"];
+    private static readonly string[] RequiredHeaders = Headers.Where(x => x != "DistributionRound").ToArray();
 
     public byte[] CreateTemplate()
     {
@@ -21,7 +22,7 @@ public sealed class MmtSpreadsheet
             var sheetPart = workbookPart.AddNewPart<WorksheetPart>();
             var data = new SheetData();
             data.Append(new Row(Headers.Select(HeaderCell)));
-            data.Append(new Row(new[] { "2026", "C2", "Cluster 2", "Tajik National University", "TNU", "Dushanbe", "Public", "LAW", "Law", "Budget", "FullTime", "Tajik", "50", "287.50", "MMT 2025", "Example row" }.Select(TextCell)));
+            data.Append(new Row(new[] { "2026", "C2", "Cluster 2", "Tajik National University", "TNU", "Dushanbe", "Public", "LAW", "Law", "Budget", "FullTime", "Tajik", "50", "287.50", "Main", "MMT 2025", "Example row" }.Select(TextCell)));
             sheetPart.Worksheet = new Worksheet(data);
             var sheets = workbookPart.Workbook.AppendChild(new Sheets());
             sheets.Append(new Sheet { Id = workbookPart.GetIdOfPart(sheetPart), SheetId = 1, Name = "MMT Import" });
@@ -39,7 +40,7 @@ public sealed class MmtSpreadsheet
         var rows = part.Worksheet.GetFirstChild<SheetData>()?.Elements<Row>().ToList() ?? [];
         if (rows.Count == 0) throw new InvalidDataException("Header row is missing.");
         var headerMap = CellsByColumn(rows[0], workbook).ToDictionary(x => x.Value.Trim(), x => x.Key, StringComparer.OrdinalIgnoreCase);
-        var missing = Headers.Where(x => !headerMap.ContainsKey(x)).ToArray();
+        var missing = RequiredHeaders.Where(x => !headerMap.ContainsKey(x)).ToArray();
         if (missing.Length > 0) throw new InvalidDataException("Missing columns: " + string.Join(", ", missing));
         if (rows.Count - 1 > MaxRows) throw new InvalidDataException($"At most {MaxRows} data rows are allowed.");
 
@@ -48,7 +49,9 @@ public sealed class MmtSpreadsheet
         foreach (var row in rows.Skip(1))
         {
             var cells = CellsByColumn(row, workbook);
-            string V(string name) => cells.GetValueOrDefault(headerMap[name], string.Empty).Trim();
+            string V(string name) => headerMap.TryGetValue(name, out var column)
+                ? cells.GetValueOrDefault(column, string.Empty).Trim()
+                : string.Empty;
             if (Headers.All(x => string.IsNullOrWhiteSpace(V(x)))) continue;
             var errors = new List<string>();
             var year = ParseInt(V("Year"), defaultYear, "Year", errors);
@@ -62,6 +65,7 @@ public sealed class MmtSpreadsheet
             var admissionType = ParseEnum<AdmissionType>(V("AdmissionType"), "AdmissionType", errors);
             var form = ParseEnum<StudyForm>(V("StudyForm"), "StudyForm", errors);
             var language = ParseEnum<StudyLanguage>(V("StudyLanguage"), "StudyLanguage", errors);
+            var distributionRound = ParseOptionalEnum<DistributionRound>(V("DistributionRound"), DistributionRound.Main, "DistributionRound", errors);
             var seats = ParseNullableInt(V("SeatsCount"), "SeatsCount", errors);
             var score = ParseDecimal(V("PassingScore"), "PassingScore", errors);
             if (year is < 2000 or > 2100) errors.Add("Year must be between 2000 and 2100.");
@@ -72,8 +76,8 @@ public sealed class MmtSpreadsheet
             if (errors.Count == 0)
             {
                 values = new(year, MmtNormalization.Code(clusterCode), MmtNormalization.Name(clusterName), MmtNormalization.Name(universityName), Null(V("UniversityShortName")), MmtNormalization.Name(universityCity), universityType,
-                    MmtNormalization.Code(specialtyCode), MmtNormalization.Name(specialtyName), admissionType, form, language, seats, score, Null(V("Source")), Null(V("Note")));
-                var key = $"{year}|{values.ClusterCode}|{MmtNormalization.NameKey(values.UniversityFullName)}|{values.SpecialtyCode}|{admissionType}|{form}|{language}";
+                    MmtNormalization.Code(specialtyCode), MmtNormalization.Name(specialtyName), admissionType, form, language, seats, score, Null(V("Source")), Null(V("Note")), distributionRound);
+                var key = $"{year}|{values.ClusterCode}|{MmtNormalization.NameKey(values.UniversityFullName)}|{values.SpecialtyCode}|{admissionType}|{form}|{language}|{distributionRound}";
                 duplicate = !keys.Add(key);
                 if (duplicate) errors.Add("Duplicate row in file.");
             }
@@ -114,5 +118,7 @@ public sealed class MmtSpreadsheet
     private static int? ParseNullableInt(string value, string name, List<string> errors) { if (string.IsNullOrWhiteSpace(value)) return null; if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)) return parsed; errors.Add($"{name} must be an integer."); return null; }
     private static decimal ParseDecimal(string value, string name, List<string> errors) { if (decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed)) return parsed; errors.Add($"{name} must be numeric."); return 0; }
     private static int ParseEnum<T>(string value, string name, List<string> errors) where T : struct, Enum { if (Enum.TryParse<T>(value, true, out var parsed) && Enum.IsDefined(parsed)) return Convert.ToInt32(parsed, CultureInfo.InvariantCulture); errors.Add($"{name} is invalid."); return 0; }
+    private static int ParseOptionalEnum<T>(string value, T fallback, string name, List<string> errors) where T : struct, Enum =>
+        string.IsNullOrWhiteSpace(value) ? Convert.ToInt32(fallback, CultureInfo.InvariantCulture) : ParseEnum<T>(value, name, errors);
     private static string? Null(string value) => string.IsNullOrWhiteSpace(value) ? null : MmtNormalization.Name(value);
 }

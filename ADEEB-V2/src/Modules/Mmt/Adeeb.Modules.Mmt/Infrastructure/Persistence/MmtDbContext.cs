@@ -158,13 +158,14 @@ internal sealed class PassingScoreConfiguration : IEntityTypeConfiguration<Passi
         b.Property(x => x.Id).HasColumnName("id");
         b.Property(x => x.AdmissionProgramId).HasColumnName("admission_program_id");
         b.Property(x => x.Year).HasColumnName("year");
+        b.Property(x => x.DistributionRound).HasColumnName("distribution_round").HasConversion<string>().HasMaxLength(24);
         b.Property(x => x.PassingScore).HasColumnName("passing_score").HasColumnType("numeric");
         b.Property(x => x.SeatsCount).HasColumnName("seats_count");
         b.Property(x => x.Source).HasColumnName("source").HasMaxLength(500);
         b.Property(x => x.Note).HasColumnName("note").HasMaxLength(2000);
         b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
         b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
-        b.HasIndex(x => new { x.AdmissionProgramId, x.Year }).IsUnique().HasDatabaseName("ux_mmt_score_program_year");
-        b.HasIndex(x => new { x.AdmissionProgramId, x.Year }).IsDescending(false, true).HasDatabaseName("ix_mmt_score_latest");
+        b.HasIndex(x => new { x.AdmissionProgramId, x.Year, x.DistributionRound }).IsUnique().HasDatabaseName("ux_mmt_score_program_year_round");
+        b.HasIndex(x => new { x.AdmissionProgramId, x.DistributionRound, x.Year }).IsDescending(false, false, true).HasDatabaseName("ix_mmt_score_latest_round");
     }
 }

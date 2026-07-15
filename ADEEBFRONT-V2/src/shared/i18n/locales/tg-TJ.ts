@@ -1,4 +1,12 @@
 export const tgTJ = {
+  filters: 'Филтрҳо',
+  clearFilters: 'Тоза кардани филтрҳо',
+  columnSettings: 'Танзими сутунҳо',
+  columnVisibility: 'Намоиши сутунҳо',
+  resetColumns: 'Аз нав',
+  showAll: 'Ҳамаро нишон деҳ',
+  hideOptional: 'Пинҳон кардани иловагӣ',
+  searchInList: 'Ҷустуҷӯ дар рӯйхат...',
   appName: 'Adeeb',
   brandSubtitle: 'Идоракунӣ',
   languageTg: 'Тоҷикӣ',

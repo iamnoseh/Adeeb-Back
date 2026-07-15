@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<MmtCatalogService>();
         services.AddScoped<AdmissionProgramService>();
         services.AddScoped<MmtSimulatorService>();
+        services.AddScoped<MmtDashboardService>();
         services.AddScoped<MmtImportService>();
         services.AddSingleton<MmtSpreadsheet>();
         return services;

@@ -20,7 +20,7 @@ public sealed class AdmissionProgramService(
     {
         var validation = ValidateFilter(filter); if (validation is not null) return Result<PagedResponse<AdmissionProgramListItemDto>>.ValidationFailure(validation);
         var query = ApplyFilter(BaseQuery(), filter, admin);
-        var page = Math.Max(1, filter.Page); var size = Math.Clamp(filter.PageSize, 1, 100);
+        var page = MmtPaging.Page(filter.Page); var size = MmtPaging.PageSize(filter.PageSize);
         var total = await query.CountAsync(ct);
         var rows = await query.OrderByDescending(x => x.AdmissionYear).ThenBy(x => x.University.FullName).ThenBy(x => x.Specialty.Code)
             .Skip((page - 1) * size).Take(size).ToListAsync(ct);
@@ -77,28 +77,29 @@ public sealed class AdmissionProgramService(
     public async Task<Result<IReadOnlyList<PassingScoreHistoryDto>>> GetScoresAsync(Guid programId, CancellationToken ct)
     {
         if (!await db.AdmissionPrograms.AnyAsync(x => x.Id == programId, ct)) return Result<IReadOnlyList<PassingScoreHistoryDto>>.Failure(MmtErrors.ProgramNotFound);
-        var scores = await db.PassingScores.AsNoTracking().Where(x => x.AdmissionProgramId == programId).OrderByDescending(x => x.Year).ToListAsync(ct);
+        var scores = await db.PassingScores.AsNoTracking().Where(x => x.AdmissionProgramId == programId)
+            .OrderByDescending(x => x.Year).ThenBy(x => x.DistributionRound).ToListAsync(ct);
         return Result<IReadOnlyList<PassingScoreHistoryDto>>.Success(scores.Select(ToDto).ToList());
     }
 
     public async Task<Result<PassingScoreHistoryDto>> AddScoreAsync(Guid programId, CreatePassingScoreHistoryDto request, CancellationToken ct)
     {
-        var validation = MmtValidation.ValidateScore(request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note); if (validation.IsFailure) return Invalid<PassingScoreHistoryDto>(validation);
+        var validation = MmtValidation.ValidateScore(request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note, request.DistributionRound); if (validation.IsFailure) return Invalid<PassingScoreHistoryDto>(validation);
         if (!await db.AdmissionPrograms.AnyAsync(x => x.Id == programId, ct)) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.ProgramNotFound);
-        if (await db.PassingScores.AnyAsync(x => x.AdmissionProgramId == programId && x.Year == request.Year, ct)) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore);
-        var entity = new PassingScoreHistory(Guid.NewGuid(), programId, request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note, clock.UtcNow);
+        if (await db.PassingScores.AnyAsync(x => x.AdmissionProgramId == programId && x.Year == request.Year && (int)x.DistributionRound == request.DistributionRound, ct)) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore);
+        var entity = new PassingScoreHistory(Guid.NewGuid(), programId, request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note, clock.UtcNow, (DistributionRound)request.DistributionRound);
         db.PassingScores.Add(entity);
-        try { await db.SaveChangesAsync(ct); } catch (DbUpdateException ex) when (MmtDatabaseConstraints.IsUniqueViolation(ex, MmtDatabaseConstraints.ProgramYearScore)) { db.ChangeTracker.Clear(); return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore); }
+        try { await db.SaveChangesAsync(ct); } catch (DbUpdateException ex) when (MmtDatabaseConstraints.IsUniqueViolation(ex, MmtDatabaseConstraints.ProgramYearRoundScore)) { db.ChangeTracker.Clear(); return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore); }
         return Result<PassingScoreHistoryDto>.Success(ToDto(entity));
     }
 
     public async Task<Result<PassingScoreHistoryDto>> UpdateScoreAsync(Guid id, UpdatePassingScoreHistoryDto request, CancellationToken ct)
     {
-        var validation = MmtValidation.ValidateScore(request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note); if (validation.IsFailure) return Invalid<PassingScoreHistoryDto>(validation);
+        var validation = MmtValidation.ValidateScore(request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note, request.DistributionRound); if (validation.IsFailure) return Invalid<PassingScoreHistoryDto>(validation);
         var entity = await db.PassingScores.SingleOrDefaultAsync(x => x.Id == id, ct); if (entity is null) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.ScoreNotFound);
-        if (await db.PassingScores.AnyAsync(x => x.Id != id && x.AdmissionProgramId == entity.AdmissionProgramId && x.Year == request.Year, ct)) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore);
-        entity.Update(request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note, clock.UtcNow);
-        try { await db.SaveChangesAsync(ct); } catch (DbUpdateException ex) when (MmtDatabaseConstraints.IsUniqueViolation(ex, MmtDatabaseConstraints.ProgramYearScore)) { db.ChangeTracker.Clear(); return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore); }
+        if (await db.PassingScores.AnyAsync(x => x.Id != id && x.AdmissionProgramId == entity.AdmissionProgramId && x.Year == request.Year && (int)x.DistributionRound == request.DistributionRound, ct)) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore);
+        entity.Update(request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note, clock.UtcNow, (DistributionRound)request.DistributionRound);
+        try { await db.SaveChangesAsync(ct); } catch (DbUpdateException ex) when (MmtDatabaseConstraints.IsUniqueViolation(ex, MmtDatabaseConstraints.ProgramYearRoundScore)) { db.ChangeTracker.Clear(); return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore); }
         return Result<PassingScoreHistoryDto>.Success(ToDto(entity));
     }
 
@@ -111,7 +112,7 @@ public sealed class AdmissionProgramService(
     public async Task<Result<PassingScoreAnalyticsDto>> GetScoreAnalyticsAsync(Guid programId, CancellationToken ct)
     {
         if (!await db.AdmissionPrograms.AnyAsync(x => x.Id == programId, ct)) return Result<PassingScoreAnalyticsDto>.Failure(MmtErrors.ProgramNotFound);
-        var values = await db.PassingScores.AsNoTracking().Where(x => x.AdmissionProgramId == programId).OrderByDescending(x => x.Year).Select(x => x.PassingScore).Take(3).ToListAsync(ct);
+        var values = await db.PassingScores.AsNoTracking().Where(x => x.AdmissionProgramId == programId && x.DistributionRound == DistributionRound.Main).OrderByDescending(x => x.Year).Select(x => x.PassingScore).Take(3).ToListAsync(ct);
         return Result<PassingScoreAnalyticsDto>.Success(Analytics(values));
     }
 
@@ -153,11 +154,11 @@ public sealed class AdmissionProgramService(
         db.AdmissionPrograms.AnyAsync(x => (!id.HasValue || x.Id != id) && x.UniversityId == university && x.SpecialtyId == specialty && x.MmtClusterId == cluster && (int)x.AdmissionType == type && (int)x.StudyForm == form && (int)x.StudyLanguage == language && x.AdmissionYear == year, ct);
     private int CurrentAdmissionYear => options.CurrentAdmissionYear ?? clock.UtcNow.Year;
     private static Result<T> Invalid<T>(Result validation) => Result<T>.ValidationFailure(validation.ValidationErrors!);
-    private static PassingScoreHistoryDto ToDto(PassingScoreHistory x) => new(x.Id, x.AdmissionProgramId, x.Year, x.PassingScore, x.SeatsCount, x.Source, x.Note, x.CreatedAtUtc, x.UpdatedAtUtc);
-    private static AdmissionProgramListItemDto ToListDto(AdmissionProgram x, SupportedLanguage language) => new(x.Id, x.UniversityId, x.University.FullNameFor(language), x.SpecialtyId, x.Specialty.Code, x.Specialty.NameFor(language), x.MmtClusterId, x.MmtCluster.Code, x.MmtCluster.NameFor(language), (int)x.AdmissionType, (int)x.StudyForm, (int)x.StudyLanguage, x.AdmissionYear, x.SeatsCount, x.IsPublished, x.IsActive, x.PassingScores.OrderByDescending(s => s.Year).Select(s => (decimal?)s.PassingScore).FirstOrDefault());
+    private static PassingScoreHistoryDto ToDto(PassingScoreHistory x) => new(x.Id, x.AdmissionProgramId, x.Year, x.PassingScore, x.SeatsCount, x.Source, x.Note, x.CreatedAtUtc, x.UpdatedAtUtc, (int)x.DistributionRound);
+    private static AdmissionProgramListItemDto ToListDto(AdmissionProgram x, SupportedLanguage language) => new(x.Id, x.UniversityId, x.University.FullNameFor(language), x.SpecialtyId, x.Specialty.Code, x.Specialty.NameFor(language), x.MmtClusterId, x.MmtCluster.Code, x.MmtCluster.NameFor(language), (int)x.AdmissionType, (int)x.StudyForm, (int)x.StudyLanguage, x.AdmissionYear, x.SeatsCount, x.IsPublished, x.IsActive, x.PassingScores.Where(s => s.DistributionRound == DistributionRound.Main).OrderByDescending(s => s.Year).Select(s => (decimal?)s.PassingScore).FirstOrDefault());
     private static AdmissionProgramDto ToDetailsDto(AdmissionProgram x, SupportedLanguage language)
     {
-        var analytics = Analytics(x.PassingScores.OrderByDescending(s => s.Year).Select(s => s.PassingScore).Take(3).ToList());
+        var analytics = Analytics(x.PassingScores.Where(s => s.DistributionRound == DistributionRound.Main).OrderByDescending(s => s.Year).Select(s => s.PassingScore).Take(3).ToList());
         return new(x.Id, MmtCatalogService.ToDto(x.University, language), MmtCatalogService.ToDto(x.Specialty, language), MmtCatalogService.ToDto(x.MmtCluster, language), (int)x.AdmissionType, (int)x.StudyForm, (int)x.StudyLanguage, x.AdmissionYear, x.SeatsCount, x.IsPublished, x.IsActive, analytics.LatestPassingScore, analytics.AverageLast3Years, analytics.ConservativeThreshold, x.CreatedAtUtc, x.UpdatedAtUtc);
     }
 }
