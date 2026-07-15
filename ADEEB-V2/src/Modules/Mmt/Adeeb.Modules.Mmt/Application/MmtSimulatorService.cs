@@ -34,13 +34,16 @@ public sealed class MmtSimulatorService(
         if (request.AdmissionYear.HasValue && request.AdmissionYear.Value != year) return Result<StudentMmtProfileDto>.Failure(MmtErrors.AdmissionYearUnavailable);
 
         await using var transaction = await BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+        var profile = await db.StudentProfiles.Include(x => x.Choices)
+            .SingleOrDefaultAsync(x => x.UserId == userId && x.AdmissionYear == year && x.IsActive, ct);
+        if (profile is not null && profile.MmtClusterId != request.MmtClusterId)
+            return Result<StudentMmtProfileDto>.Failure(MmtErrors.ClusterLocked);
+
         var cluster = await db.Clusters.SingleOrDefaultAsync(x => x.Id == request.MmtClusterId && x.IsActive, ct);
         if (cluster is null) return Result<StudentMmtProfileDto>.Failure(MmtErrors.InactiveReference);
         if (request.GoalAdmissionProgramId.HasValue && !await ProgramMatchesProfileAsync(request.GoalAdmissionProgramId.Value, request.MmtClusterId, year, ct))
             return Result<StudentMmtProfileDto>.Failure(MmtErrors.GoalProgramInvalid);
 
-        var profile = await db.StudentProfiles.Include(x => x.Choices)
-            .SingleOrDefaultAsync(x => x.UserId == userId && x.AdmissionYear == year && x.IsActive, ct);
         var now = clock.UtcNow;
         if (profile is null)
         {
@@ -49,8 +52,6 @@ public sealed class MmtSimulatorService(
         }
         else
         {
-            if (profile.MmtClusterId != request.MmtClusterId && profile.Choices.Count > 0)
-                db.StudentAdmissionChoices.RemoveRange(profile.Choices);
             profile.Update(request.MmtClusterId, year, request.GoalAdmissionProgramId, now);
         }
 

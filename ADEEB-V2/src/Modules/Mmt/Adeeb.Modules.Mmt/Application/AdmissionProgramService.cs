@@ -27,6 +27,54 @@ public sealed class AdmissionProgramService(
         return Result<PagedResponse<AdmissionProgramListItemDto>>.Success(new(rows.Select(x => ToListDto(x, language)).ToList(), page, size, total));
     }
 
+    public async Task<Result<PagedResponse<MmtClusterDto>>> GetStudentClustersAsync(MmtPageQuery query, SupportedLanguage language, CancellationToken ct)
+    {
+        var source = StudentPrograms().Select(x => x.MmtCluster).Distinct();
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim().ToLower();
+            source = source.Where(x => x.Code.ToLower().Contains(search) || x.Name.ToLower().Contains(search) || x.NameRu.ToLower().Contains(search));
+        }
+
+        var page = MmtPaging.Page(query.Page); var size = MmtPaging.PageSize(query.PageSize);
+        var total = await source.CountAsync(ct);
+        var rows = await source.OrderBy(x => x.Code).Skip((page - 1) * size).Take(size).ToListAsync(ct);
+        return Result<PagedResponse<MmtClusterDto>>.Success(new(rows.Select(x => MmtCatalogService.ToDto(x, language)).ToList(), page, size, total));
+    }
+
+    public async Task<Result<PagedResponse<SpecialtyDto>>> GetStudentSpecialtiesAsync(StudentSpecialtyLookupQuery query, SupportedLanguage language, CancellationToken ct)
+    {
+        var source = StudentPrograms().Where(x => x.MmtClusterId == query.ClusterId).Select(x => x.Specialty).Distinct();
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim().ToLower();
+            source = source.Where(x => x.Code.ToLower().Contains(search) || x.Name.ToLower().Contains(search) || x.NameRu.ToLower().Contains(search));
+        }
+
+        var page = MmtPaging.Page(query.Page); var size = MmtPaging.PageSize(query.PageSize);
+        var total = await source.CountAsync(ct);
+        var rows = await source.OrderBy(x => x.Code).Skip((page - 1) * size).Take(size).ToListAsync(ct);
+        return Result<PagedResponse<SpecialtyDto>>.Success(new(rows.Select(x => MmtCatalogService.ToDto(x, language)).ToList(), page, size, total));
+    }
+
+    public async Task<Result<PagedResponse<UniversityDto>>> GetStudentUniversitiesAsync(StudentUniversityLookupQuery query, SupportedLanguage language, CancellationToken ct)
+    {
+        var source = StudentPrograms()
+            .Where(x => x.MmtClusterId == query.ClusterId && x.SpecialtyId == query.SpecialtyId)
+            .Select(x => x.University).Distinct();
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim().ToLower();
+            source = source.Where(x => x.FullName.ToLower().Contains(search) || x.FullNameRu.ToLower().Contains(search)
+                || (x.ShortName != null && x.ShortName.ToLower().Contains(search)) || (x.ShortNameRu != null && x.ShortNameRu.ToLower().Contains(search)));
+        }
+
+        var page = MmtPaging.Page(query.Page); var size = MmtPaging.PageSize(query.PageSize);
+        var total = await source.CountAsync(ct);
+        var rows = await source.OrderBy(x => x.FullName).Skip((page - 1) * size).Take(size).ToListAsync(ct);
+        return Result<PagedResponse<UniversityDto>>.Success(new(rows.Select(x => MmtCatalogService.ToDto(x, language)).ToList(), page, size, total));
+    }
+
     public async Task<Result<AdmissionProgramDto>> GetProgramAsync(Guid id, bool admin, SupportedLanguage language, CancellationToken ct)
     {
         var query = BaseQuery();
@@ -124,6 +172,9 @@ public sealed class AdmissionProgramService(
     }
 
     private IQueryable<AdmissionProgram> BaseQuery() => db.AdmissionPrograms.AsNoTracking().Include(x => x.University).Include(x => x.Specialty).Include(x => x.MmtCluster).Include(x => x.PassingScores);
+    private IQueryable<AdmissionProgram> StudentPrograms() => db.AdmissionPrograms.AsNoTracking()
+        .Where(x => x.IsActive && x.IsPublished && x.AdmissionYear == CurrentAdmissionYear
+            && x.MmtCluster.IsActive && x.University.IsActive && x.Specialty.IsActive);
     private IQueryable<AdmissionProgram> ApplyFilter(IQueryable<AdmissionProgram> q, AdmissionProgramFilter f, bool admin)
     {
         if (!admin) q = q.Where(x => x.IsActive && x.IsPublished && x.University.IsActive && x.Specialty.IsActive && x.MmtCluster.IsActive && x.AdmissionYear == CurrentAdmissionYear);

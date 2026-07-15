@@ -12,6 +12,16 @@ export type LoginRequest = {
   device?: DeviceRequest | null
 }
 
+export type RegisterRequest = {
+  email: string
+  phoneNumber?: string | null
+  password: string
+  firstName: string
+  lastName: string
+  language: string
+  device?: DeviceRequest | null
+}
+
 export type RefreshTokenRequest = {
   refreshToken: string
 }

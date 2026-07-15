@@ -27,6 +27,11 @@ import type {
   AdmissionChoiceInput,
   SimulateMmtEvaluationInput,
   StudentProfileQuery,
+  MmtClusterDto,
+  SpecialtyDto,
+  UniversityDto,
+  StudentSpecialtyLookupQuery,
+  StudentUniversityLookupQuery,
 } from "@/features/mmt/model/mmt.types";
 
 const root = "/api/v2/admin/mmt";
@@ -58,7 +63,38 @@ export const mmtKeys = {
     ["mmt", "evaluation", id, getStoredUiLanguage()] as const,
 };
 
+export const mmtStudentKeys = {
+  all: ["mmt", "student"] as const,
+  programs: (query: AdmissionProgramQuery = {}) => ["mmt", "student", "programs", query, getStoredUiLanguage()] as const,
+  program: (id: string) => ["mmt", "student", "program", id, getStoredUiLanguage()] as const,
+  profile: () => ["mmt", "student", "profile", getStoredUiLanguage()] as const,
+  choices: () => ["mmt", "student", "choices", getStoredUiLanguage()] as const,
+  clusters: (query: ListQuery = {}) => ["mmt", "student", "clusters", query, getStoredUiLanguage()] as const,
+  specialties: (query: StudentSpecialtyLookupQuery) => ["mmt", "student", "specialties", query, getStoredUiLanguage()] as const,
+  universities: (query: StudentUniversityLookupQuery) => ["mmt", "student", "universities", query, getStoredUiLanguage()] as const,
+  evaluations: (query: EvaluationQuery = {}) => ["mmt", "student", "evaluations", query, getStoredUiLanguage()] as const,
+  evaluation: (id: string) => ["mmt", "student", "evaluation", id, getStoredUiLanguage()] as const,
+};
+
 export const mmtStudentApi = {
+  async clusters(query: ListQuery = {}) {
+    const response = await httpClient.get<PagedResponse<MmtClusterDto>>(
+      `${studentRoot}/clusters${queryString(query)}`,
+    );
+    return response.data;
+  },
+  async specialties(query: StudentSpecialtyLookupQuery) {
+    const response = await httpClient.get<PagedResponse<SpecialtyDto>>(
+      `${studentRoot}/specialties${queryString(query)}`,
+    );
+    return response.data;
+  },
+  async universities(query: StudentUniversityLookupQuery) {
+    const response = await httpClient.get<PagedResponse<UniversityDto>>(
+      `${studentRoot}/universities${queryString(query)}`,
+    );
+    return response.data;
+  },
   async programs(query: AdmissionProgramQuery = {}) {
     const response = await httpClient.get<PagedResponse<AdmissionProgramListItemDto>>(
       `${studentRoot}/admission-programs${queryString(query)}`,

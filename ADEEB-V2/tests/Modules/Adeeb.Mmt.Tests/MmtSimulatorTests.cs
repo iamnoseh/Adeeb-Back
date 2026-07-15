@@ -14,6 +14,66 @@ public sealed class MmtSimulatorTests
     private static readonly DateTimeOffset Now = new(2026, 7, 14, 0, 0, 0, TimeSpan.Zero);
 
     [Fact]
+    public async Task Student_creates_profile_with_selected_cluster()
+    {
+        await using var db = Db();
+        var cluster = new MmtCluster(Guid.NewGuid(), "Cluster", "C1", null, Now);
+        db.Add(cluster); await db.SaveChangesAsync();
+
+        var result = await Service(db).UpsertProfileAsync(User(Guid.NewGuid()), new(cluster.Id, 2026, null), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(cluster.Id, result.Value!.Cluster.Id);
+    }
+
+    [Fact]
+    public async Task Student_cannot_change_cluster_after_profile_exists_without_choices()
+    {
+        await using var db = Db();
+        var first = new MmtCluster(Guid.NewGuid(), "First", "C1", null, Now);
+        var second = new MmtCluster(Guid.NewGuid(), "Second", "C2", null, Now);
+        db.AddRange(first, second); await db.SaveChangesAsync();
+        var service = Service(db); var principal = User(Guid.NewGuid());
+        await service.UpsertProfileAsync(principal, new(first.Id, 2026, null), default);
+
+        var result = await service.UpsertProfileAsync(principal, new(second.Id, 2026, null), default);
+
+        Assert.Equal(MmtErrors.ClusterLocked.Code, result.Error?.Code);
+        Assert.Equal(first.Id, (await db.StudentProfiles.SingleAsync()).MmtClusterId);
+    }
+
+    [Fact]
+    public async Task Student_cannot_change_cluster_after_choices_exist()
+    {
+        await using var db = Db(); var data = await SeedProgramsAsync(db);
+        var secondCluster = new MmtCluster(Guid.NewGuid(), "Second", "C3", null, Now); db.Add(secondCluster); await db.SaveChangesAsync();
+        var service = Service(db); var principal = User(data.UserId);
+        await service.UpsertProfileAsync(principal, new(data.Cluster.Id, 2026, null), default);
+        await service.ReplaceChoicesAsync(principal, new([new(data.First.Id, 1)]), default);
+
+        var result = await service.UpsertProfileAsync(principal, new(secondCluster.Id, 2026, null), default);
+
+        Assert.Equal(MmtErrors.ClusterLocked.Code, result.Error?.Code);
+        Assert.Single(await db.StudentAdmissionChoices.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Student_cannot_change_cluster_after_evaluation_exists()
+    {
+        await using var db = Db(); var data = await SeedProgramsAsync(db);
+        var secondCluster = new MmtCluster(Guid.NewGuid(), "Second", "C3", null, Now); db.Add(secondCluster); await db.SaveChangesAsync();
+        var service = Service(db); var principal = User(data.UserId);
+        await service.UpsertProfileAsync(principal, new(data.Cluster.Id, 2026, null), default);
+        await service.ReplaceChoicesAsync(principal, new([new(data.First.Id, 1)]), default);
+        await service.SimulateAsync(principal, new(300m), default);
+
+        var result = await service.UpsertProfileAsync(principal, new(secondCluster.Id, 2026, null), default);
+
+        Assert.Equal(MmtErrors.ClusterLocked.Code, result.Error?.Code);
+        Assert.Single(await db.ExamEvaluations.ToListAsync());
+    }
+
+    [Fact]
     public async Task Profile_rejects_inactive_cluster()
     {
         await using var db = Db();

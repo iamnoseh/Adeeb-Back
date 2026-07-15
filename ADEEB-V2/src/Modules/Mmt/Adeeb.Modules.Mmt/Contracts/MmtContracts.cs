@@ -41,6 +41,8 @@ public sealed record UpdateAdmissionProgramDto(Guid UniversityId, Guid Specialty
 public sealed record AdmissionProgramFilter(Guid? ClusterId = null, Guid? UniversityId = null, Guid? SpecialtyId = null,
     int? AdmissionType = null, int? StudyForm = null, int? StudyLanguage = null, int? AdmissionYear = null,
     bool? IsPublished = null, bool? IsActive = null, string? Search = null, int Page = 1, int PageSize = 10);
+public sealed record StudentSpecialtyLookupQuery(Guid ClusterId, string? Search = null, int Page = 1, int PageSize = 10);
+public sealed record StudentUniversityLookupQuery(Guid ClusterId, Guid SpecialtyId, string? Search = null, int Page = 1, int PageSize = 10);
 public sealed record AdmissionProgramListItemDto(Guid Id, Guid UniversityId, string UniversityName, Guid SpecialtyId,
     string SpecialtyCode, string SpecialtyName, Guid MmtClusterId, string ClusterCode, string ClusterName,
     int AdmissionType, int StudyForm, int StudyLanguage, int AdmissionYear, int? SeatsCount, bool IsPublished,

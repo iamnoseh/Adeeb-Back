@@ -1,7 +1,11 @@
 import { httpClient } from '@/shared/api/http-client'
-import type { AuthResponse, LoginRequest, RefreshTokenRequest, UserResponse } from '@/features/auth/model/auth.types'
+import type { AuthResponse, LoginRequest, RefreshTokenRequest, RegisterRequest, UserResponse } from '@/features/auth/model/auth.types'
 
 export const authApi = {
+  async register(request: RegisterRequest) {
+    const response = await httpClient.post<AuthResponse>('/api/v2/auth/register', request)
+    return response.data
+  },
   async login(request: LoginRequest) {
     const response = await httpClient.post<AuthResponse>('/api/v2/auth/login', request)
     return response.data
