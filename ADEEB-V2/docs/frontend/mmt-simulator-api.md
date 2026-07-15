@@ -34,6 +34,12 @@ imports initialize both languages from their single value, so required names nev
 become empty. Error titles are localized, while stable `code` values never change by
 language.
 
+MMT clusters also own a set of Academic Catalog subject references. Cluster create and
+update requests accept `subjectIds: UUID[]`. Cluster responses expose `subjects` as
+`[{ id, code, name }]`; `name` follows the request language and only active subjects can
+be assigned. The MMT schema stores subject IDs without a cross-module database foreign
+key, while Academic Catalog validates and resolves them through an application contract.
+
 ## Authentication And Authorization
 
 Send `Authorization: Bearer <access-token>` on every route in this document.

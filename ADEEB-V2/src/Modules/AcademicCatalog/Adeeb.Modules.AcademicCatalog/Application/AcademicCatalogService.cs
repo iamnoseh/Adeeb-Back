@@ -1,4 +1,5 @@
 using Adeeb.Application.Abstractions.Localization;
+using Adeeb.Application.Abstractions.AcademicCatalog;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.AcademicCatalog.Contracts;
 using Adeeb.Modules.AcademicCatalog.Domain;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Adeeb.Modules.AcademicCatalog.Application;
 
-public sealed class AcademicCatalogService(AcademicCatalogDbContext db, IDateTimeProvider clock) : IAcademicCatalogLookup
+public sealed class AcademicCatalogService(AcademicCatalogDbContext db, IDateTimeProvider clock) : IAcademicCatalogLookup, IAcademicSubjectLookup
 {
     public Task<bool> SubjectExistsAsync(Guid subjectId, CancellationToken ct) =>
         db.Subjects.AnyAsync(x => x.Id == subjectId && x.Status != AcademicItemStatus.Archived, ct);

@@ -1,6 +1,6 @@
 using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Application.Abstractions.Time;
-using Adeeb.Modules.AcademicCatalog.Contracts;
+using Adeeb.Application.Abstractions.AcademicCatalog;
 using Adeeb.Modules.Mmt.Application;
 using Adeeb.Modules.Mmt.Application.Import;
 using Adeeb.Modules.Mmt.Contracts;
@@ -219,10 +219,8 @@ public sealed class MmtModuleTests
         public DateTimeOffset DushanbeNow => Now.ToOffset(TimeSpan.FromHours(5));
         public DateTimeOffset ToDushanbeTime(DateTimeOffset value) => value.ToOffset(TimeSpan.FromHours(5));
     }
-    private sealed class CatalogLookup : IAcademicCatalogLookup
+    private sealed class CatalogLookup : IAcademicSubjectLookup
     {
-        public Task<bool> SubjectExistsAsync(Guid subjectId, CancellationToken ct) => Task.FromResult(true);
-        public Task<bool> TopicBelongsToSubjectAsync(Guid topicId, Guid subjectId, CancellationToken ct) => Task.FromResult(true);
         public Task<IReadOnlyList<AcademicSubjectLookupItem>> GetActiveSubjectsAsync(IReadOnlyCollection<Guid> subjectIds, SupportedLanguage language, CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<AcademicSubjectLookupItem>>(subjectIds.Select(id => new AcademicSubjectLookupItem(id, "SUB", language == SupportedLanguage.Russian ? "Russian Subject" : "Tajik Subject")).ToList());
     }

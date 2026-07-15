@@ -1,4 +1,5 @@
 using Adeeb.Modules.AcademicCatalog.Application;
+using Adeeb.Application.Abstractions.AcademicCatalog;
 using Adeeb.Modules.AcademicCatalog.Contracts;
 using Adeeb.Modules.AcademicCatalog.Infrastructure.Files;
 using Adeeb.Modules.AcademicCatalog.Infrastructure.Persistence;
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.AddDbContext<AcademicCatalogDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<AcademicCatalogService>();
         services.AddScoped<IAcademicCatalogLookup>(sp => sp.GetRequiredService<AcademicCatalogService>());
+        services.AddScoped<IAcademicSubjectLookup>(sp => sp.GetRequiredService<AcademicCatalogService>());
         services.AddScoped<AcademicFileStorage>();
         return services;
     }
