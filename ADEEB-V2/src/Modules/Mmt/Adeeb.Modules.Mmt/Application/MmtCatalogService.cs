@@ -1,4 +1,5 @@
 using System.Globalization;
+using Adeeb.Application.Abstractions.AcademicCatalog;
 using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Mmt.Contracts;
@@ -6,12 +7,10 @@ using Adeeb.Modules.Mmt.Domain;
 using Adeeb.Modules.Mmt.Infrastructure.Persistence;
 using Adeeb.SharedKernel.Results;
 using Microsoft.EntityFrameworkCore;
-using AcademicSubjectLookupItem = Adeeb.Modules.AcademicCatalog.Contracts.AcademicSubjectLookupItem;
-using IAcademicCatalogLookup = Adeeb.Modules.AcademicCatalog.Contracts.IAcademicCatalogLookup;
 
 namespace Adeeb.Modules.Mmt.Application;
 
-public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock, IAcademicCatalogLookup academicCatalog)
+public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock, IAcademicSubjectLookup academicCatalog)
 {
     public async Task<Result<PagedResponse<MmtClusterDto>>> GetClustersAsync(MmtPageQuery query, SupportedLanguage language, CancellationToken ct)
     {

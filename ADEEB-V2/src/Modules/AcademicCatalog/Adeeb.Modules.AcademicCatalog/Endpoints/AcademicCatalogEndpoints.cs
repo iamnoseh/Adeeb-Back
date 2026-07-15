@@ -1,4 +1,5 @@
 using Adeeb.Application.Abstractions.Localization;
+using Adeeb.Application.Abstractions.Authorization;
 using Adeeb.Modules.AcademicCatalog.Application;
 using Adeeb.Modules.AcademicCatalog.Contracts;
 using Adeeb.Modules.AcademicCatalog.Infrastructure.Files;
@@ -27,7 +28,7 @@ public static class AcademicCatalogEndpoints
         topics.MapGet("/{id:guid}", async (Guid id, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetTopicAsync(id, CurrentLanguage(), admin: false, ct)).ToHttpResult(context, localizer));
 
-        var adminSubjects = app.MapGroup("/api/v2/admin/subjects").WithTags("Academic Catalog Admin").RequireAuthorization("ContentAdmin");
+        var adminSubjects = app.MapGroup("/api/v2/admin/subjects").WithTags("Academic Catalog Admin").RequireAuthorization(Permissions.AcademicCatalog.Manage);
         adminSubjects.MapGet("/", async ([AsParameters] AcademicListQuery query, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetSubjectsAsync(query, CurrentLanguage(), admin: true, ct)).ToHttpResult(context, localizer));
         adminSubjects.MapGet("/{id:guid}", async (Guid id, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
@@ -62,7 +63,7 @@ public static class AcademicCatalogEndpoints
         adminSubjects.MapDelete("/{id:guid}", async (Guid id, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.DeleteSubjectAsync(id, ct)).ToHttpResult(context, localizer));
 
-        var adminTopics = app.MapGroup("/api/v2/admin/topics").WithTags("Academic Catalog Admin").RequireAuthorization("ContentAdmin");
+        var adminTopics = app.MapGroup("/api/v2/admin/topics").WithTags("Academic Catalog Admin").RequireAuthorization(Permissions.AcademicCatalog.Manage);
         adminTopics.MapGet("/", async (Guid? subjectId, [AsParameters] AcademicListQuery query, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetTopicsAsync(subjectId, query, CurrentLanguage(), admin: true, ct)).ToHttpResult(context, localizer));
         adminTopics.MapGet("/{id:guid}", async (Guid id, AcademicCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>

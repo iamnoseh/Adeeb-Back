@@ -271,6 +271,24 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                     b.ToTable("clusters", "mmt");
                 });
 
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtClusterSubject", b =>
+                {
+                    b.Property<Guid>("MmtClusterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cluster_id");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
+                    b.HasKey("MmtClusterId", "SubjectId");
+
+                    b.HasIndex("SubjectId")
+                        .HasDatabaseName("ix_mmt_cluster_subjects_subject_id");
+
+                    b.ToTable("cluster_subjects", "mmt");
+                });
+
             modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtExamEvaluation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -707,6 +725,17 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                     b.Navigation("MmtExamEvaluation");
                 });
 
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtClusterSubject", b =>
+                {
+                    b.HasOne("Adeeb.Modules.Mmt.Domain.MmtCluster", "MmtCluster")
+                        .WithMany("Subjects")
+                        .HasForeignKey("MmtClusterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MmtCluster");
+                });
+
             modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtExamEvaluation", b =>
                 {
                     b.HasOne("Adeeb.Modules.Mmt.Domain.AdmissionProgram", "AcceptedAdmissionProgram")
@@ -784,6 +813,11 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.AdmissionProgram", b =>
                 {
                     b.Navigation("PassingScores");
+                });
+
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtCluster", b =>
+                {
+                    b.Navigation("Subjects");
                 });
 
             modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtExamEvaluation", b =>

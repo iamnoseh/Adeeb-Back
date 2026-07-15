@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Adeeb.Application.Abstractions.Localization;
+using Adeeb.Application.Abstractions.Authorization;
 using Adeeb.Modules.QuestionBank.Application;
 using Adeeb.Modules.QuestionBank.Application.Import;
 using Adeeb.Modules.QuestionBank.Contracts;
@@ -18,17 +19,19 @@ public static class QuestionBankEndpoints
 {
     public static IEndpointRouteBuilder MapQuestionBankEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v2/admin/questions").WithTags("Question Bank Admin").RequireAuthorization("ContentAdmin");
+        var group = app.MapGroup("/api/v2/admin/questions").WithTags("Question Bank Admin").RequireAuthorization(Permissions.QuestionBank.Manage);
         group.MapGet("/", async ([AsParameters] QuestionListQuery query, QuestionBankService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetQuestionsAsync(query, CurrentLanguage(), ct)).ToHttpResult(context, localizer));
         group.MapGet("/{id:guid}", async (Guid id, QuestionBankService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetQuestionAsync(id, CurrentLanguage(), ct)).ToHttpResult(context, localizer));
         group.MapPost("/import/parse", async ([FromForm] QuestionImportParseFormRequest form, IQuestionImportService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.ParseAsync(form, ct)).ToHttpResult(context, localizer))
+            .RequireAuthorization(Permissions.QuestionBank.Import)
             .Accepts<QuestionImportParseFormRequest>("multipart/form-data")
             .DisableAntiforgery();
         group.MapPost("/import/confirm", async (QuestionImportConfirmRequest request, IQuestionImportService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
-            (await service.ConfirmAsync(request, ct)).ToHttpResult(context, localizer));
+            (await service.ConfirmAsync(request, ct)).ToHttpResult(context, localizer))
+            .RequireAuthorization(Permissions.QuestionBank.Import);
         group.MapPost("/", async ([FromForm] QuestionFormRequest form, QuestionImageStorage images, QuestionBankService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
         {
             var parsed = ToUpsertRequest(form, imageUrl: null);

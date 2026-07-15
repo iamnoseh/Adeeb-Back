@@ -40,7 +40,10 @@ export function MultiSelectField({
   }
 
   return (
-    <div ref={rootRef} className={cn("relative", open ? "z-30" : "")}>
+    <div
+      ref={rootRef}
+      className={cn("relative min-w-0 max-w-full", open ? "z-30" : "")}
+    >
       <button
         type="button"
         aria-expanded={open}
@@ -48,7 +51,7 @@ export function MultiSelectField({
         aria-controls={id}
         disabled={disabled}
         className={cn(
-          "flex min-h-14 w-full items-center justify-between gap-3 rounded-[1.55rem] border-2 border-[var(--border)] bg-white px-5 py-3 text-left text-base font-semibold text-[var(--text)] shadow-[0_8px_22px_rgb(24_49_45/0.06)] transition",
+          "flex min-h-14 min-w-0 w-full max-w-full items-center justify-between gap-3 overflow-hidden rounded-[1.55rem] border-2 border-[var(--border)] bg-white px-4 py-3 text-left text-sm font-semibold text-[var(--text)] shadow-[0_8px_22px_rgb(24_49_45/0.06)] transition sm:px-5 sm:text-base",
           "hover:border-[color-mix(in_srgb,var(--primary)_45%,var(--border))] focus:border-[var(--primary)] focus:outline-none",
           disabled ? "cursor-not-allowed opacity-60" : "",
         )}
@@ -56,7 +59,7 @@ export function MultiSelectField({
       >
         <span
           className={cn(
-            "truncate",
+            "min-w-0 flex-1 truncate",
             selected.length ? "" : "text-[var(--muted)]",
           )}
         >
@@ -73,13 +76,13 @@ export function MultiSelectField({
         />
       </button>
       {selected.length ? (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-2 flex min-w-0 max-w-full flex-wrap gap-2 overflow-hidden">
           {selected.map((option) => (
             <span
               key={option.value}
-              className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-muted)] px-3 py-1 text-sm font-semibold"
+              className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full bg-[var(--surface-muted)] px-3 py-1 text-sm font-semibold"
             >
-              {option.label}
+              <span className="min-w-0 truncate">{option.label}</span>
               <button
                 type="button"
                 aria-label={option.label}
@@ -96,7 +99,7 @@ export function MultiSelectField({
           id={id}
           role="listbox"
           aria-multiselectable="true"
-          className="absolute left-0 right-0 top-[calc(100%+0.45rem)] max-h-72 overflow-auto rounded-[1.25rem] border border-[var(--border)] bg-white p-1.5 shadow-[0_22px_55px_rgb(24_49_45/0.18)]"
+          className="absolute left-0 right-0 top-[calc(100%+0.45rem)] min-w-0 max-w-full max-h-72 overflow-y-auto overflow-x-hidden rounded-[1.25rem] border border-[var(--border)] bg-white p-1.5 shadow-[0_22px_55px_rgb(24_49_45/0.18)]"
         >
           {options.map((option) => {
             const checked = values.includes(option.value);
@@ -107,7 +110,7 @@ export function MultiSelectField({
                 role="option"
                 aria-selected={checked}
                 disabled={option.disabled}
-                className="flex min-h-11 w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-left text-sm font-semibold hover:bg-[var(--surface-muted)]"
+                className="flex min-h-11 min-w-0 w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-left text-sm font-semibold hover:bg-[var(--surface-muted)]"
                 onClick={() => toggle(option.value)}
               >
                 <span
@@ -122,7 +125,7 @@ export function MultiSelectField({
                     <Check className="h-3.5 w-3.5" aria-hidden />
                   ) : null}
                 </span>
-                {option.label}
+                <span className="min-w-0 break-words">{option.label}</span>
               </button>
             );
           })}

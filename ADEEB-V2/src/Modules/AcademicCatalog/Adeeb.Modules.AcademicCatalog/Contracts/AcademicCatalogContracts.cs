@@ -24,14 +24,9 @@ public sealed record SubjectResponse(Guid Id, string Code, string Name, string? 
 public sealed record TopicResponse(Guid Id, Guid SubjectId, string Code, string Name, int DisplayOrder, int Status, IReadOnlyList<TranslationResponse> Translations);
 public sealed record PagedResponse<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount);
 public sealed record CatalogLookupItem(Guid Id, string Code, string Name, int Status);
-public sealed record AcademicSubjectLookupItem(Guid Id, string Code, string Name);
 
 public interface IAcademicCatalogLookup
 {
     Task<bool> SubjectExistsAsync(Guid subjectId, CancellationToken ct);
     Task<bool> TopicBelongsToSubjectAsync(Guid topicId, Guid subjectId, CancellationToken ct);
-    Task<IReadOnlyList<AcademicSubjectLookupItem>> GetActiveSubjectsAsync(
-        IReadOnlyCollection<Guid> subjectIds,
-        Adeeb.Application.Abstractions.Localization.SupportedLanguage language,
-        CancellationToken ct);
 }
