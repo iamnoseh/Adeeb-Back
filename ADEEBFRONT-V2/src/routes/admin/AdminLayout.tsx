@@ -4,6 +4,7 @@ import {
   BookOpen,
   Building2,
   ChartNoAxesCombined,
+  ChevronDown,
   ClipboardList,
   FileQuestion,
   FileSpreadsheet,
@@ -15,62 +16,127 @@ import {
   PanelLeftOpen,
   Search,
   Shapes,
+  UsersRound,
+  type LucideIcon,
+  Library,
+  Database,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { Button } from "@/shared/ui/Button";
 import { cn } from "@/shared/lib/cn";
 import { setStoredUiLanguage, type UiLanguage } from "@/shared/i18n/language";
 
+type AdminNavItem = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  end?: boolean;
+};
+
+type AdminNavGroup = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  items: AdminNavItem[];
+};
+
 export function AdminLayout() {
   const { user, logout } = useAuth();
   const { i18n, t } = useTranslation();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const navItems = [
-    { to: "/admin/subjects", label: t("navSubjects"), icon: BookOpen },
-    { to: "/admin/topics", label: t("navTopics"), icon: Layers3 },
-    { to: "/admin/questions", label: t("navQuestions"), icon: FileQuestion },
+  const navGroups: AdminNavGroup[] = [
     {
-      to: "/admin/mmt",
-      label: t("mmt.navDashboard"),
-      icon: LayoutDashboard,
-      end: true,
-    },
-    { to: "/admin/mmt/clusters", label: t("mmt.navClusters"), icon: Shapes },
-    {
-      to: "/admin/mmt/universities",
-      label: t("mmt.navUniversities"),
-      icon: Building2,
-    },
-    {
-      to: "/admin/mmt/specialties",
-      label: t("mmt.navSpecialties"),
-      icon: GraduationCap,
+      id: "content",
+      label: t("navGroupContent"),
+      icon: Library,
+      items: [
+        { to: "/admin/subjects", label: t("navSubjects"), icon: BookOpen },
+        { to: "/admin/topics", label: t("navTopics"), icon: Layers3 },
+        {
+          to: "/admin/questions",
+          label: t("navQuestions"),
+          icon: FileQuestion,
+        },
+      ],
     },
     {
-      to: "/admin/mmt/programs",
-      label: t("mmt.navPrograms"),
-      icon: ClipboardList,
+      id: "mmtData",
+      label: t("navGroupMmtData"),
+      icon: Database,
+      items: [
+        {
+          to: "/admin/mmt",
+          label: t("mmt.navDashboard"),
+          icon: LayoutDashboard,
+          end: true,
+        },
+        {
+          to: "/admin/mmt/clusters",
+          label: t("mmt.navClusters"),
+          icon: Shapes,
+        },
+        {
+          to: "/admin/mmt/universities",
+          label: t("mmt.navUniversities"),
+          icon: Building2,
+        },
+        {
+          to: "/admin/mmt/specialties",
+          label: t("mmt.navSpecialties"),
+          icon: GraduationCap,
+        },
+        {
+          to: "/admin/mmt/programs",
+          label: t("mmt.navPrograms"),
+          icon: ClipboardList,
+        },
+        {
+          to: "/admin/mmt/import",
+          label: t("mmt.navImport"),
+          icon: FileSpreadsheet,
+        },
+      ],
     },
     {
-      to: "/admin/mmt/import",
-      label: t("mmt.navImport"),
-      icon: FileSpreadsheet,
-    },
-    {
-      to: "/admin/mmt/profiles",
-      label: t("mmt.navProfiles"),
-      icon: GraduationCap,
-    },
-    {
-      to: "/admin/mmt/evaluations",
-      label: t("mmt.navEvaluations"),
-      icon: ChartNoAxesCombined,
+      id: "monitoring",
+      label: t("navGroupMonitoring"),
+      icon: UsersRound,
+      items: [
+        {
+          to: "/admin/mmt/profiles",
+          label: t("mmt.navProfiles"),
+          icon: GraduationCap,
+        },
+        {
+          to: "/admin/mmt/evaluations",
+          label: t("mmt.navEvaluations"),
+          icon: ChartNoAxesCombined,
+        },
+      ],
     },
   ];
+  const activeGroup = navGroups.find((group) =>
+    group.items.some((item) =>
+      "end" in item && item.end
+        ? location.pathname === item.to
+        : location.pathname.startsWith(item.to),
+    ),
+  )?.id;
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
+    content: activeGroup === "content",
+    mmtData: activeGroup === "mmtData",
+    monitoring: activeGroup === "monitoring",
+  }));
+
+  useEffect(() => {
+    if (!activeGroup) return;
+    setOpenGroups((current) => ({ ...current, [activeGroup]: true }));
+  }, [activeGroup]);
 
   async function changeLanguage(language: UiLanguage) {
     setStoredUiLanguage(language);
@@ -85,7 +151,7 @@ export function AdminLayout() {
         sidebarOpen ? "lg:grid-cols-[258px_1fr]" : "lg:grid-cols-[88px_1fr]",
       )}
     >
-      <aside className="border-b border-white/70 bg-white/78 backdrop-blur-xl lg:sticky lg:top-0 lg:h-screen self-start lg:border-b-0 lg:border-r lg:border-white/70">
+      <aside className="self-start border-b border-white/70 bg-white/78 backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-b-0 lg:border-r lg:border-white/70">
         <div
           className={cn(
             "relative flex items-center px-4 py-5",
@@ -132,34 +198,112 @@ export function AdminLayout() {
             </button>
           </div>
         ) : null}
+        <nav className="custom-scrollbar flex gap-2 overflow-x-auto px-3 pb-3 lg:hidden">
+          {navGroups
+            .flatMap((group) => group.items)
+            .map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end ?? false}
+                className={({ isActive }) =>
+                  cn(
+                    "inline-flex min-h-11 items-center rounded-2xl text-sm font-bold text-[var(--muted)] no-underline transition",
+                    "gap-3 px-3.5 py-2.5",
+                    isActive
+                      ? "bg-[var(--surface-muted)] text-[var(--text)] shadow-sm ring-1 ring-white"
+                      : "hover:bg-[var(--surface-muted)] hover:text-[var(--text)]",
+                  )
+                }
+                title={item.label}
+              >
+                <item.icon className="h-4 w-4" aria-hidden />
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+        </nav>
         <nav
           className={cn(
-            "custom-scrollbar flex gap-2 overflow-x-auto px-3 pb-3 lg:grid lg:gap-1.5 lg:overflow-visible lg:px-3 lg:py-4",
-            sidebarOpen ? "" : "lg:px-4",
+            "custom-scrollbar hidden min-h-0 flex-1 overflow-y-auto px-3 pb-6 lg:block",
+            sidebarOpen ? "" : "px-4",
           )}
         >
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end ?? false}
-              className={({ isActive }) =>
-                cn(
-                  "inline-flex min-h-11 items-center rounded-2xl text-sm font-bold text-[var(--muted)] no-underline transition",
-                  sidebarOpen
-                    ? "gap-3 px-3.5 py-2.5"
-                    : "justify-center px-0 py-2.5 lg:w-14",
-                  isActive
-                    ? "bg-[var(--surface-muted)] text-[var(--text)] shadow-sm ring-1 ring-white"
-                    : "hover:bg-[var(--surface-muted)] hover:text-[var(--text)]",
-                )
-              }
-              title={item.label}
-            >
-              <item.icon className="h-4 w-4" aria-hidden />
-              {sidebarOpen ? <span>{item.label}</span> : null}
-            </NavLink>
-          ))}
+          {navGroups.map((group) => {
+            const isOpen = openGroups[group.id] ?? false;
+            const isCurrent = activeGroup === group.id;
+            return (
+              <section
+                key={group.id}
+                className="border-b border-[var(--border)] py-2 last:border-b-0"
+              >
+                <button
+                  type="button"
+                  className={cn(
+                    "flex min-h-11 w-full items-center rounded-lg text-sm font-bold transition",
+                    sidebarOpen ? "gap-3 px-3" : "justify-center px-0",
+                    isCurrent
+                      ? "text-[var(--primary-strong)]"
+                      : "text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--text)]",
+                  )}
+                  onClick={() => {
+                    if (!sidebarOpen) {
+                      setSidebarOpen(true);
+                      setOpenGroups((current) => ({
+                        ...current,
+                        [group.id]: true,
+                      }));
+                      return;
+                    }
+                    setOpenGroups((current) => ({
+                      ...current,
+                      [group.id]: !isOpen,
+                    }));
+                  }}
+                  aria-expanded={sidebarOpen ? isOpen : false}
+                  title={group.label}
+                >
+                  <group.icon className="h-4 w-4 shrink-0" aria-hidden />
+                  {sidebarOpen ? (
+                    <>
+                      <span className="min-w-0 flex-1 truncate text-left">
+                        {group.label}
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 shrink-0 transition-transform",
+                          isOpen ? "rotate-180" : "",
+                        )}
+                        aria-hidden
+                      />
+                    </>
+                  ) : null}
+                </button>
+                {sidebarOpen && isOpen ? (
+                  <div className="relative ml-5 mt-1 grid gap-1 border-l border-[var(--border)] pl-3">
+                    {group.items.map((item) => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        end={("end" in item && item.end) ?? false}
+                        className={({ isActive }) =>
+                          cn(
+                            "flex min-h-10 min-w-0 items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold no-underline transition",
+                            isActive
+                              ? "bg-[var(--primary-soft)] text-[var(--primary-strong)] shadow-sm"
+                              : "text-[var(--muted)] hover:bg-[var(--surface-soft)] hover:text-[var(--text)]",
+                          )
+                        }
+                        title={item.label}
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" aria-hidden />
+                        <span className="min-w-0 truncate">{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+            );
+          })}
         </nav>
       </aside>
 
