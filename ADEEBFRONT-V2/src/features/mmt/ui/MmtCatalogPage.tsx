@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { mmtApi, mmtKeys } from "@/features/mmt/api/mmt.api";
+import { subjectKeys, subjectsApi } from "@/features/academic/api/subjects.api";
 import { errorMessage, enumLabel } from "@/features/mmt/lib/mmt";
 import { useMmtLabels } from "@/features/mmt/lib/useMmtLabels";
 import type {
@@ -25,6 +26,7 @@ import { Button } from "@/shared/ui/Button";
 import { FormField } from "@/shared/ui/FormField";
 import { Input, Textarea } from "@/shared/ui/Input";
 import { SelectField } from "@/shared/ui/SelectField";
+import { MultiSelectField } from "@/shared/ui/MultiSelectField";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { EmptyState, ErrorState } from "@/shared/ui/StateBlock";
 import { Table, TableShell } from "@/shared/ui/Table";
@@ -208,6 +210,7 @@ function CatalogHead({ kind }: { kind: CatalogKind }) {
       <tr>
         <th className="px-4 py-3">{t("mmt.code")}</th>
         <th className="px-4 py-3">{t("mmt.name")}</th>
+        <th className="px-4 py-3">{t("mmt.subjects")}</th>
         <th className="px-4 py-3">{t("mmt.status")}</th>
         <th className="px-4 py-3 text-right">{t("mmt.actions")}</th>
       </tr>
@@ -252,6 +255,11 @@ function CatalogRow({
             {(item as MmtClusterDto).code}
           </span>,
           <strong key="name">{(item as MmtClusterDto).name}</strong>,
+          <span className="text-sm" key="subjects">
+            {(item as MmtClusterDto).subjects
+              .map((subject) => subject.name)
+              .join(", ") || t("mmt.none")}
+          </span>,
         ]
       : kind === "universities"
         ? [
@@ -328,6 +336,15 @@ function CatalogForm({
   const [universityType, setUniversityType] = useState(
     String((item as UniversityDto | null)?.type ?? 0),
   );
+  const cluster = item as MmtClusterDto | null;
+  const [subjectIds, setSubjectIds] = useState(
+    cluster?.subjects.map((subject) => subject.id) ?? [],
+  );
+  const subjectsQuery = useQuery({
+    queryKey: subjectKeys.list({ pageSize: 100 }),
+    queryFn: () => subjectsApi.list({ pageSize: 100 }),
+    enabled: kind === "clusters",
+  });
   const mutation = useMutation({
     mutationFn: (input: CatalogInput) =>
       item
@@ -350,6 +367,7 @@ function CatalogForm({
         nameRu: String(form.get("nameRu")),
         descriptionTg: optionalText(form.get("descriptionTg")),
         descriptionRu: optionalText(form.get("descriptionRu")),
+        subjectIds,
         ...(item ? { isActive: active } : {}),
       };
     else if (kind === "universities")
@@ -380,7 +398,6 @@ function CatalogForm({
       };
     mutation.mutate(input);
   }
-  const cluster = item as MmtClusterDto | null;
   const university = item as UniversityDto | null;
   const specialty = item as SpecialtyDto | null;
   return (
@@ -523,6 +540,26 @@ function CatalogForm({
                 />
               </FormField>
             </div>
+            {kind === "clusters" ? (
+              <FormField label={t("mmt.subjects")}>
+                <MultiSelectField
+                  values={subjectIds}
+                  options={(subjectsQuery.data?.items ?? [])
+                    .filter((subject) => subject.status === 1)
+                    .map((subject) => ({
+                      value: subject.id,
+                      label: `${subject.code} - ${subject.name}`,
+                    }))}
+                  onValuesChange={setSubjectIds}
+                  placeholder={
+                    subjectsQuery.isLoading
+                      ? t("mmt.loadingSubjects")
+                      : t("mmt.selectSubjects")
+                  }
+                  disabled={subjectsQuery.isLoading}
+                />
+              </FormField>
+            ) : null}
           </>
         )}
         <div className="flex justify-end gap-2 border-t border-[var(--border)] pt-4">

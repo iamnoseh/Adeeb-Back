@@ -42,6 +42,8 @@ public sealed class MmtCluster : Entity
     public bool IsActive { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
+    public IReadOnlyCollection<MmtClusterSubject> Subjects => _subjects;
+    private readonly List<MmtClusterSubject> _subjects = [];
     public void Update(string name, string code, string? description, bool isActive, DateTimeOffset now)
         => UpdateTranslation(SupportedLanguage.Tajik, name, description, code, isActive, now, initializeMissing: true);
 
@@ -58,7 +60,23 @@ public sealed class MmtCluster : Entity
     }
     public string NameFor(SupportedLanguage language) => language == SupportedLanguage.Russian && !string.IsNullOrWhiteSpace(NameRu) ? NameRu : Name;
     public string? DescriptionFor(SupportedLanguage language) => language == SupportedLanguage.Russian ? DescriptionRu ?? Description : Description;
+    public void ReplaceSubjects(IEnumerable<Guid> subjectIds)
+    {
+        var requested = subjectIds.Distinct().ToHashSet();
+        _subjects.RemoveAll(x => !requested.Contains(x.SubjectId));
+        foreach (var subjectId in requested.Where(id => _subjects.All(x => x.SubjectId != id)))
+            _subjects.Add(new MmtClusterSubject(Id, subjectId));
+    }
     public void SetActive(bool active, DateTimeOffset now) { IsActive = active; UpdatedAtUtc = now; }
+}
+
+public sealed class MmtClusterSubject
+{
+    private MmtClusterSubject() { }
+    public MmtClusterSubject(Guid clusterId, Guid subjectId) { MmtClusterId = clusterId; SubjectId = subjectId; }
+    public Guid MmtClusterId { get; private set; }
+    public Guid SubjectId { get; private set; }
+    public MmtCluster MmtCluster { get; private set; } = null!;
 }
 
 public sealed class University : Entity

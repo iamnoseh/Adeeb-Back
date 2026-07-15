@@ -7,6 +7,7 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence;
 public sealed class MmtDbContext(DbContextOptions<MmtDbContext> options) : DbContext(options)
 {
     public DbSet<MmtCluster> Clusters => Set<MmtCluster>();
+    public DbSet<MmtClusterSubject> ClusterSubjects => Set<MmtClusterSubject>();
     public DbSet<University> Universities => Set<University>();
     public DbSet<Specialty> Specialties => Set<Specialty>();
     public DbSet<AdmissionProgram> AdmissionPrograms => Set<AdmissionProgram>();
@@ -20,6 +21,7 @@ public sealed class MmtDbContext(DbContextOptions<MmtDbContext> options) : DbCon
     {
         modelBuilder.HasDefaultSchema("mmt");
         modelBuilder.ApplyConfiguration(new MmtClusterConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtClusterSubjectConfiguration());
         modelBuilder.ApplyConfiguration(new UniversityConfiguration());
         modelBuilder.ApplyConfiguration(new SpecialtyConfiguration());
         modelBuilder.ApplyConfiguration(new AdmissionProgramConfiguration());
@@ -48,6 +50,19 @@ internal sealed class MmtClusterConfiguration : IEntityTypeConfiguration<MmtClus
         b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
         b.HasIndex(x => x.Code).IsUnique().HasDatabaseName("ux_mmt_clusters_code");
         b.HasIndex(x => new { x.IsActive, x.Name }).HasDatabaseName("ix_mmt_clusters_active_name");
+        b.HasMany(x => x.Subjects).WithOne(x => x.MmtCluster).HasForeignKey(x => x.MmtClusterId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class MmtClusterSubjectConfiguration : IEntityTypeConfiguration<MmtClusterSubject>
+{
+    public void Configure(EntityTypeBuilder<MmtClusterSubject> b)
+    {
+        b.ToTable("cluster_subjects");
+        b.HasKey(x => new { x.MmtClusterId, x.SubjectId });
+        b.Property(x => x.MmtClusterId).HasColumnName("cluster_id");
+        b.Property(x => x.SubjectId).HasColumnName("subject_id");
+        b.HasIndex(x => x.SubjectId).HasDatabaseName("ix_mmt_cluster_subjects_subject_id");
     }
 }
 

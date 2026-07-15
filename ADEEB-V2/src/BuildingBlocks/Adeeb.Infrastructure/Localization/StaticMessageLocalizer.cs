@@ -281,6 +281,7 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
         ["tg-TJ"] = new(StringComparer.OrdinalIgnoreCase)
         {
             ["MMT.ClusterNotFound"] = "Кластери ММТ ёфт нашуд",
+            ["MMT.ClusterSubjectInvalid"] = "Як ё якчанд фани интихобшуда вуҷуд надорад ё фаъол нест",
             ["MMT.UniversityNotFound"] = "Донишгоҳ ёфт нашуд",
             ["MMT.SpecialtyNotFound"] = "Ихтисос ёфт нашуд",
             ["MMT.ProgramNotFound"] = "Барномаи қабул ёфт нашуд",
@@ -316,6 +317,7 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
         ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
         {
             ["MMT.ClusterNotFound"] = "Кластер ММТ не найден",
+            ["MMT.ClusterSubjectInvalid"] = "Один или несколько выбранных предметов не существуют или не активны",
             ["MMT.UniversityNotFound"] = "Университет не найден",
             ["MMT.SpecialtyNotFound"] = "Специальность не найдена",
             ["MMT.ProgramNotFound"] = "Программа поступления не найдена",
@@ -353,6 +355,7 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
     private static readonly Dictionary<string, string> MmtMessages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["MMT.ClusterNotFound"] = "MMT cluster was not found",
+        ["MMT.ClusterSubjectInvalid"] = "One or more selected subjects do not exist or are inactive",
         ["MMT.UniversityNotFound"] = "University was not found",
         ["MMT.SpecialtyNotFound"] = "Specialty was not found",
         ["MMT.ProgramNotFound"] = "Admission program was not found",

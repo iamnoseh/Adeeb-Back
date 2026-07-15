@@ -10,6 +10,7 @@ public static class MmtErrors
     public static readonly Error ProgramNotFound = Error.NotFound("mmt.program_not_found", "MMT.ProgramNotFound");
     public static readonly Error ScoreNotFound = Error.NotFound("mmt.score_not_found", "MMT.ScoreNotFound");
     public static readonly Error DuplicateCluster = Error.Conflict("mmt.cluster_code_exists", "MMT.ClusterCodeExists");
+    public static readonly Error ClusterSubjectInvalid = Error.Validation("mmt.cluster_subject_invalid", "MMT.ClusterSubjectInvalid");
     public static readonly Error DuplicateUniversity = Error.Conflict("mmt.university_exists", "MMT.UniversityExists");
     public static readonly Error DuplicateSpecialty = Error.Conflict("mmt.specialty_code_exists", "MMT.SpecialtyCodeExists");
     public static readonly Error DuplicateProgram = Error.Conflict("mmt.program_exists", "MMT.ProgramExists");

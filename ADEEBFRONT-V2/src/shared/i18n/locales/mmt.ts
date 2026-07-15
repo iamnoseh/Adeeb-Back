@@ -85,6 +85,9 @@ export const mmtTg = {
   university: "Донишгоҳ",
   specialty: "Ихтисос",
   cluster: "Кластер",
+  subjects: "Фанҳо",
+  selectSubjects: "Фанҳои кластерро интихоб кунед",
+  loadingSubjects: "Фанҳо бор мешаванд...",
   programsTitle: "Барномаҳои қабул",
   programsDescription:
     "Барномаҳои симулятори ММТ-ро ҷустуҷӯ, филтр ва нашр кунед.",
@@ -342,6 +345,9 @@ export const mmtRu = {
   university: "Университет",
   specialty: "Специальность",
   cluster: "Кластер",
+  subjects: "Предметы",
+  selectSubjects: "Выберите предметы кластера",
+  loadingSubjects: "Загрузка предметов...",
   programsTitle: "Программы поступления",
   programsDescription:
     "Ищите, фильтруйте и публикуйте программы симулятора ММТ.",

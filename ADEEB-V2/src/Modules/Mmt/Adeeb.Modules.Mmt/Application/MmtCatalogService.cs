@@ -6,47 +6,66 @@ using Adeeb.Modules.Mmt.Domain;
 using Adeeb.Modules.Mmt.Infrastructure.Persistence;
 using Adeeb.SharedKernel.Results;
 using Microsoft.EntityFrameworkCore;
+using AcademicSubjectLookupItem = Adeeb.Modules.AcademicCatalog.Contracts.AcademicSubjectLookupItem;
+using IAcademicCatalogLookup = Adeeb.Modules.AcademicCatalog.Contracts.IAcademicCatalogLookup;
 
 namespace Adeeb.Modules.Mmt.Application;
 
-public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock)
+public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock, IAcademicCatalogLookup academicCatalog)
 {
     public async Task<Result<PagedResponse<MmtClusterDto>>> GetClustersAsync(MmtPageQuery query, SupportedLanguage language, CancellationToken ct)
     {
-        var source = db.Clusters.AsNoTracking();
+        var source = db.Clusters.Include(x => x.Subjects).AsNoTracking();
         if (query.IsActive.HasValue) source = source.Where(x => x.IsActive == query.IsActive);
         if (!string.IsNullOrWhiteSpace(query.Search)) { var s = query.Search.Trim().ToLower(); source = source.Where(x => x.Code.ToLower().Contains(s) || x.Name.ToLower().Contains(s) || x.NameRu.ToLower().Contains(s)); }
-        return Result<PagedResponse<MmtClusterDto>>.Success(await PageAsync(source.OrderBy(x => x.Name), query.Page, query.PageSize, x => ToDto(x, language), ct));
+        var page = Math.Max(1, query.Page); var pageSize = Math.Clamp(query.PageSize, 1, 100);
+        var total = await source.CountAsync(ct);
+        var clusters = await source.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        var subjects = await SubjectLookupAsync(clusters.SelectMany(x => x.Subjects).Select(x => x.SubjectId), language, ct);
+        return Result<PagedResponse<MmtClusterDto>>.Success(new(clusters.Select(x => ToDto(x, language, subjects)).ToList(), page, pageSize, total));
     }
-    public async Task<Result<MmtClusterDto>> GetClusterAsync(Guid id, SupportedLanguage language, CancellationToken ct) =>
-        await db.Clusters.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) is { } x ? Result<MmtClusterDto>.Success(ToDto(x, language)) : Result<MmtClusterDto>.Failure(MmtErrors.ClusterNotFound);
+    public async Task<Result<MmtClusterDto>> GetClusterAsync(Guid id, SupportedLanguage language, CancellationToken ct)
+    {
+        var entity = await db.Clusters.Include(x => x.Subjects).AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (entity is null) return Result<MmtClusterDto>.Failure(MmtErrors.ClusterNotFound);
+        var subjects = await SubjectLookupAsync(entity.Subjects.Select(x => x.SubjectId), language, ct);
+        return Result<MmtClusterDto>.Success(ToDto(entity, language, subjects));
+    }
     public async Task<Result<MmtClusterDto>> CreateClusterAsync(CreateMmtClusterDto request, CancellationToken ct)
     {
         var validation = MmtValidation.ValidateCluster(request.NameTg ?? request.Name, request.Code, request.DescriptionTg ?? request.Description); if (validation.IsFailure) return Invalid<MmtClusterDto>(validation);
         validation = MmtValidation.ValidateCluster(request.NameRu ?? request.Name, request.Code, request.DescriptionRu ?? request.Description); if (validation.IsFailure) return Invalid<MmtClusterDto>(validation);
         var code = MmtNormalization.Code(request.Code); if (await db.Clusters.AnyAsync(x => x.Code == code, ct)) return Result<MmtClusterDto>.Failure(MmtErrors.DuplicateCluster);
+        var subjectIds = request.SubjectIds ?? [];
+        if (!await SubjectsAreValidAsync(subjectIds, ct)) return Result<MmtClusterDto>.Failure(MmtErrors.ClusterSubjectInvalid);
         var nameTg = request.NameTg ?? request.Name; var nameRu = request.NameRu ?? request.Name;
         var explicitTranslations = request.NameTg is not null || request.NameRu is not null;
         var entity = new MmtCluster(Guid.NewGuid(), nameTg, code, explicitTranslations ? request.DescriptionTg : request.Description, clock.UtcNow);
         entity.UpdateTranslation(SupportedLanguage.Russian, nameRu, explicitTranslations ? request.DescriptionRu : request.Description, code, true, clock.UtcNow);
+        entity.ReplaceSubjects(subjectIds);
         db.Clusters.Add(entity);
         if (!await SaveAsync(MmtDatabaseConstraints.ClusterCode, ct)) return Result<MmtClusterDto>.Failure(MmtErrors.DuplicateCluster);
-        return Result<MmtClusterDto>.Success(ToDto(entity));
+        var subjects = await SubjectLookupAsync(subjectIds, CurrentLanguage, ct);
+        return Result<MmtClusterDto>.Success(ToDto(entity, CurrentLanguage, subjects));
     }
     public async Task<Result<MmtClusterDto>> UpdateClusterAsync(Guid id, UpdateMmtClusterDto request, CancellationToken ct)
     {
         var validation = MmtValidation.ValidateCluster(request.NameTg ?? request.Name, request.Code, request.DescriptionTg ?? request.Description); if (validation.IsFailure) return Invalid<MmtClusterDto>(validation);
         validation = MmtValidation.ValidateCluster(request.NameRu ?? request.Name, request.Code, request.DescriptionRu ?? request.Description); if (validation.IsFailure) return Invalid<MmtClusterDto>(validation);
-        var entity = await db.Clusters.SingleOrDefaultAsync(x => x.Id == id, ct); if (entity is null) return Result<MmtClusterDto>.Failure(MmtErrors.ClusterNotFound);
+        var entity = await db.Clusters.Include(x => x.Subjects).SingleOrDefaultAsync(x => x.Id == id, ct); if (entity is null) return Result<MmtClusterDto>.Failure(MmtErrors.ClusterNotFound);
         var code = MmtNormalization.Code(request.Code); if (await db.Clusters.AnyAsync(x => x.Id != id && x.Code == code, ct)) return Result<MmtClusterDto>.Failure(MmtErrors.DuplicateCluster);
+        var subjectIds = request.SubjectIds ?? entity.Subjects.Select(x => x.SubjectId).ToList();
+        if (!await SubjectsAreValidAsync(subjectIds, ct)) return Result<MmtClusterDto>.Failure(MmtErrors.ClusterSubjectInvalid);
         if (request.NameTg is not null || request.NameRu is not null)
         {
             entity.UpdateTranslation(SupportedLanguage.Tajik, request.NameTg ?? request.Name, request.DescriptionTg, code, request.IsActive, clock.UtcNow);
             entity.UpdateTranslation(SupportedLanguage.Russian, request.NameRu ?? request.Name, request.DescriptionRu, code, request.IsActive, clock.UtcNow);
         }
         else entity.UpdateTranslation(CurrentLanguage, request.Name, request.Description, code, request.IsActive, clock.UtcNow);
+        entity.ReplaceSubjects(subjectIds);
         if (!await SaveAsync(MmtDatabaseConstraints.ClusterCode, ct)) return Result<MmtClusterDto>.Failure(MmtErrors.DuplicateCluster);
-        return Result<MmtClusterDto>.Success(ToDto(entity));
+        var subjects = await SubjectLookupAsync(subjectIds, CurrentLanguage, ct);
+        return Result<MmtClusterDto>.Success(ToDto(entity, CurrentLanguage, subjects));
     }
     public Task<Result> SetClusterStatusAsync(Guid id, bool active, CancellationToken ct) => SetStatusAsync(db.Clusters, id, active, (x, a) => x.SetActive(a, clock.UtcNow), MmtErrors.ClusterNotFound, ct);
 
@@ -135,7 +154,21 @@ public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock)
     private static Result<T> Invalid<T>(Result validation) => Result<T>.ValidationFailure(validation.ValidationErrors!);
     private static async Task<PagedResponse<TDto>> PageAsync<TEntity, TDto>(IQueryable<TEntity> query, int page, int pageSize, Func<TEntity, TDto> map, CancellationToken ct)
     { page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 100); var total = await query.CountAsync(ct); var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct); return new(items.Select(map).ToList(), page, pageSize, total); }
-    internal static MmtClusterDto ToDto(MmtCluster x, SupportedLanguage language) => new(x.Id, x.NameFor(language), x.Code, x.DescriptionFor(language), x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.Name, x.NameRu, x.Description, x.DescriptionRu);
+    private async Task<bool> SubjectsAreValidAsync(IReadOnlyCollection<Guid> subjectIds, CancellationToken ct)
+    {
+        if (subjectIds.Any(x => x == Guid.Empty) || subjectIds.Distinct().Count() != subjectIds.Count) return false;
+        var active = await academicCatalog.GetActiveSubjectsAsync(subjectIds, CurrentLanguage, ct);
+        return active.Count == subjectIds.Count;
+    }
+    private async Task<IReadOnlyDictionary<Guid, AcademicSubjectLookupItem>> SubjectLookupAsync(IEnumerable<Guid> subjectIds, SupportedLanguage language, CancellationToken ct)
+    {
+        var ids = subjectIds.Distinct().ToList();
+        var subjects = await academicCatalog.GetActiveSubjectsAsync(ids, language, ct);
+        return subjects.ToDictionary(x => x.Id);
+    }
+    internal static MmtClusterDto ToDto(MmtCluster x, SupportedLanguage language, IReadOnlyDictionary<Guid, AcademicSubjectLookupItem>? subjects = null) =>
+        new(x.Id, x.NameFor(language), x.Code, x.DescriptionFor(language), x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.Name, x.NameRu, x.Description, x.DescriptionRu,
+            x.Subjects.Where(s => subjects?.ContainsKey(s.SubjectId) == true).Select(s => subjects![s.SubjectId]).Select(s => new MmtClusterSubjectDto(s.Id, s.Code, s.Name)).ToList());
     internal static UniversityDto ToDto(University x, SupportedLanguage language) => new(x.Id, x.FullNameFor(language), x.ShortNameFor(language), x.CityFor(language), (int)x.Type, x.LogoUrl, x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.FullName, x.FullNameRu, x.ShortName, x.ShortNameRu, x.City, x.CityRu);
     internal static SpecialtyDto ToDto(Specialty x, SupportedLanguage language) => new(x.Id, x.Code, x.NameFor(language), x.DescriptionFor(language), x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.Name, x.NameRu, x.Description, x.DescriptionRu);
     internal static MmtClusterDto ToDto(MmtCluster x) => ToDto(x, CurrentLanguage);

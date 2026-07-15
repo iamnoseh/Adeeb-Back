@@ -8,12 +8,15 @@ public sealed record StatusRequest(bool IsActive);
 public sealed record PublishRequest(bool IsPublished);
 
 public sealed record CreateMmtClusterDto(string Name, string Code, string? Description,
-    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null);
+    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null,
+    IReadOnlyList<Guid>? SubjectIds = null);
 public sealed record UpdateMmtClusterDto(string Name, string Code, string? Description, bool IsActive,
-    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null);
+    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null,
+    IReadOnlyList<Guid>? SubjectIds = null);
+public sealed record MmtClusterSubjectDto(Guid Id, string Code, string Name);
 public sealed record MmtClusterDto(Guid Id, string Name, string Code, string? Description, bool IsActive,
     DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc, string NameTg = "", string NameRu = "",
-    string? DescriptionTg = null, string? DescriptionRu = null);
+    string? DescriptionTg = null, string? DescriptionRu = null, IReadOnlyList<MmtClusterSubjectDto>? Subjects = null);
 public sealed record CreateUniversityDto(string FullName, string? ShortName, string City, int Type, string? LogoUrl,
     string? FullNameTg = null, string? FullNameRu = null, string? ShortNameTg = null, string? ShortNameRu = null,
     string? CityTg = null, string? CityRu = null);

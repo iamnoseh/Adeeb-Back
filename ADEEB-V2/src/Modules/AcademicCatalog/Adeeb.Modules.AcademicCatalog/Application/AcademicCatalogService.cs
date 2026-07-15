@@ -16,6 +16,19 @@ public sealed class AcademicCatalogService(AcademicCatalogDbContext db, IDateTim
     public Task<bool> TopicBelongsToSubjectAsync(Guid topicId, Guid subjectId, CancellationToken ct) =>
         db.Topics.AnyAsync(x => x.Id == topicId && x.SubjectId == subjectId && x.Status != AcademicItemStatus.Archived, ct);
 
+    public async Task<IReadOnlyList<AcademicSubjectLookupItem>> GetActiveSubjectsAsync(
+        IReadOnlyCollection<Guid> subjectIds,
+        SupportedLanguage language,
+        CancellationToken ct)
+    {
+        if (subjectIds.Count == 0) return [];
+        var subjects = await db.Subjects.Include(x => x.Translations).AsNoTracking()
+            .Where(x => subjectIds.Contains(x.Id) && x.Status == AcademicItemStatus.Active)
+            .OrderBy(x => x.DisplayOrder).ThenBy(x => x.Code)
+            .ToListAsync(ct);
+        return subjects.Select(x => new AcademicSubjectLookupItem(x.Id, x.Code, x.NameFor(language))).ToList();
+    }
+
     public async Task<Result<PagedResponse<SubjectResponse>>> GetSubjectsAsync(AcademicListQuery query, SupportedLanguage language, bool admin, CancellationToken ct)
     {
         var page = Math.Max(1, query.Page);

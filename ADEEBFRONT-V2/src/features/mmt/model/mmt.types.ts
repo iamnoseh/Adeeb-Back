@@ -27,7 +27,9 @@ export type MmtClusterDto = {
   isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc: string;
+  subjects: MmtClusterSubjectDto[];
 };
+export type MmtClusterSubjectDto = { id: string; code: string; name: string };
 export type UniversityDto = {
   id: string;
   fullName: string;
@@ -264,7 +266,10 @@ export type EvaluationQuery = {
 
 export type CatalogKind = "clusters" | "universities" | "specialties";
 export type CatalogDto = MmtClusterDto | UniversityDto | SpecialtyDto;
-export type CatalogInput = Record<string, string | number | boolean | null>;
+export type CatalogInput = Record<
+  string,
+  string | number | boolean | string[] | null
+>;
 
 export const AdmissionType = { Budget: 0, Contract: 1 } as const;
 export const StudyForm = {

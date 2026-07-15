@@ -1,5 +1,6 @@
 using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Application.Abstractions.Time;
+using Adeeb.Modules.AcademicCatalog.Contracts;
 using Adeeb.Modules.Mmt.Application;
 using Adeeb.Modules.Mmt.Application.Import;
 using Adeeb.Modules.Mmt.Contracts;
@@ -18,7 +19,7 @@ public sealed class MmtModuleTests
     [Fact]
     public async Task Duplicate_cluster_code_is_rejected_after_normalization()
     {
-        await using var db = Db(); var service = new MmtCatalogService(db, new Clock());
+        await using var db = Db(); var service = Catalog(db);
         Assert.True((await service.CreateClusterAsync(new("Cluster 2", " c2 ", null), default)).IsSuccess);
         var duplicate = await service.CreateClusterAsync(new("Other", "C2", null), default);
         Assert.Equal(MmtErrors.DuplicateCluster.Code, duplicate.Error?.Code);
@@ -28,7 +29,7 @@ public sealed class MmtModuleTests
     public async Task Catalog_reads_resolve_the_current_request_language()
     {
         await using var db = Db();
-        var service = new MmtCatalogService(db, new Clock());
+        var service = Catalog(db);
         var created = await service.CreateClusterAsync(new("Кластери 2", "C2", "Тавсиф",
             NameTg: "Кластери 2", NameRu: "Кластер 2", DescriptionTg: "Тавсиф", DescriptionRu: "Описание"), default);
 
@@ -42,10 +43,25 @@ public sealed class MmtModuleTests
     [Fact]
     public async Task Duplicate_specialty_code_is_rejected_after_normalization()
     {
-        await using var db = Db(); var service = new MmtCatalogService(db, new Clock());
+        await using var db = Db(); var service = Catalog(db);
         Assert.True((await service.CreateSpecialtyAsync(new("law", "Law", null), default)).IsSuccess);
         var duplicate = await service.CreateSpecialtyAsync(new(" LAW ", "Other", null), default);
         Assert.Equal(MmtErrors.DuplicateSpecialty.Code, duplicate.Error?.Code);
+    }
+
+    [Fact]
+    public async Task Cluster_subjects_are_saved_and_localized_for_reads()
+    {
+        await using var db = Db();
+        var subjectId = Guid.NewGuid();
+        var service = Catalog(db);
+        var created = await service.CreateClusterAsync(new("Cluster", "C1", null, SubjectIds: [subjectId]), default);
+
+        var result = await service.GetClusterAsync(created.Value!.Id, SupportedLanguage.Russian, default);
+
+        var subject = Assert.Single(result.Value!.Subjects!);
+        Assert.Equal(subjectId, subject.Id);
+        Assert.Equal("Russian Subject", subject.Name);
     }
 
     [Fact]
@@ -169,6 +185,7 @@ public sealed class MmtModuleTests
     private static MmtDbContext Db() => new(new DbContextOptionsBuilder<MmtDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
     private static AdmissionProgramService Programs(MmtDbContext db, int? year = null) =>
         new(db, new Clock(), Options.Create(new MmtOptions { CurrentAdmissionYear = year }));
+    private static MmtCatalogService Catalog(MmtDbContext db) => new(db, new Clock(), new CatalogLookup());
     private static MmtImportService Import(MmtDbContext db) => new(db, new Clock(), new MmtSpreadsheet());
     private static (University University, Specialty Specialty, MmtCluster Cluster) SeedReferences(MmtDbContext db)
     {
@@ -201,5 +218,12 @@ public sealed class MmtModuleTests
         public DateTimeOffset UtcNow => Now;
         public DateTimeOffset DushanbeNow => Now.ToOffset(TimeSpan.FromHours(5));
         public DateTimeOffset ToDushanbeTime(DateTimeOffset value) => value.ToOffset(TimeSpan.FromHours(5));
+    }
+    private sealed class CatalogLookup : IAcademicCatalogLookup
+    {
+        public Task<bool> SubjectExistsAsync(Guid subjectId, CancellationToken ct) => Task.FromResult(true);
+        public Task<bool> TopicBelongsToSubjectAsync(Guid topicId, Guid subjectId, CancellationToken ct) => Task.FromResult(true);
+        public Task<IReadOnlyList<AcademicSubjectLookupItem>> GetActiveSubjectsAsync(IReadOnlyCollection<Guid> subjectIds, SupportedLanguage language, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<AcademicSubjectLookupItem>>(subjectIds.Select(id => new AcademicSubjectLookupItem(id, "SUB", language == SupportedLanguage.Russian ? "Russian Subject" : "Tajik Subject")).ToList());
     }
 }

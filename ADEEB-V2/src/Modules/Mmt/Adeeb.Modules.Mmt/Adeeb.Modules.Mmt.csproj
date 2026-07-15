@@ -17,5 +17,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Adeeb.Application.Abstractions\Adeeb.Application.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Adeeb.SharedKernel\Adeeb.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\AcademicCatalog\Adeeb.Modules.AcademicCatalog\Adeeb.Modules.AcademicCatalog.csproj" />
   </ItemGroup>
 </Project>
