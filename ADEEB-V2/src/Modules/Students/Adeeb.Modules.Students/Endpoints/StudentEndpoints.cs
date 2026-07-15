@@ -1,4 +1,5 @@
 using Adeeb.Application.Abstractions.Localization;
+using Adeeb.Application.Abstractions.Authorization;
 using Adeeb.Modules.Students.Application;
 using Adeeb.Modules.Students.Contracts;
 using Microsoft.AspNetCore.Builder;
@@ -31,7 +32,7 @@ public static class StudentEndpoints
             .RequireAuthorization()
             .RequireRateLimiting("student-provision");
 
-        var admin = app.MapGroup("/api/v2/admin/students").WithTags("Students Admin").RequireAuthorization("ContentAdmin");
+        var admin = app.MapGroup("/api/v2/admin/students").WithTags("Students Admin").RequireAuthorization(Permissions.Students.Manage);
         admin.MapGet("/{studentId:guid}", async (Guid studentId, StudentsService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetByIdAsync(studentId, ct)).ToHttpResult(context, localizer));
 

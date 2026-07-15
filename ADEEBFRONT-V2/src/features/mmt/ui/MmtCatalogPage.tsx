@@ -405,7 +405,7 @@ function CatalogForm({
       title={`${item ? t("mmt.edit") : t("mmt.add")}: ${title}`}
       onClose={onClose}
     >
-      <form className="grid gap-4" onSubmit={submit}>
+      <form className="grid min-w-0 gap-4" onSubmit={submit}>
         {kind === "universities" ? (
           <>
             <div className="grid gap-4 sm:grid-cols-2">

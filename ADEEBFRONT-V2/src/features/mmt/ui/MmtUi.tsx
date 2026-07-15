@@ -113,11 +113,16 @@ export function Modal({
       if (event.key === "Escape") onClose();
     };
     document.addEventListener("keydown", close);
-    return () => document.removeEventListener("keydown", close);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", close);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [onClose]);
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/35 p-4"
+      className="fixed inset-0 z-50 grid place-items-center overflow-hidden bg-black/35 p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -125,9 +130,11 @@ export function Modal({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="custom-scrollbar max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[1.5rem] border border-white/70 bg-white shadow-2xl">
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--border)] bg-white px-5 py-4">
-          <h2 className="text-lg font-black">{title}</h2>
+      <div className="flex max-h-[calc(100dvh-1rem)] min-w-0 w-full max-w-2xl flex-col overflow-hidden rounded-[1rem] border border-white/70 bg-white shadow-2xl sm:max-h-[90dvh] sm:rounded-[1.5rem]">
+        <header className="flex min-w-0 shrink-0 items-center justify-between gap-3 border-b border-[var(--border)] bg-white px-4 py-3 sm:px-5 sm:py-4">
+          <h2 className="min-w-0 break-words text-base font-black sm:text-lg">
+            {title}
+          </h2>
           <Button
             type="button"
             variant="ghost"
@@ -138,7 +145,9 @@ export function Modal({
             <X className="h-5 w-5" />
           </Button>
         </header>
-        <div className="p-5">{children}</div>
+        <div className="custom-scrollbar min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-5">
+          {children}
+        </div>
       </div>
     </div>
   );
