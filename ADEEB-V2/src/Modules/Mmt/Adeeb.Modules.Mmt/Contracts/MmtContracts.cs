@@ -7,15 +7,32 @@ public sealed record PagedResponse<T>(IReadOnlyList<T> Items, int Page, int Page
 public sealed record StatusRequest(bool IsActive);
 public sealed record PublishRequest(bool IsPublished);
 
-public sealed record CreateMmtClusterDto(string Name, string Code, string? Description);
-public sealed record UpdateMmtClusterDto(string Name, string Code, string? Description, bool IsActive);
-public sealed record MmtClusterDto(Guid Id, string Name, string Code, string? Description, bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
-public sealed record CreateUniversityDto(string FullName, string? ShortName, string City, int Type, string? LogoUrl);
-public sealed record UpdateUniversityDto(string FullName, string? ShortName, string City, int Type, string? LogoUrl, bool IsActive);
-public sealed record UniversityDto(Guid Id, string FullName, string? ShortName, string City, int Type, string? LogoUrl, bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
-public sealed record CreateSpecialtyDto(string Code, string Name, string? Description);
-public sealed record UpdateSpecialtyDto(string Code, string Name, string? Description, bool IsActive);
-public sealed record SpecialtyDto(Guid Id, string Code, string Name, string? Description, bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
+public sealed record CreateMmtClusterDto(string Name, string Code, string? Description,
+    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null,
+    IReadOnlyList<Guid>? SubjectIds = null);
+public sealed record UpdateMmtClusterDto(string Name, string Code, string? Description, bool IsActive,
+    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null,
+    IReadOnlyList<Guid>? SubjectIds = null);
+public sealed record MmtClusterSubjectDto(Guid Id, string Code, string Name);
+public sealed record MmtClusterDto(Guid Id, string Name, string Code, string? Description, bool IsActive,
+    DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc, string NameTg = "", string NameRu = "",
+    string? DescriptionTg = null, string? DescriptionRu = null, IReadOnlyList<MmtClusterSubjectDto>? Subjects = null);
+public sealed record CreateUniversityDto(string FullName, string? ShortName, string City, int Type, string? LogoUrl,
+    string? FullNameTg = null, string? FullNameRu = null, string? ShortNameTg = null, string? ShortNameRu = null,
+    string? CityTg = null, string? CityRu = null);
+public sealed record UpdateUniversityDto(string FullName, string? ShortName, string City, int Type, string? LogoUrl, bool IsActive,
+    string? FullNameTg = null, string? FullNameRu = null, string? ShortNameTg = null, string? ShortNameRu = null,
+    string? CityTg = null, string? CityRu = null);
+public sealed record UniversityDto(Guid Id, string FullName, string? ShortName, string City, int Type, string? LogoUrl,
+    bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc, string FullNameTg = "", string FullNameRu = "",
+    string? ShortNameTg = null, string? ShortNameRu = null, string CityTg = "", string CityRu = "");
+public sealed record CreateSpecialtyDto(string Code, string Name, string? Description,
+    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null);
+public sealed record UpdateSpecialtyDto(string Code, string Name, string? Description, bool IsActive,
+    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null);
+public sealed record SpecialtyDto(Guid Id, string Code, string Name, string? Description, bool IsActive,
+    DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc, string NameTg = "", string NameRu = "",
+    string? DescriptionTg = null, string? DescriptionRu = null);
 
 public sealed record CreateAdmissionProgramDto(Guid UniversityId, Guid SpecialtyId, Guid MmtClusterId, int AdmissionType,
     int StudyForm, int StudyLanguage, int AdmissionYear, int? SeatsCount, bool IsPublished = false);
@@ -63,3 +80,28 @@ public sealed record MmtImportPreviewResultDto(int TotalRows, int ValidRowsCount
     int DuplicateRowsCount, IReadOnlyList<MmtImportRowPreviewDto> Rows);
 public sealed record MmtImportResultDto(int ProcessedRows, int ImportedPrograms, int InsertedScores, int UpdatedScores,
     int SkippedScores, int InvalidRows, IReadOnlyList<MmtImportRowPreviewDto> Rows);
+
+public sealed record UpsertStudentMmtProfileDto(Guid MmtClusterId, int? AdmissionYear, Guid? GoalAdmissionProgramId);
+public sealed record StudentMmtProfileDto(Guid Id, Guid UserId, MmtClusterDto Cluster, int AdmissionYear,
+    Guid? GoalAdmissionProgramId, bool IsActive, int ChoicesCount, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
+public sealed record AdmissionChoiceInputDto(Guid AdmissionProgramId, int PriorityOrder);
+public sealed record UpsertAdmissionChoicesDto(IReadOnlyList<AdmissionChoiceInputDto> Choices);
+public sealed record StudentAdmissionChoiceDto(Guid Id, int PriorityOrder, AdmissionProgramListItemDto AdmissionProgram,
+    DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
+public sealed record SimulateMmtEvaluationDto(decimal TotalScore);
+public sealed record MmtAdmissionChoiceSnapshotDto(Guid Id, int PriorityOrder, Guid AdmissionProgramId,
+    string UniversityName, string SpecialtyCode, string SpecialtyName, string ClusterCode, int AdmissionType,
+    int StudyForm, int StudyLanguage, int AdmissionYear, decimal? PassingScoreUsed,
+    decimal? ConservativeThresholdUsed, decimal StudentScore, bool IsAccepted, decimal? MissingScore);
+public sealed record MmtEvaluationListItemDto(Guid Id, decimal TotalScore, int AdmissionYear, Guid ClusterId,
+    DateTimeOffset EvaluatedAtUtc, int? AcceptedChoicePriority, Guid? AcceptedAdmissionProgramId,
+    decimal? MissingScoreForGoal, decimal? ReadinessPercentage, string MotivationalMessageKey);
+public sealed record MmtEvaluationDto(Guid Id, Guid UserId, Guid StudentMmtProfileId, Guid? ExamSessionId,
+    decimal TotalScore, int AdmissionYear, Guid ClusterId, DateTimeOffset EvaluatedAtUtc,
+    int? AcceptedChoicePriority, Guid? AcceptedAdmissionProgramId, decimal? MissingScoreForGoal,
+    decimal? ReadinessPercentage, string MotivationalMessageKey, DateTimeOffset CreatedAtUtc,
+    IReadOnlyList<MmtAdmissionChoiceSnapshotDto> Choices);
+public sealed record StudentMmtProfileFilter(Guid? UserId = null, int? AdmissionYear = null, bool? IsActive = null,
+    int Page = 1, int PageSize = 20);
+public sealed record MmtEvaluationFilter(Guid? UserId = null, Guid? StudentMmtProfileId = null,
+    int? AdmissionYear = null, int Page = 1, int PageSize = 20);

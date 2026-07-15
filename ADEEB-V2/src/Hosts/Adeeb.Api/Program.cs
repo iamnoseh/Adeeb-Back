@@ -1,4 +1,5 @@
 using Adeeb.Api.Configuration;
+using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Api.Documentation;
 using Adeeb.Api.Documentation.Endpoints;
 using Adeeb.Infrastructure;
@@ -22,6 +23,7 @@ using Adeeb.Modules.Students;
 using Adeeb.Modules.Students.Endpoints;
 using Adeeb.Modules.Students.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -47,7 +49,29 @@ builder.Services.AddCommerceModule(builder.Configuration);
 builder.Services.AddMmtModule(builder.Configuration);
 builder.Services.AddAdeebDocumentation(builder.Configuration);
 builder.Services.AddAdeebAuthorization();
-builder.Services.AddProblemDetails();
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        if (context.ProblemDetails.Status != StatusCodes.Status500InternalServerError)
+        {
+            return;
+        }
+
+        var localizer = context.HttpContext.RequestServices.GetRequiredService<IMessageLocalizer>();
+        var previousCulture = CultureInfo.CurrentUICulture;
+        var requestCulture = context.HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.UICulture;
+        if (requestCulture is not null)
+        {
+            CultureInfo.CurrentUICulture = requestCulture;
+        }
+        context.ProblemDetails.Type = "https://api.adeeb.tj/errors/common/unexpected-error";
+        context.ProblemDetails.Title = localizer["Common.UnexpectedError"];
+        CultureInfo.CurrentUICulture = previousCulture;
+        context.ProblemDetails.Extensions["code"] = "common.unexpected_error";
+        context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+    };
+});
 
 var app = builder.Build();
 

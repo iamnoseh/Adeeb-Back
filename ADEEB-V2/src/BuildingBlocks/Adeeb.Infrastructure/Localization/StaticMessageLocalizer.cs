@@ -276,9 +276,86 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Idempotency.PayloadMismatch"] = "Idempotency key was used with a different payload"
         }
     };
+    private static readonly Dictionary<string, Dictionary<string, string>> LocalizedMmtMessages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["tg-TJ"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["MMT.ClusterNotFound"] = "Кластери ММТ ёфт нашуд",
+            ["MMT.ClusterSubjectInvalid"] = "Як ё якчанд фани интихобшуда вуҷуд надорад ё фаъол нест",
+            ["MMT.UniversityNotFound"] = "Донишгоҳ ёфт нашуд",
+            ["MMT.SpecialtyNotFound"] = "Ихтисос ёфт нашуд",
+            ["MMT.ProgramNotFound"] = "Барномаи қабул ёфт нашуд",
+            ["MMT.ScoreNotFound"] = "Балли гузариш ёфт нашуд",
+            ["MMT.ClusterCodeExists"] = "Рамзи кластер аллакай мавҷуд аст",
+            ["MMT.UniversityExists"] = "Донишгоҳ аллакай мавҷуд аст",
+            ["MMT.SpecialtyCodeExists"] = "Рамзи ихтисос аллакай мавҷуд аст",
+            ["MMT.ProgramExists"] = "Барномаи қабул аллакай мавҷуд аст",
+            ["MMT.ScoreExists"] = "Балли ин сол аллакай мавҷуд аст",
+            ["MMT.ReferenceInactive"] = "Маълумоти вобастаи барнома бояд мавҷуд ва фаъол бошад",
+            ["MMT.PublishInvalid"] = "Барномаро дар ҳолати ҷорӣ нашр кардан мумкин нест",
+            ["MMT.ImportFileInvalid"] = "Файли воридот нодуруст аст",
+            ["MMT.ImportExistingScore"] = "Файл балли гузариши мавҷударо дар бар мегирад",
+            ["MMT.ImportConflict"] = "Маълумот ҳангоми воридот тағйир ёфт; пешнамоиши нав созед",
+            ["MMT.YearInvalid"] = "Сол бояд аз 2000 то 2100 бошад",
+            ["MMT.SeatsInvalid"] = "Шумораи ҷойҳо манфӣ буда наметавонад",
+            ["MMT.ScoreInvalid"] = "Балли гузариш нодуруст аст",
+            ["MMT.EnumInvalid"] = "Қимати интихобшуда нодуруст аст",
+            ["MMT.ValueTooLong"] = "Қимат аз дарозии иҷозашуда зиёд аст",
+            ["MMT.StudentProfileNotFound"] = "Профили фаъоли ММТ ёфт нашуд",
+            ["MMT.EvaluationNotFound"] = "Арзёбии ММТ ёфт нашуд",
+            ["MMT.AdmissionYearUnavailable"] = "Соли қабули дархостшуда ҳоло дастрас нест",
+            ["MMT.GoalProgramInvalid"] = "Барномаи ҳадаф ба кластер ва соли қабул мувофиқ нест",
+            ["MMT.ChoiceProgramInvalid"] = "Ҳар интихоб бояд барномаи фаъол ва нашршудаи кластеру соли профил бошад",
+            ["MMT.TooManyChoices"] = "На бештар аз 12 интихоб иҷозат аст",
+            ["MMT.DuplicateChoiceProgram"] = "Як барномаро ду бор интихоб кардан мумкин нест",
+            ["MMT.DuplicateChoicePriority"] = "Афзалиятҳои интихоб бояд ягона бошанд",
+            ["MMT.InvalidChoiceOrder"] = "Афзалиятҳо бояд пайдарпай аз 1 оғоз шаванд",
+            ["MMT.ChoicesRequired"] = "Пеш аз симулятсия ақаллан як барномаро интихоб кунед",
+            ["MMT.ProfileConflict"] = "Профил ҳамзамон тағйир ёфт; саҳифаро нав кунед",
+            ["MMT.ChoiceUpdateConflict"] = "Интихобҳо ҳамзамон тағйир ёфтанд; саҳифаро нав кунед"
+        },
+        ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["MMT.ClusterNotFound"] = "Кластер ММТ не найден",
+            ["MMT.ClusterSubjectInvalid"] = "Один или несколько выбранных предметов не существуют или не активны",
+            ["MMT.UniversityNotFound"] = "Университет не найден",
+            ["MMT.SpecialtyNotFound"] = "Специальность не найдена",
+            ["MMT.ProgramNotFound"] = "Программа поступления не найдена",
+            ["MMT.ScoreNotFound"] = "Проходной балл не найден",
+            ["MMT.ClusterCodeExists"] = "Код кластера уже существует",
+            ["MMT.UniversityExists"] = "Университет уже существует",
+            ["MMT.SpecialtyCodeExists"] = "Код специальности уже существует",
+            ["MMT.ProgramExists"] = "Программа поступления уже существует",
+            ["MMT.ScoreExists"] = "Балл за этот год уже существует",
+            ["MMT.ReferenceInactive"] = "Связанные справочники программы должны существовать и быть активными",
+            ["MMT.PublishInvalid"] = "Программу нельзя опубликовать в текущем состоянии",
+            ["MMT.ImportFileInvalid"] = "Файл импорта некорректен",
+            ["MMT.ImportExistingScore"] = "Импорт содержит существующий проходной балл",
+            ["MMT.ImportConflict"] = "Данные изменились во время импорта; создайте новый предпросмотр",
+            ["MMT.YearInvalid"] = "Год должен быть от 2000 до 2100",
+            ["MMT.SeatsInvalid"] = "Количество мест не может быть отрицательным",
+            ["MMT.ScoreInvalid"] = "Проходной балл некорректен",
+            ["MMT.EnumInvalid"] = "Выбранное значение некорректно",
+            ["MMT.ValueTooLong"] = "Значение превышает допустимую длину",
+            ["MMT.StudentProfileNotFound"] = "Активный профиль ММТ не найден",
+            ["MMT.EvaluationNotFound"] = "Оценивание ММТ не найдено",
+            ["MMT.AdmissionYearUnavailable"] = "Запрошенный год поступления сейчас недоступен",
+            ["MMT.GoalProgramInvalid"] = "Целевая программа не соответствует кластеру и году поступления",
+            ["MMT.ChoiceProgramInvalid"] = "Каждый выбор должен быть активной опубликованной программой кластера и года профиля",
+            ["MMT.TooManyChoices"] = "Разрешено не более 12 вариантов",
+            ["MMT.DuplicateChoiceProgram"] = "Одну программу нельзя выбрать дважды",
+            ["MMT.DuplicateChoicePriority"] = "Приоритеты вариантов должны быть уникальными",
+            ["MMT.InvalidChoiceOrder"] = "Приоритеты должны идти подряд, начиная с 1",
+            ["MMT.ChoicesRequired"] = "Перед симуляцией выберите хотя бы одну программу",
+            ["MMT.ProfileConflict"] = "Профиль был изменён одновременно; обновите страницу",
+            ["MMT.ChoiceUpdateConflict"] = "Варианты были изменены одновременно; обновите страницу"
+        }
+    };
+
     private static readonly Dictionary<string, string> MmtMessages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["MMT.ClusterNotFound"] = "MMT cluster was not found",
+        ["MMT.ClusterSubjectInvalid"] = "One or more selected subjects do not exist or are inactive",
         ["MMT.UniversityNotFound"] = "University was not found",
         ["MMT.SpecialtyNotFound"] = "Specialty was not found",
         ["MMT.ProgramNotFound"] = "Admission program was not found",
@@ -296,7 +373,23 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
         ["MMT.SeatsInvalid"] = "Seats count cannot be negative",
         ["MMT.ScoreInvalid"] = "Passing score is invalid",
         ["MMT.EnumInvalid"] = "Selected value is invalid",
-        ["MMT.ValueTooLong"] = "Value exceeds the allowed length"
+        ["MMT.ValueTooLong"] = "Value exceeds the allowed length",
+        ["MMT.StudentProfileNotFound"] = "Active MMT profile was not found",
+        ["MMT.EvaluationNotFound"] = "MMT evaluation was not found",
+        ["MMT.AdmissionYearUnavailable"] = "The requested MMT admission year is not currently available",
+        ["MMT.GoalProgramInvalid"] = "Goal admission program does not match the selected cluster and admission year",
+        ["MMT.ChoiceProgramInvalid"] = "Every choice must be an active published program for the profile cluster and year",
+        ["MMT.TooManyChoices"] = "At most 12 admission choices are allowed",
+        ["MMT.DuplicateChoiceProgram"] = "An admission program cannot be selected more than once",
+        ["MMT.DuplicateChoicePriority"] = "Admission choice priorities must be unique",
+        ["MMT.InvalidChoiceOrder"] = "Admission choices must use consecutive priorities starting at 1",
+        ["MMT.ChoicesRequired"] = "Select at least one admission choice before running the simulation",
+        ["MMT.Accepted"] = "Your score reaches the threshold for one of your priority choices",
+        ["MMT.NearMiss"] = "You are close to your target; focused progress can bridge the remaining gap",
+        ["MMT.ProgressNeeded"] = "Keep building your score step by step toward your admission goal",
+        ["MMT.NoThresholdData"] = "Passing-score data is not available yet; your progress has still been saved",
+        ["MMT.ProfileConflict"] = "The MMT profile changed concurrently; reload and try again",
+        ["MMT.ChoiceUpdateConflict"] = "Admission choices changed concurrently; reload and try again"
     };
 
     public string this[string key]
@@ -312,6 +405,11 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             if (ContentMessages.TryGetValue(culture, out var contentLocalized) && contentLocalized.TryGetValue(key, out var contentMessage))
             {
                 return contentMessage;
+            }
+
+            if (LocalizedMmtMessages.TryGetValue(culture, out var mmtLocalized) && mmtLocalized.TryGetValue(key, out var mmtMessage))
+            {
+                return mmtMessage;
             }
 
             if (Messages["tg-TJ"].TryGetValue(key, out var fallback))

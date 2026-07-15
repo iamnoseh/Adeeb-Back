@@ -1,9 +1,9 @@
-export function formatDushanbeDate(value?: string | null) {
-  if (!value) return '—'
+export function formatDushanbeDate(value?: string | null, locale = "tg-TJ") {
+  if (!value) return "—";
 
-  return new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Dushanbe',
-  }).format(new Date(value))
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Dushanbe",
+  }).format(new Date(value));
 }

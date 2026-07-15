@@ -7,19 +7,29 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence;
 public sealed class MmtDbContext(DbContextOptions<MmtDbContext> options) : DbContext(options)
 {
     public DbSet<MmtCluster> Clusters => Set<MmtCluster>();
+    public DbSet<MmtClusterSubject> ClusterSubjects => Set<MmtClusterSubject>();
     public DbSet<University> Universities => Set<University>();
     public DbSet<Specialty> Specialties => Set<Specialty>();
     public DbSet<AdmissionProgram> AdmissionPrograms => Set<AdmissionProgram>();
     public DbSet<PassingScoreHistory> PassingScores => Set<PassingScoreHistory>();
+    public DbSet<StudentMmtProfile> StudentProfiles => Set<StudentMmtProfile>();
+    public DbSet<StudentAdmissionChoice> StudentAdmissionChoices => Set<StudentAdmissionChoice>();
+    public DbSet<MmtExamEvaluation> ExamEvaluations => Set<MmtExamEvaluation>();
+    public DbSet<MmtAdmissionChoiceSnapshot> AdmissionChoiceSnapshots => Set<MmtAdmissionChoiceSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("mmt");
         modelBuilder.ApplyConfiguration(new MmtClusterConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtClusterSubjectConfiguration());
         modelBuilder.ApplyConfiguration(new UniversityConfiguration());
         modelBuilder.ApplyConfiguration(new SpecialtyConfiguration());
         modelBuilder.ApplyConfiguration(new AdmissionProgramConfiguration());
         modelBuilder.ApplyConfiguration(new PassingScoreConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentMmtProfileConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentAdmissionChoiceConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtExamEvaluationConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtAdmissionChoiceSnapshotConfiguration());
     }
 }
 
@@ -31,13 +41,28 @@ internal sealed class MmtClusterConfiguration : IEntityTypeConfiguration<MmtClus
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasColumnName("id");
         b.Property(x => x.Name).HasColumnName("name").HasMaxLength(160).IsRequired();
+        b.Property(x => x.NameRu).HasColumnName("name_ru").HasMaxLength(160).IsRequired();
         b.Property(x => x.Code).HasColumnName("code").HasMaxLength(40).IsRequired();
         b.Property(x => x.Description).HasColumnName("description").HasMaxLength(2000);
+        b.Property(x => x.DescriptionRu).HasColumnName("description_ru").HasMaxLength(2000);
         b.Property(x => x.IsActive).HasColumnName("is_active");
         b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
         b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
         b.HasIndex(x => x.Code).IsUnique().HasDatabaseName("ux_mmt_clusters_code");
         b.HasIndex(x => new { x.IsActive, x.Name }).HasDatabaseName("ix_mmt_clusters_active_name");
+        b.HasMany(x => x.Subjects).WithOne(x => x.MmtCluster).HasForeignKey(x => x.MmtClusterId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class MmtClusterSubjectConfiguration : IEntityTypeConfiguration<MmtClusterSubject>
+{
+    public void Configure(EntityTypeBuilder<MmtClusterSubject> b)
+    {
+        b.ToTable("cluster_subjects");
+        b.HasKey(x => new { x.MmtClusterId, x.SubjectId });
+        b.Property(x => x.MmtClusterId).HasColumnName("cluster_id");
+        b.Property(x => x.SubjectId).HasColumnName("subject_id");
+        b.HasIndex(x => x.SubjectId).HasDatabaseName("ix_mmt_cluster_subjects_subject_id");
     }
 }
 
@@ -49,9 +74,12 @@ internal sealed class UniversityConfiguration : IEntityTypeConfiguration<Univers
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasColumnName("id");
         b.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(300).IsRequired();
+        b.Property(x => x.FullNameRu).HasColumnName("full_name_ru").HasMaxLength(300).IsRequired();
         b.Property(x => x.NormalizedFullName).HasColumnName("normalized_full_name").HasMaxLength(300).IsRequired();
         b.Property(x => x.ShortName).HasColumnName("short_name").HasMaxLength(120);
+        b.Property(x => x.ShortNameRu).HasColumnName("short_name_ru").HasMaxLength(120);
         b.Property(x => x.City).HasColumnName("city").HasMaxLength(120).IsRequired();
+        b.Property(x => x.CityRu).HasColumnName("city_ru").HasMaxLength(120).IsRequired();
         b.Property(x => x.Type).HasColumnName("type").HasConversion<string>().HasMaxLength(24);
         b.Property(x => x.LogoUrl).HasColumnName("logo_url").HasMaxLength(512);
         b.Property(x => x.IsActive).HasColumnName("is_active");
@@ -71,7 +99,9 @@ internal sealed class SpecialtyConfiguration : IEntityTypeConfiguration<Specialt
         b.Property(x => x.Id).HasColumnName("id");
         b.Property(x => x.Code).HasColumnName("code").HasMaxLength(60).IsRequired();
         b.Property(x => x.Name).HasColumnName("name").HasMaxLength(240).IsRequired();
+        b.Property(x => x.NameRu).HasColumnName("name_ru").HasMaxLength(240).IsRequired();
         b.Property(x => x.Description).HasColumnName("description").HasMaxLength(2000);
+        b.Property(x => x.DescriptionRu).HasColumnName("description_ru").HasMaxLength(2000);
         b.Property(x => x.IsActive).HasColumnName("is_active");
         b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
         b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");

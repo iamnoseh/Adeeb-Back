@@ -1,4 +1,6 @@
+using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Application.Abstractions.Time;
+using Adeeb.Modules.AcademicCatalog.Contracts;
 using Adeeb.Modules.Mmt.Application;
 using Adeeb.Modules.Mmt.Application.Import;
 using Adeeb.Modules.Mmt.Contracts;
@@ -6,6 +8,7 @@ using Adeeb.Modules.Mmt.Domain;
 using Adeeb.Modules.Mmt.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Adeeb.Mmt.Tests;
 
@@ -16,26 +19,56 @@ public sealed class MmtModuleTests
     [Fact]
     public async Task Duplicate_cluster_code_is_rejected_after_normalization()
     {
-        await using var db = Db(); var service = new MmtCatalogService(db, new Clock());
+        await using var db = Db(); var service = Catalog(db);
         Assert.True((await service.CreateClusterAsync(new("Cluster 2", " c2 ", null), default)).IsSuccess);
         var duplicate = await service.CreateClusterAsync(new("Other", "C2", null), default);
         Assert.Equal(MmtErrors.DuplicateCluster.Code, duplicate.Error?.Code);
     }
 
     [Fact]
+    public async Task Catalog_reads_resolve_the_current_request_language()
+    {
+        await using var db = Db();
+        var service = Catalog(db);
+        var created = await service.CreateClusterAsync(new("Кластери 2", "C2", "Тавсиф",
+            NameTg: "Кластери 2", NameRu: "Кластер 2", DescriptionTg: "Тавсиф", DescriptionRu: "Описание"), default);
+
+        var result = await service.GetClusterAsync(created.Value!.Id, SupportedLanguage.Russian, default);
+        Assert.Equal("Кластер 2", result.Value!.Name);
+        Assert.Equal("Описание", result.Value.Description);
+        Assert.Equal("Кластери 2", result.Value.NameTg);
+        Assert.Equal("Кластер 2", result.Value.NameRu);
+    }
+
+    [Fact]
     public async Task Duplicate_specialty_code_is_rejected_after_normalization()
     {
-        await using var db = Db(); var service = new MmtCatalogService(db, new Clock());
+        await using var db = Db(); var service = Catalog(db);
         Assert.True((await service.CreateSpecialtyAsync(new("law", "Law", null), default)).IsSuccess);
         var duplicate = await service.CreateSpecialtyAsync(new(" LAW ", "Other", null), default);
         Assert.Equal(MmtErrors.DuplicateSpecialty.Code, duplicate.Error?.Code);
     }
 
     [Fact]
+    public async Task Cluster_subjects_are_saved_and_localized_for_reads()
+    {
+        await using var db = Db();
+        var subjectId = Guid.NewGuid();
+        var service = Catalog(db);
+        var created = await service.CreateClusterAsync(new("Cluster", "C1", null, SubjectIds: [subjectId]), default);
+
+        var result = await service.GetClusterAsync(created.Value!.Id, SupportedLanguage.Russian, default);
+
+        var subject = Assert.Single(result.Value!.Subjects!);
+        Assert.Equal(subjectId, subject.Id);
+        Assert.Equal("Russian Subject", subject.Name);
+    }
+
+    [Fact]
     public async Task Duplicate_admission_program_is_rejected()
     {
         await using var db = Db(); var refs = SeedReferences(db); await db.SaveChangesAsync();
-        var service = new AdmissionProgramService(db, new Clock());
+        var service = Programs(db);
         var request = new CreateAdmissionProgramDto(refs.University.Id, refs.Specialty.Id, refs.Cluster.Id, 0, 0, 0, 2026, 20, false);
         Assert.True((await service.CreateProgramAsync(request, default)).IsSuccess);
         Assert.Equal(MmtErrors.DuplicateProgram.Code, (await service.CreateProgramAsync(request, default)).Error?.Code);
@@ -44,7 +77,7 @@ public sealed class MmtModuleTests
     [Fact]
     public async Task Duplicate_score_for_program_and_year_is_rejected()
     {
-        await using var db = Db(); var program = await SeedProgram(db); var service = new AdmissionProgramService(db, new Clock());
+        await using var db = Db(); var program = await SeedProgram(db); var service = Programs(db);
         Assert.True((await service.AddScoreAsync(program.Id, new(2025, 250, null, null, null), default)).IsSuccess);
         Assert.Equal(MmtErrors.DuplicateScore.Code, (await service.AddScoreAsync(program.Id, new(2025, 260, null, null, null), default)).Error?.Code);
     }
@@ -90,8 +123,43 @@ public sealed class MmtModuleTests
             new(Guid.NewGuid(), refs.University.Id, refs.Specialty.Id, refs.Cluster.Id, AdmissionType.Contract, StudyForm.FullTime, StudyLanguage.Tajik, 2026, null, false, Now),
             new(Guid.NewGuid(), refs.University.Id, refs.Specialty.Id, refs.Cluster.Id, AdmissionType.Budget, StudyForm.PartTime, StudyLanguage.Tajik, 2025, null, true, Now));
         await db.SaveChangesAsync();
-        var result = await new AdmissionProgramService(db, new Clock()).GetProgramsAsync(new AdmissionProgramFilter(), false, default);
+        var result = await Programs(db).GetProgramsAsync(new AdmissionProgramFilter(), false, SupportedLanguage.Tajik, default);
         Assert.Single(result.Value!.Items);
+    }
+
+    [Fact]
+    public async Task Student_read_uses_configured_admission_year()
+    {
+        await using var db = Db(); var refs = SeedReferences(db);
+        db.AdmissionPrograms.AddRange(
+            new(Guid.NewGuid(), refs.University.Id, refs.Specialty.Id, refs.Cluster.Id, AdmissionType.Budget, StudyForm.FullTime, StudyLanguage.Tajik, 2027, null, true, Now),
+            new(Guid.NewGuid(), refs.University.Id, refs.Specialty.Id, refs.Cluster.Id, AdmissionType.Contract, StudyForm.FullTime, StudyLanguage.Tajik, 2026, null, true, Now));
+        await db.SaveChangesAsync();
+
+        var result = await Programs(db, 2027).GetProgramsAsync(new AdmissionProgramFilter(), false, SupportedLanguage.Tajik, default);
+
+        var item = Assert.Single(result.Value!.Items);
+        Assert.Equal(2027, item.AdmissionYear);
+    }
+
+    [Fact]
+    public async Task Program_reads_use_the_explicit_requested_language()
+    {
+        await using var db = Db();
+        var refs = SeedReferences(db);
+        refs.University.UpdateTranslation(SupportedLanguage.Russian, "Russian University", "RU", "Russian City", UniversityType.Public, null, true, Now);
+        refs.Specialty.UpdateTranslation(SupportedLanguage.Russian, "LAW", "Russian Specialty", null, true, Now);
+        refs.Cluster.UpdateTranslation(SupportedLanguage.Russian, "Russian Cluster", null, "C2", true, Now);
+        db.AdmissionPrograms.Add(new AdmissionProgram(Guid.NewGuid(), refs.University.Id, refs.Specialty.Id, refs.Cluster.Id,
+            AdmissionType.Budget, StudyForm.FullTime, StudyLanguage.Russian, 2026, null, true, Now));
+        await db.SaveChangesAsync();
+
+        var result = await Programs(db).GetProgramsAsync(new AdmissionProgramFilter(), false, SupportedLanguage.Russian, default);
+
+        var item = Assert.Single(result.Value!.Items);
+        Assert.Equal("Russian University", item.UniversityName);
+        Assert.Equal("Russian Specialty", item.SpecialtyName);
+        Assert.Equal("Russian Cluster", item.ClusterName);
     }
 
     [Fact]
@@ -115,6 +183,9 @@ public sealed class MmtModuleTests
     }
 
     private static MmtDbContext Db() => new(new DbContextOptionsBuilder<MmtDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+    private static AdmissionProgramService Programs(MmtDbContext db, int? year = null) =>
+        new(db, new Clock(), Options.Create(new MmtOptions { CurrentAdmissionYear = year }));
+    private static MmtCatalogService Catalog(MmtDbContext db) => new(db, new Clock(), new CatalogLookup());
     private static MmtImportService Import(MmtDbContext db) => new(db, new Clock(), new MmtSpreadsheet());
     private static (University University, Specialty Specialty, MmtCluster Cluster) SeedReferences(MmtDbContext db)
     {
@@ -147,5 +218,12 @@ public sealed class MmtModuleTests
         public DateTimeOffset UtcNow => Now;
         public DateTimeOffset DushanbeNow => Now.ToOffset(TimeSpan.FromHours(5));
         public DateTimeOffset ToDushanbeTime(DateTimeOffset value) => value.ToOffset(TimeSpan.FromHours(5));
+    }
+    private sealed class CatalogLookup : IAcademicCatalogLookup
+    {
+        public Task<bool> SubjectExistsAsync(Guid subjectId, CancellationToken ct) => Task.FromResult(true);
+        public Task<bool> TopicBelongsToSubjectAsync(Guid topicId, Guid subjectId, CancellationToken ct) => Task.FromResult(true);
+        public Task<IReadOnlyList<AcademicSubjectLookupItem>> GetActiveSubjectsAsync(IReadOnlyCollection<Guid> subjectIds, SupportedLanguage language, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<AcademicSubjectLookupItem>>(subjectIds.Select(id => new AcademicSubjectLookupItem(id, "SUB", language == SupportedLanguage.Russian ? "Russian Subject" : "Tajik Subject")).ToList());
     }
 }

@@ -103,6 +103,115 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtAdmissionChoiceSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionProgramId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_program_id");
+
+                    b.Property<string>("AdmissionType")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("admission_type");
+
+                    b.Property<int>("AdmissionYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("admission_year");
+
+                    b.Property<string>("ClusterCodeSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("cluster_code_snapshot");
+
+                    b.Property<decimal?>("ConservativeThresholdUsed")
+                        .HasColumnType("numeric")
+                        .HasColumnName("conservative_threshold_used");
+
+                    b.Property<bool>("IsAccepted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_accepted");
+
+                    b.Property<decimal?>("MissingScore")
+                        .HasColumnType("numeric")
+                        .HasColumnName("missing_score");
+
+                    b.Property<Guid>("MmtExamEvaluationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mmt_exam_evaluation_id");
+
+                    b.Property<decimal?>("PassingScoreUsed")
+                        .HasColumnType("numeric")
+                        .HasColumnName("passing_score_used");
+
+                    b.Property<int>("PriorityOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("priority_order");
+
+                    b.Property<string>("SpecialtyCodeSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("specialty_code_snapshot");
+
+                    b.Property<string>("SpecialtyNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)")
+                        .HasColumnName("specialty_name_snapshot");
+
+                    b.Property<decimal>("StudentScore")
+                        .HasColumnType("numeric")
+                        .HasColumnName("student_score");
+
+                    b.Property<string>("StudyForm")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("study_form");
+
+                    b.Property<string>("StudyLanguage")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("study_language");
+
+                    b.Property<string>("UniversityNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("university_name_snapshot");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdmissionProgramId");
+
+                    b.HasIndex("MmtExamEvaluationId", "PriorityOrder")
+                        .IsUnique()
+                        .HasDatabaseName("ux_mmt_snapshot_evaluation_priority");
+
+                    b.ToTable("admission_choice_snapshots", "mmt", t =>
+                        {
+                            t.HasCheckConstraint("ck_mmt_snapshot_missing", "missing_score IS NULL OR (missing_score >= 0 AND missing_score <= 1000 AND scale(missing_score) <= 2)");
+
+                            t.HasCheckConstraint("ck_mmt_snapshot_passing_score", "passing_score_used IS NULL OR (passing_score_used > 0 AND passing_score_used <= 1000 AND scale(passing_score_used) <= 2)");
+
+                            t.HasCheckConstraint("ck_mmt_snapshot_priority", "priority_order >= 1 AND priority_order <= 12");
+
+                            t.HasCheckConstraint("ck_mmt_snapshot_student_score", "student_score >= 0 AND student_score <= 1000 AND scale(student_score) <= 2");
+
+                            t.HasCheckConstraint("ck_mmt_snapshot_threshold", "conservative_threshold_used IS NULL OR (conservative_threshold_used > 0 AND conservative_threshold_used <= 1000 AND scale(conservative_threshold_used) <= 2)");
+
+                            t.HasCheckConstraint("ck_mmt_snapshot_year", "admission_year >= 2000 AND admission_year <= 2100");
+                        });
+                });
+
             modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtCluster", b =>
                 {
                     b.Property<Guid>("Id")
@@ -125,6 +234,11 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("description");
 
+                    b.Property<string>("DescriptionRu")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description_ru");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
@@ -134,6 +248,12 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)")
                         .HasColumnName("name");
+
+                    b.Property<string>("NameRu")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("name_ru");
 
                     b.Property<DateTimeOffset>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")
@@ -149,6 +269,99 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_mmt_clusters_active_name");
 
                     b.ToTable("clusters", "mmt");
+                });
+
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtExamEvaluation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AcceptedAdmissionProgramId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("accepted_admission_program_id");
+
+                    b.Property<int?>("AcceptedChoicePriority")
+                        .HasColumnType("integer")
+                        .HasColumnName("accepted_choice_priority");
+
+                    b.Property<int>("AdmissionYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("admission_year");
+
+                    b.Property<Guid>("ClusterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cluster_id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<DateTimeOffset>("EvaluatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("evaluated_at_utc");
+
+                    b.Property<Guid?>("ExamSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exam_session_id");
+
+                    b.Property<decimal?>("MissingScoreForGoal")
+                        .HasColumnType("numeric")
+                        .HasColumnName("missing_score_for_goal");
+
+                    b.Property<string>("MotivationalMessageKey")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("motivational_message_key");
+
+                    b.Property<decimal?>("ReadinessPercentage")
+                        .HasColumnType("numeric")
+                        .HasColumnName("readiness_percentage");
+
+                    b.Property<Guid>("StudentMmtProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_mmt_profile_id");
+
+                    b.Property<decimal>("TotalScore")
+                        .HasColumnType("numeric")
+                        .HasColumnName("total_score");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcceptedAdmissionProgramId");
+
+                    b.HasIndex("ClusterId");
+
+                    b.HasIndex("StudentMmtProfileId");
+
+                    b.HasIndex("AdmissionYear", "EvaluatedAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_mmt_evaluations_admin_history");
+
+                    b.HasIndex("UserId", "EvaluatedAtUtc")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_mmt_evaluations_user_history");
+
+                    b.ToTable("exam_evaluations", "mmt", t =>
+                        {
+                            t.HasCheckConstraint("ck_mmt_evaluation_accepted_pair", "(accepted_choice_priority IS NULL) = (accepted_admission_program_id IS NULL)");
+
+                            t.HasCheckConstraint("ck_mmt_evaluation_accepted_priority", "accepted_choice_priority IS NULL OR (accepted_choice_priority >= 1 AND accepted_choice_priority <= 12)");
+
+                            t.HasCheckConstraint("ck_mmt_evaluation_goal_missing", "missing_score_for_goal IS NULL OR (missing_score_for_goal >= 0 AND missing_score_for_goal <= 1000 AND scale(missing_score_for_goal) <= 2)");
+
+                            t.HasCheckConstraint("ck_mmt_evaluation_readiness", "readiness_percentage IS NULL OR (readiness_percentage >= 0 AND readiness_percentage <= 100 AND scale(readiness_percentage) <= 2)");
+
+                            t.HasCheckConstraint("ck_mmt_evaluation_score", "total_score >= 0 AND total_score <= 1000 AND scale(total_score) <= 2");
+
+                            t.HasCheckConstraint("ck_mmt_evaluation_year", "admission_year >= 2000 AND admission_year <= 2100");
+                        });
                 });
 
             modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.PassingScoreHistory", b =>
@@ -231,6 +444,11 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("description");
 
+                    b.Property<string>("DescriptionRu")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description_ru");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
@@ -240,6 +458,12 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasMaxLength(240)
                         .HasColumnType("character varying(240)")
                         .HasColumnName("name");
+
+                    b.Property<string>("NameRu")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)")
+                        .HasColumnName("name_ru");
 
                     b.Property<DateTimeOffset>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")
@@ -257,6 +481,104 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                     b.ToTable("specialties", "mmt");
                 });
 
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.StudentAdmissionChoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AdmissionProgramId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admission_program_id");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<int>("PriorityOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("priority_order");
+
+                    b.Property<Guid>("StudentMmtProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_mmt_profile_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdmissionProgramId");
+
+                    b.HasIndex("StudentMmtProfileId", "AdmissionProgramId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_mmt_choice_profile_program");
+
+                    b.HasIndex("StudentMmtProfileId", "PriorityOrder")
+                        .IsUnique()
+                        .HasDatabaseName("ux_mmt_choice_profile_priority");
+
+                    b.ToTable("student_admission_choices", "mmt", t =>
+                        {
+                            t.HasCheckConstraint("ck_mmt_choice_priority", "priority_order >= 1 AND priority_order <= 12");
+                        });
+                });
+
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.StudentMmtProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AdmissionYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("admission_year");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("GoalAdmissionProgramId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("goal_admission_program_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<Guid>("MmtClusterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cluster_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GoalAdmissionProgramId");
+
+                    b.HasIndex("UserId", "AdmissionYear")
+                        .IsUnique()
+                        .HasDatabaseName("ux_mmt_student_profile_active_year")
+                        .HasFilter("is_active");
+
+                    b.HasIndex("MmtClusterId", "AdmissionYear", "IsActive")
+                        .HasDatabaseName("ix_mmt_student_profiles_admin");
+
+                    b.ToTable("student_profiles", "mmt", t =>
+                        {
+                            t.HasCheckConstraint("ck_mmt_student_profile_year", "admission_year >= 2000 AND admission_year <= 2100");
+                        });
+                });
+
             modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.University", b =>
                 {
                     b.Property<Guid>("Id")
@@ -270,6 +592,12 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(120)")
                         .HasColumnName("city");
 
+                    b.Property<string>("CityRu")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("city_ru");
+
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");
@@ -279,6 +607,12 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)")
                         .HasColumnName("full_name");
+
+                    b.Property<string>("FullNameRu")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("full_name_ru");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
@@ -299,6 +633,11 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)")
                         .HasColumnName("short_name");
+
+                    b.Property<string>("ShortNameRu")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("short_name_ru");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -349,6 +688,51 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                     b.Navigation("University");
                 });
 
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtAdmissionChoiceSnapshot", b =>
+                {
+                    b.HasOne("Adeeb.Modules.Mmt.Domain.AdmissionProgram", "AdmissionProgram")
+                        .WithMany()
+                        .HasForeignKey("AdmissionProgramId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Adeeb.Modules.Mmt.Domain.MmtExamEvaluation", "MmtExamEvaluation")
+                        .WithMany("ChoiceSnapshots")
+                        .HasForeignKey("MmtExamEvaluationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AdmissionProgram");
+
+                    b.Navigation("MmtExamEvaluation");
+                });
+
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtExamEvaluation", b =>
+                {
+                    b.HasOne("Adeeb.Modules.Mmt.Domain.AdmissionProgram", "AcceptedAdmissionProgram")
+                        .WithMany()
+                        .HasForeignKey("AcceptedAdmissionProgramId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Adeeb.Modules.Mmt.Domain.MmtCluster", "Cluster")
+                        .WithMany()
+                        .HasForeignKey("ClusterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Adeeb.Modules.Mmt.Domain.StudentMmtProfile", "StudentMmtProfile")
+                        .WithMany()
+                        .HasForeignKey("StudentMmtProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AcceptedAdmissionProgram");
+
+                    b.Navigation("Cluster");
+
+                    b.Navigation("StudentMmtProfile");
+                });
+
             modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.PassingScoreHistory", b =>
                 {
                     b.HasOne("Adeeb.Modules.Mmt.Domain.AdmissionProgram", "AdmissionProgram")
@@ -360,9 +744,56 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                     b.Navigation("AdmissionProgram");
                 });
 
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.StudentAdmissionChoice", b =>
+                {
+                    b.HasOne("Adeeb.Modules.Mmt.Domain.AdmissionProgram", "AdmissionProgram")
+                        .WithMany()
+                        .HasForeignKey("AdmissionProgramId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Adeeb.Modules.Mmt.Domain.StudentMmtProfile", "StudentMmtProfile")
+                        .WithMany("Choices")
+                        .HasForeignKey("StudentMmtProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AdmissionProgram");
+
+                    b.Navigation("StudentMmtProfile");
+                });
+
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.StudentMmtProfile", b =>
+                {
+                    b.HasOne("Adeeb.Modules.Mmt.Domain.AdmissionProgram", "GoalAdmissionProgram")
+                        .WithMany()
+                        .HasForeignKey("GoalAdmissionProgramId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Adeeb.Modules.Mmt.Domain.MmtCluster", "MmtCluster")
+                        .WithMany()
+                        .HasForeignKey("MmtClusterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("GoalAdmissionProgram");
+
+                    b.Navigation("MmtCluster");
+                });
+
             modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.AdmissionProgram", b =>
                 {
                     b.Navigation("PassingScores");
+                });
+
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.MmtExamEvaluation", b =>
+                {
+                    b.Navigation("ChoiceSnapshots");
+                });
+
+            modelBuilder.Entity("Adeeb.Modules.Mmt.Domain.StudentMmtProfile", b =>
+                {
+                    b.Navigation("Choices");
                 });
 #pragma warning restore 612, 618
         }

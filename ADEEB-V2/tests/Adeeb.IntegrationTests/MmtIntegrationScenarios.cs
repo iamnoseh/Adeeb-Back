@@ -7,6 +7,7 @@ using System.Text;
 using Adeeb.Modules.Mmt.Contracts;
 using Adeeb.Modules.Mmt.Domain;
 using Adeeb.Modules.Mmt.Infrastructure.Persistence;
+using Adeeb.Application.Abstractions.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -71,15 +72,95 @@ public sealed class MmtIntegrationScenarios(AdeebApiFactory factory) : IClassFix
         Assert.Equal("ck_mmt_score_value", exception.ConstraintName);
     }
 
+    [Fact]
+    public async Task Simulator_endpoints_enforce_owner_and_admin_boundaries()
+    {
+        var userId = Guid.NewGuid();
+        var otherUserId = Guid.NewGuid();
+        var (clusterId, programId) = await SeedSimulatorProgramAsync();
+        var owner = AuthenticatedClient(Token(userId));
+        var profileResponse = await owner.PutAsJsonAsync("/api/v2/mmt/profile", new UpsertStudentMmtProfileDto(clusterId, DateTimeOffset.UtcNow.Year, programId));
+        var profile = await ReadAsync<StudentMmtProfileDto>(profileResponse);
+        var choicesResponse = await owner.PutAsJsonAsync("/api/v2/mmt/profile/choices", new UpsertAdmissionChoicesDto([new(programId, 1)]));
+        choicesResponse.EnsureSuccessStatusCode();
+        var evaluation = await ReadAsync<MmtEvaluationDto>(await owner.PostAsJsonAsync("/api/v2/mmt/evaluations/simulate", new SimulateMmtEvaluationDto(275m)));
+
+        var other = AuthenticatedClient(Token(otherUserId));
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync("/api/v2/mmt/profile")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/v2/mmt/evaluations/{evaluation.Id}")).StatusCode);
+
+        var admin = AuthenticatedClient(Token(Guid.NewGuid(), Permissions.Mmt.Manage));
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync($"/api/v2/admin/mmt/student-profiles/{profile.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync($"/api/v2/admin/mmt/evaluations/{evaluation.Id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task PostgreSql_enforces_active_profile_and_choice_uniqueness()
+    {
+        var userId = Guid.NewGuid();
+        var (clusterId, programId) = await SeedSimulatorProgramAsync();
+        var profileId = Guid.NewGuid();
+        await using var db = CreateDb();
+        await db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO mmt.student_profiles
+                (id, user_id, cluster_id, admission_year, is_active, created_at_utc, updated_at_utc)
+            VALUES ({profileId}, {userId}, {clusterId}, {DateTimeOffset.UtcNow.Year}, {true}, {DateTimeOffset.UtcNow}, {DateTimeOffset.UtcNow})
+            """);
+        var profileDuplicate = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO mmt.student_profiles
+                (id, user_id, cluster_id, admission_year, is_active, created_at_utc, updated_at_utc)
+            VALUES ({Guid.NewGuid()}, {userId}, {clusterId}, {DateTimeOffset.UtcNow.Year}, {true}, {DateTimeOffset.UtcNow}, {DateTimeOffset.UtcNow})
+            """));
+        Assert.Equal("ux_mmt_student_profile_active_year", profileDuplicate.ConstraintName);
+
+        await db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO mmt.student_admission_choices
+                (id, student_mmt_profile_id, admission_program_id, priority_order, created_at_utc, updated_at_utc)
+            VALUES ({Guid.NewGuid()}, {profileId}, {programId}, {1}, {DateTimeOffset.UtcNow}, {DateTimeOffset.UtcNow})
+            """);
+        var choiceDuplicate = await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO mmt.student_admission_choices
+                (id, student_mmt_profile_id, admission_program_id, priority_order, created_at_utc, updated_at_utc)
+            VALUES ({Guid.NewGuid()}, {profileId}, {programId}, {2}, {DateTimeOffset.UtcNow}, {DateTimeOffset.UtcNow})
+            """));
+        Assert.Equal("ux_mmt_choice_profile_program", choiceDuplicate.ConstraintName);
+    }
+
     private MmtDbContext CreateDb() => new(new DbContextOptionsBuilder<MmtDbContext>().UseNpgsql(factory.ConnectionString).Options);
 
-    private static string Token()
+    private async Task<(Guid ClusterId, Guid ProgramId)> SeedSimulatorProgramAsync()
+    {
+        await using var db = CreateDb();
+        var now = DateTimeOffset.UtcNow;
+        var cluster = new MmtCluster(Guid.NewGuid(), "Simulator Cluster", $"SIM{Guid.NewGuid():N}", null, now);
+        var university = new University(Guid.NewGuid(), $"Simulator University {Guid.NewGuid():N}", null, "Dushanbe", UniversityType.Public, null, now);
+        var specialty = new Specialty(Guid.NewGuid(), $"SIM{Guid.NewGuid():N}", "Simulator Specialty", null, now);
+        var program = new AdmissionProgram(Guid.NewGuid(), university.Id, specialty.Id, cluster.Id, AdmissionType.Budget, StudyForm.FullTime, StudyLanguage.Tajik, now.Year, 10, true, now);
+        db.AddRange(cluster, university, specialty, program, new PassingScoreHistory(Guid.NewGuid(), program.Id, now.Year - 1, 270m, null, "test", null, now));
+        await db.SaveChangesAsync();
+        return (cluster.Id, program.Id);
+    }
+
+    private HttpClient AuthenticatedClient(string token)
+    {
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
+
+    private static async Task<T> ReadAsync<T>(HttpResponseMessage response)
+    {
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<T>() ?? throw new InvalidOperationException("Response body was empty.");
+    }
+
+    private static string Token(Guid? userId = null, params string[] permissions)
     {
         var credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes("integration-tests-signing-key-32-bytes")), SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
             "https://tests.adeeb.tj",
             "adeeb-tests",
-            [new Claim(JwtRegisteredClaimNames.Sub, Guid.NewGuid().ToString()), new Claim(ClaimTypes.Role, "User"), new Claim("lang", "en-US")],
+            [new Claim(JwtRegisteredClaimNames.Sub, (userId ?? Guid.NewGuid()).ToString()), new Claim(ClaimTypes.Role, "User"), new Claim("lang", "en-US"), .. permissions.Select(x => new Claim(AdeebClaimNames.Permission, x))],
             DateTime.UtcNow.AddMinutes(-1),
             DateTime.UtcNow.AddMinutes(10),
             credentials);
