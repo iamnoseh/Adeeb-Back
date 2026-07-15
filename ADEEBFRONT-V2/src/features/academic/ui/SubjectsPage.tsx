@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Edit, Plus, Trash2 } from 'lucide-react'
+import { PenLine, Plus, Power } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { subjectKeys, subjectsApi } from '@/features/academic/api/subjects.api'
@@ -7,11 +7,12 @@ import { StatusBadge } from '@/features/academic/ui/StatusBadge'
 import { TranslationBadges } from '@/features/academic/ui/TranslationBadges'
 import { appConfig } from '@/shared/config/env'
 import { localizedName } from '@/shared/i18n/localized-content'
-import { AdminListToolbar, useColumnVisibility, type AdminListColumn } from '@/shared/ui/AdminListToolbar'
-import { Button } from '@/shared/ui/Button'
+import { AdminListToolbar } from '@/shared/ui/AdminListToolbar'
+import { useColumnVisibility, type AdminListColumn } from '@/shared/ui/useColumnVisibility'
 import { ListPagination } from '@/shared/ui/ListPagination'
 import { EmptyState, ErrorState } from '@/shared/ui/StateBlock'
 import { Table, TableShell } from '@/shared/ui/Table'
+import { TableActionButton } from '@/shared/ui/TableActionButton'
 
 export function SubjectsPage() {
   const { i18n, t } = useTranslation()
@@ -19,7 +20,7 @@ export function SubjectsPage() {
   const queryClient = useQueryClient()
   const page = Math.max(1, Number(params.get('page')) || 1)
   const search = params.get('search') ?? ''
-  const listQuery = { page, pageSize: 10, search: search || undefined, sort: 'displayOrder' }
+  const listQuery = { page, pageSize: 10, sort: 'displayOrder', ...(search ? { search } : {}) }
   const columns: AdminListColumn[] = [
     { id: 'subject', label: t('navSubjects'), locked: true },
     { id: 'status', label: t('status') },
@@ -67,8 +68,8 @@ export function SubjectsPage() {
                 {columnVisibility.isVisible('translations') ? <td className="px-4 py-3"><TranslationBadges translations={subject.translations} /></td> : null}
                 {columnVisibility.isVisible('order') ? <td className="px-4 py-3">{subject.displayOrder}</td> : null}
                 <td className="px-4 py-3"><div className="flex justify-end gap-2">
-                  <Link className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--text)] no-underline hover:bg-[var(--surface-muted)]" to={`/admin/subjects/${subject.id}/edit`}><Edit className="h-4 w-4" /> {t('edit')}</Link>
-                  <Button variant="danger" className="px-3" disabled={subject.status === 2} onClick={() => { if (window.confirm(t('confirmDelete'))) removeMutation.mutate(subject.id) }}><Trash2 className="h-4 w-4" /> {t('delete')}</Button>
+                  <TableActionButton to={`/admin/subjects/${subject.id}/edit`} label={t('edit')} icon={<PenLine className="h-5 w-5" />} />
+                  <TableActionButton label={t('delete')} icon={<Power className="h-5 w-5" />} disabled={subject.status === 2} onClick={() => { if (window.confirm(t('confirmDelete'))) removeMutation.mutate(subject.id) }} />
                 </div></td>
               </tr>
             ))}</tbody>

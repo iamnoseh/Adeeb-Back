@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Edit3, Eye, Plus, Power } from "lucide-react";
+import { Eye, PenLine, Plus, Power } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { mmtApi, mmtKeys } from "@/features/mmt/api/mmt.api";
 import { subjectKeys, subjectsApi } from "@/features/academic/api/subjects.api";
 import { errorMessage, enumLabel, mmtDefaultPageSize, mmtPage } from "@/features/mmt/lib/mmt";
@@ -22,7 +22,8 @@ import {
   Modal,
   Pagination,
 } from "@/features/mmt/ui/MmtUi";
-import { MmtFilterToolbar, useColumnVisibility, type AdminListColumn } from "@/features/mmt/ui/MmtFilterToolbar";
+import { MmtFilterToolbar } from "@/features/mmt/ui/MmtFilterToolbar";
+import { useColumnVisibility, type AdminListColumn } from "@/shared/ui/useColumnVisibility";
 import { Button } from "@/shared/ui/Button";
 import { FormField } from "@/shared/ui/FormField";
 import { Input, Textarea } from "@/shared/ui/Input";
@@ -31,6 +32,7 @@ import { MultiSelectField } from "@/shared/ui/MultiSelectField";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { EmptyState, ErrorState } from "@/shared/ui/StateBlock";
 import { Table, TableShell } from "@/shared/ui/Table";
+import { TableActionButton } from "@/shared/ui/TableActionButton";
 
 export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
   const { t } = useTranslation();
@@ -303,7 +305,10 @@ function CatalogRow({
           ];
   return (
     <tr className="border-t border-[var(--border)]">
-      {cells.filter((_, index) => index === 0 || isVisible(kind === "clusters" ? ["primary", "name", "subjects"][index] : kind === "universities" ? ["primary", "city", "type"][index] : ["primary", "name"][index])).map((cell, index) => (
+      {cells.filter((_, index) => {
+        const ids = kind === "clusters" ? ["primary", "name", "subjects"] : kind === "universities" ? ["primary", "city", "type"] : ["primary", "name"];
+        return index === 0 || Boolean(ids[index] && isVisible(ids[index]!));
+      }).map((cell, index) => (
         <td className="px-4 py-3" key={index}>
           {cell}
         </td>
@@ -314,25 +319,10 @@ function CatalogRow({
       <td className="px-4 py-3">
         <div className="flex justify-end gap-2">
           {kind !== "clusters" ? (
-            <Link className="inline-flex h-10 min-h-10 items-center rounded-xl border border-[var(--border)] px-3" to={`/admin/mmt/${kind}/${item.id}`} aria-label={t("mmt.open")}>
-              <Eye className="h-4 w-4" />
-            </Link>
+            <TableActionButton to={`/admin/mmt/${kind}/${item.id}`} label={t("mmt.open")} icon={<Eye className="h-5 w-5" />} />
           ) : null}
-          <Button
-            variant="secondary"
-            className="h-10 min-h-10 px-3"
-            onClick={onEdit}
-          >
-            <Edit3 className="h-4 w-4" /> {t("mmt.edit")}
-          </Button>
-          <Button
-            variant="ghost"
-            className="h-10 min-h-10 px-3"
-            onClick={onStatus}
-          >
-            <Power className="h-4 w-4" />{" "}
-            {item.isActive ? t("mmt.deactivate") : t("mmt.activate")}
-          </Button>
+          <TableActionButton label={t("mmt.edit")} icon={<PenLine className="h-5 w-5" />} onClick={onEdit} />
+          <TableActionButton label={item.isActive ? t("mmt.deactivate") : t("mmt.activate")} icon={<Power className="h-5 w-5" />} onClick={onStatus} />
         </div>
       </td>
     </tr>

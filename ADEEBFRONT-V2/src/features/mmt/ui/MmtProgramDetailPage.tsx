@@ -1,5 +1,5 @@
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, Edit3, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Edit3, PenLine, Plus, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
@@ -24,6 +24,7 @@ import { PageHeader } from "@/shared/ui/PageHeader";
 import { SelectField } from "@/shared/ui/SelectField";
 import { ErrorState } from "@/shared/ui/StateBlock";
 import { Table, TableShell } from "@/shared/ui/Table";
+import { TableActionButton } from "@/shared/ui/TableActionButton";
 
 export function MmtProgramDetailPage() {
   const { t } = useTranslation();
@@ -202,24 +203,16 @@ export function MmtProgramDetailPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="secondary"
-                        className="h-10 min-h-10 px-3"
-                        onClick={() => setScoreForm(score)}
-                      >
-                        <Edit3 className="h-4 w-4" /> {t("mmt.edit")}
-                      </Button>
-                      <Button
-                        variant="danger"
-                        className="h-10 min-h-10 px-3"
-                        aria-label={t("delete")}
+                      <TableActionButton label={t("mmt.edit")} icon={<PenLine className="h-5 w-5" />} onClick={() => setScoreForm(score)} />
+                      <TableActionButton
+                        label={t("delete")}
+                        icon={<Trash2 className="h-5 w-5" />}
+                        tone="danger"
                         onClick={() => {
                           if (window.confirm(t("mmt.deleteScoreConfirm")))
                             remove.mutate(score.id);
                         }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      />
                     </div>
                   </td>
                 </tr>

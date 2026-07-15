@@ -3,49 +3,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/shared/ui/Button'
 import { Input } from '@/shared/ui/Input'
-
-export type AdminListColumn = {
-  id: string
-  label: string
-  locked?: boolean
-  defaultVisible?: boolean
-}
-
-export function useColumnVisibility(storageKey: string, columns: AdminListColumn[]) {
-  const [visibility, setVisibility] = useState<Record<string, boolean>>(() => readVisibility(storageKey, columns))
-
-  useEffect(() => {
-    setVisibility(readVisibility(storageKey, columns))
-  }, [storageKey])
-
-  useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify(visibility))
-  }, [storageKey, visibility])
-
-  function isVisible(id: string) {
-    return columns.find((column) => column.id === id)?.locked || visibility[id] !== false
-  }
-
-  function toggle(id: string) {
-    const column = columns.find((item) => item.id === id)
-    if (!column || column.locked) return
-    setVisibility((current) => ({ ...current, [id]: current[id] === false }))
-  }
-
-  function reset() {
-    setVisibility(defaultVisibility(columns))
-  }
-
-  function showAll() {
-    setVisibility(Object.fromEntries(columns.map((column) => [column.id, true])))
-  }
-
-  function hideOptional() {
-    setVisibility(Object.fromEntries(columns.map((column) => [column.id, Boolean(column.locked)])))
-  }
-
-  return { isVisible, toggle, reset, showAll, hideOptional }
-}
+import type { AdminListColumn } from '@/shared/ui/useColumnVisibility'
+import type { useColumnVisibility } from '@/shared/ui/useColumnVisibility'
 
 type ColumnVisibility = ReturnType<typeof useColumnVisibility>
 
@@ -171,17 +130,4 @@ export function AdminListToolbar({
       ) : null}
     </div>
   )
-}
-
-function readVisibility(storageKey: string, columns: AdminListColumn[]) {
-  try {
-    const stored = JSON.parse(window.localStorage.getItem(storageKey) ?? '{}') as Record<string, boolean>
-    return { ...defaultVisibility(columns), ...stored }
-  } catch {
-    return defaultVisibility(columns)
-  }
-}
-
-function defaultVisibility(columns: AdminListColumn[]) {
-  return Object.fromEntries(columns.map((column) => [column.id, column.defaultVisible !== false]))
 }

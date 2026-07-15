@@ -3,7 +3,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Edit3, Eye, Plus, Power, Send } from "lucide-react";
+import { Eye, PenLine, Plus, Power, Send } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
@@ -12,14 +12,15 @@ import { controlLink, enumLabel, errorMessage, mmtAdmissionYear, mmtDefaultPageS
 import { useMmtLabels } from "@/features/mmt/lib/useMmtLabels";
 import { useMmtToast } from "@/features/mmt/model/useMmtToast";
 import { BooleanBadge, MmtToast, Pagination } from "@/features/mmt/ui/MmtUi";
-import { MmtFilterToolbar, useColumnVisibility, type AdminListColumn } from "@/features/mmt/ui/MmtFilterToolbar";
+import { MmtFilterToolbar } from "@/features/mmt/ui/MmtFilterToolbar";
+import { useColumnVisibility, type AdminListColumn } from "@/shared/ui/useColumnVisibility";
 import { MmtReferenceSelect } from "@/features/mmt/ui/MmtReferenceSelect";
-import { Button } from "@/shared/ui/Button";
 import { Input } from "@/shared/ui/Input";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { SelectField } from "@/shared/ui/SelectField";
 import { EmptyState, ErrorState } from "@/shared/ui/StateBlock";
 import { Table, TableShell } from "@/shared/ui/Table";
+import { TableActionButton } from "@/shared/ui/TableActionButton";
 
 export function MmtProgramsPage() {
   const { t } = useTranslation();
@@ -293,28 +294,11 @@ export function MmtProgramsPage() {
                   </td> : null}
                   <td className="px-3 py-3">
                     <div className="flex justify-end gap-1">
-                      <Link
-                        to={`/admin/mmt/programs/${program.id}`}
-                        className={controlLink}
-                        aria-label={t("mmt.view")}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                      <Link
-                        to={`/admin/mmt/programs/${program.id}/edit`}
-                        className={controlLink}
-                        aria-label={t("mmt.edit")}
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        className="h-10 min-h-10 px-3"
-                        aria-label={
-                          program.isPublished
-                            ? t("mmt.unpublish")
-                            : t("mmt.publish")
-                        }
+                      <TableActionButton to={`/admin/mmt/programs/${program.id}`} label={t("mmt.view")} icon={<Eye className="h-5 w-5" />} />
+                      <TableActionButton to={`/admin/mmt/programs/${program.id}/edit`} label={t("mmt.edit")} icon={<PenLine className="h-5 w-5" />} />
+                      <TableActionButton
+                        label={program.isPublished ? t("mmt.unpublish") : t("mmt.publish")}
+                        icon={<Send className="h-5 w-5" />}
                         onClick={() => {
                           if (
                             window.confirm(
@@ -328,17 +312,10 @@ export function MmtProgramsPage() {
                               value: !program.isPublished,
                             });
                         }}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="h-10 min-h-10 px-3"
-                        aria-label={
-                          program.isActive
-                            ? t("mmt.deactivate")
-                            : t("mmt.activate")
-                        }
+                      />
+                      <TableActionButton
+                        label={program.isActive ? t("mmt.deactivate") : t("mmt.activate")}
+                        icon={<Power className="h-5 w-5" />}
                         onClick={() => {
                           if (
                             window.confirm(
@@ -352,9 +329,7 @@ export function MmtProgramsPage() {
                               value: !program.isActive,
                             });
                         }}
-                      >
-                        <Power className="h-4 w-4" />
-                      </Button>
+                      />
                     </div>
                   </td>
                 </tr>

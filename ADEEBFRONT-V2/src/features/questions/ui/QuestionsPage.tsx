@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, Edit, FileUp, ImageIcon, Plus, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileUp, ImageIcon, PenLine, Plus, Power } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { subjectKeys, subjectsApi } from '@/features/academic/api/subjects.api'
@@ -10,10 +10,12 @@ import type { QuestionListQuery } from '@/features/questions/model/question.type
 import { appConfig } from '@/shared/config/env'
 import { localizedName } from '@/shared/i18n/localized-content'
 import { Button } from '@/shared/ui/Button'
-import { AdminListToolbar, useColumnVisibility, type AdminListColumn } from '@/shared/ui/AdminListToolbar'
+import { AdminListToolbar } from '@/shared/ui/AdminListToolbar'
+import { useColumnVisibility, type AdminListColumn } from '@/shared/ui/useColumnVisibility'
 import { SelectField } from '@/shared/ui/SelectField'
 import { EmptyState, ErrorState } from '@/shared/ui/StateBlock'
 import { Table, TableShell } from '@/shared/ui/Table'
+import { TableActionButton } from '@/shared/ui/TableActionButton'
 
 export function QuestionsPage() {
   const { i18n, t } = useTranslation()
@@ -152,21 +154,17 @@ export function QuestionsPage() {
                   {columnVisibility.isVisible('status') ? <td className="px-4 py-3"><StatusBadge status={question.status} /></td> : null}
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <Link className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--text)] no-underline hover:bg-[var(--surface-muted)]" to={`/admin/questions/${question.id}/edit`}>
-                        <Edit className="h-4 w-4" /> {t('edit')}
-                      </Link>
-                      <Button
-                        variant="danger"
-                        className="px-3"
+                      <TableActionButton to={`/admin/questions/${question.id}/edit`} label={t('edit')} icon={<PenLine className="h-5 w-5" />} />
+                      <TableActionButton
+                        label={t('delete')}
+                        icon={<Power className="h-5 w-5" />}
                         disabled={question.status === 2}
                         onClick={() => {
                           if (window.confirm(t('confirmDelete'))) {
                             removeMutation.mutate(question.id)
                           }
                         }}
-                      >
-                        <Trash2 className="h-4 w-4" /> {t('delete')}
-                      </Button>
+                      />
                     </div>
                   </td>
                 </tr>

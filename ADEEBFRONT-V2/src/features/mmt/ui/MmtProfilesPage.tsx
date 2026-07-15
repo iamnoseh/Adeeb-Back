@@ -6,13 +6,15 @@ import { mmtApi, mmtKeys } from "@/features/mmt/api/mmt.api";
 import { compactId, controlLink, enumLabel, errorMessage, mmtAdmissionYear, mmtDefaultPageSize, mmtPage } from "@/features/mmt/lib/mmt";
 import { useMmtLabels } from "@/features/mmt/lib/useMmtLabels";
 import { BooleanBadge, Pagination } from "@/features/mmt/ui/MmtUi";
-import { MmtFilterToolbar, useColumnVisibility, type AdminListColumn } from "@/features/mmt/ui/MmtFilterToolbar";
+import { MmtFilterToolbar } from "@/features/mmt/ui/MmtFilterToolbar";
+import { useColumnVisibility, type AdminListColumn } from "@/shared/ui/useColumnVisibility";
 import { formatDushanbeDate } from "@/shared/lib/date";
 import { Input } from "@/shared/ui/Input";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { SelectField } from "@/shared/ui/SelectField";
 import { EmptyState, ErrorState } from "@/shared/ui/StateBlock";
 import { Table, TableShell } from "@/shared/ui/Table";
+import { TableActionButton } from "@/shared/ui/TableActionButton";
 
 export function MmtProfilesPage() {
   const { t, i18n } = useTranslation();
@@ -144,12 +146,7 @@ export function MmtProfilesPage() {
                     {formatDushanbeDate(profile.createdAtUtc, i18n.language)}
                   </td> : null}
                   <td className="px-4 py-3 text-right">
-                    <Link
-                      to={`/admin/mmt/profiles/${profile.id}`}
-                      className={controlLink}
-                    >
-                      <Eye className="h-4 w-4" /> {t("mmt.view")}
-                    </Link>
+                    <TableActionButton to={`/admin/mmt/profiles/${profile.id}`} label={t("mmt.view")} icon={<Eye className="h-5 w-5" />} />
                   </td>
                 </tr>
               ))}
@@ -348,12 +345,7 @@ export function MmtProfileDetailPage() {
                     <Motivation value={evaluation.motivationalMessageKey} />
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link
-                      to={`/admin/mmt/evaluations/${evaluation.id}`}
-                      className={controlLink}
-                    >
-                      <Eye className="h-4 w-4" /> {t("mmt.view")}
-                    </Link>
+                    <TableActionButton to={`/admin/mmt/evaluations/${evaluation.id}`} label={t("mmt.view")} icon={<Eye className="h-5 w-5" />} />
                   </td>
                 </tr>
               ))}

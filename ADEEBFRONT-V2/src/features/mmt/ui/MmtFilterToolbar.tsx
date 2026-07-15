@@ -1,12 +1,8 @@
 import type { ReactNode } from 'react'
 import {
   AdminListToolbar,
-  type AdminListColumn,
-  useColumnVisibility,
 } from '@/shared/ui/AdminListToolbar'
-
-export { useColumnVisibility }
-export type { AdminListColumn }
+import { type AdminListColumn, type useColumnVisibility } from '@/shared/ui/useColumnVisibility'
 
 export function MmtFilterToolbar({
   searchValue,
@@ -28,15 +24,17 @@ export function MmtFilterToolbar({
   columnVisibility?: ReturnType<typeof useColumnVisibility>
 }) {
   return (
-    <AdminListToolbar
-      searchValue={searchValue}
-      onSearchChange={onSearchChange}
-      searchPlaceholder={searchPlaceholder}
-      filterCount={filterCount}
-      onClearFilters={onClearFilters}
-      filters={children}
-      columns={columns}
-      columnVisibility={columnVisibility}
-    />
+    <div className="mb-4">
+      <AdminListToolbar
+        searchValue={searchValue}
+        onSearchChange={onSearchChange}
+        searchPlaceholder={searchPlaceholder}
+        filterCount={filterCount}
+        onClearFilters={onClearFilters}
+        filters={children}
+        {...(columns ? { columns } : {})}
+        {...(columnVisibility ? { columnVisibility } : {})}
+      />
+    </div>
   )
 }
