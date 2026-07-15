@@ -126,7 +126,7 @@ export function MmtProgramsPage() {
         actions={
           <Link
             to="/admin/mmt/programs/new"
-            className={`${controlLink} border-transparent bg-[var(--primary)] text-white`}
+            className={`${controlLink} !border-transparent !bg-[var(--primary)] !text-white hover:!bg-[var(--primary)] hover:opacity-90`}
           >
             <Plus className="h-4 w-4" /> {t("mmt.newProgram")}
           </Link>
