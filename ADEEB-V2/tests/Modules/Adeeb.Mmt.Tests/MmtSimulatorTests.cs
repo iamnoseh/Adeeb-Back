@@ -122,6 +122,26 @@ public sealed class MmtSimulatorTests
     }
 
     [Fact]
+    public async Task Admin_reads_profile_choices_in_priority_order()
+    {
+        await using var db = Db();
+        var data = await SeedProgramsAsync(db);
+        var service = Service(db);
+        var owner = User(data.UserId);
+        var profile = (await service.UpsertProfileAsync(owner, new(data.Cluster.Id, 2026, null), default)).Value!;
+        await service.ReplaceChoicesAsync(owner, new([new(data.Second.Id, 1), new(data.First.Id, 2)]), default);
+
+        var result = await service.GetAdminChoicesAsync(profile.Id, default);
+
+        Assert.True(result.IsSuccess);
+        var choices = result.Value!;
+        Assert.Equal([1, 2], choices.Select(x => x.PriorityOrder));
+        Assert.Equal([data.Second.Id, data.First.Id], choices.Select(x => x.AdmissionProgram.Id));
+        Assert.Equal(MmtErrors.StudentProfileNotFound.Code,
+            (await service.GetAdminChoicesAsync(Guid.NewGuid(), default)).Error?.Code);
+    }
+
+    [Fact]
     public async Task Configured_admission_year_is_enforced()
     {
         await using var db = Db();
@@ -152,6 +172,33 @@ public sealed class MmtSimulatorTests
         Assert.Null(result.MissingScoreForGoal);
         Assert.Equal("MMT.NoThresholdData", result.MotivationalMessageKey);
         Assert.Null(result.Choices.Single().ConservativeThresholdUsed);
+    }
+
+    [Fact]
+    public async Task Same_specialty_in_two_universities_uses_selected_program_main_threshold()
+    {
+        await using var db = Db();
+        var userId = Guid.NewGuid();
+        var cluster = new MmtCluster(Guid.NewGuid(), "Cluster", "C1", null, Now);
+        var specialty = new Specialty(Guid.NewGuid(), "LAW", "Law", null, Now);
+        var firstUniversity = new University(Guid.NewGuid(), "University A", null, "Dushanbe", UniversityType.Public, null, Now);
+        var secondUniversity = new University(Guid.NewGuid(), "University B", null, "Khujand", UniversityType.Public, null, Now);
+        var first = new AdmissionProgram(Guid.NewGuid(), firstUniversity.Id, specialty.Id, cluster.Id, AdmissionType.Budget, StudyForm.FullTime, StudyLanguage.Tajik, 2026, null, true, Now);
+        var second = new AdmissionProgram(Guid.NewGuid(), secondUniversity.Id, specialty.Id, cluster.Id, AdmissionType.Budget, StudyForm.FullTime, StudyLanguage.Tajik, 2026, null, true, Now);
+        db.AddRange(cluster, specialty, firstUniversity, secondUniversity, first, second,
+            new PassingScoreHistory(Guid.NewGuid(), first.Id, 2025, 300m, null, null, null, Now),
+            new PassingScoreHistory(Guid.NewGuid(), first.Id, 2025, 210m, null, null, null, Now, DistributionRound.Repeat),
+            new PassingScoreHistory(Guid.NewGuid(), second.Id, 2025, 250m, null, null, null, Now));
+        await db.SaveChangesAsync();
+        var service = Service(db); var principal = User(userId);
+        await service.UpsertProfileAsync(principal, new(cluster.Id, 2026, second.Id), default);
+        await service.ReplaceChoicesAsync(principal, new([new(first.Id, 1), new(second.Id, 2)]), default);
+
+        var result = (await service.SimulateAsync(principal, new(260m), default)).Value!;
+
+        Assert.Equal(second.Id, result.AcceptedAdmissionProgramId);
+        Assert.Equal(300m, result.Choices.Single(x => x.AdmissionProgramId == first.Id).PassingScoreUsed);
+        Assert.Equal(250m, result.Choices.Single(x => x.AdmissionProgramId == second.Id).PassingScoreUsed);
     }
 
     private static async Task<SeedData> SeedProgramsAsync(MmtDbContext db, bool firstPublished = true)

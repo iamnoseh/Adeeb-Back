@@ -75,11 +75,20 @@ public sealed class MmtModuleTests
     }
 
     [Fact]
-    public async Task Duplicate_score_for_program_and_year_is_rejected()
+    public async Task Duplicate_score_for_program_year_and_round_is_rejected()
     {
         await using var db = Db(); var program = await SeedProgram(db); var service = Programs(db);
         Assert.True((await service.AddScoreAsync(program.Id, new(2025, 250, null, null, null), default)).IsSuccess);
         Assert.Equal(MmtErrors.DuplicateScore.Code, (await service.AddScoreAsync(program.Id, new(2025, 260, null, null, null), default)).Error?.Code);
+    }
+
+    [Fact]
+    public async Task Same_program_and_year_accepts_main_and_repeat_scores()
+    {
+        await using var db = Db(); var program = await SeedProgram(db); var service = Programs(db);
+        Assert.True((await service.AddScoreAsync(program.Id, new(2025, 250, null, null, null, (int)DistributionRound.Main), default)).IsSuccess);
+        Assert.True((await service.AddScoreAsync(program.Id, new(2025, 240, null, null, null, (int)DistributionRound.Repeat), default)).IsSuccess);
+        Assert.Equal(2, await db.PassingScores.CountAsync());
     }
 
     [Fact]
@@ -115,6 +124,23 @@ public sealed class MmtModuleTests
     }
 
     [Fact]
+    public async Task Import_without_distribution_round_column_defaults_to_main()
+    {
+        await using var db = Db();
+        var legacyHeaders = MmtSpreadsheet.Headers.Where(x => x != "DistributionRound").ToArray();
+        var legacyRow = Row().Where((_, index) => index != 14).ToArray();
+
+        var result = await Import(db).ConfirmAsync(new MmtImportConfirmRequestDto
+        {
+            File = File(WorkbookWithHeaders(legacyHeaders, legacyRow)),
+            CreateMissingReferences = true
+        }, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(DistributionRound.Main, (await db.PassingScores.SingleAsync()).DistributionRound);
+    }
+
+    [Fact]
     public async Task Student_read_returns_only_active_published_current_year_programs()
     {
         await using var db = Db(); var refs = SeedReferences(db);
@@ -125,6 +151,49 @@ public sealed class MmtModuleTests
         await db.SaveChangesAsync();
         var result = await Programs(db).GetProgramsAsync(new AdmissionProgramFilter(), false, SupportedLanguage.Tajik, default);
         Assert.Single(result.Value!.Items);
+    }
+
+    [Fact]
+    public async Task Mmt_pagination_defaults_to_ten_and_clamps_to_fifty()
+    {
+        await using var db = Db();
+        var refs = SeedReferences(db);
+        for (var i = 0; i < 55; i++)
+            db.AdmissionPrograms.Add(new AdmissionProgram(Guid.NewGuid(), refs.University.Id, refs.Specialty.Id, refs.Cluster.Id,
+                AdmissionType.Budget, StudyForm.FullTime, StudyLanguage.Tajik, 2026, null, true, Now));
+        await db.SaveChangesAsync();
+
+        var defaultPage = await Programs(db).GetProgramsAsync(new AdmissionProgramFilter(), true, SupportedLanguage.Tajik, default);
+        var clampedPage = await Programs(db).GetProgramsAsync(new AdmissionProgramFilter(Page: 0, PageSize: 100), true, SupportedLanguage.Tajik, default);
+
+        Assert.Equal(10, defaultPage.Value!.Items.Count);
+        Assert.Equal(10, defaultPage.Value.PageSize);
+        Assert.Equal(1, clampedPage.Value!.Page);
+        Assert.Equal(50, clampedPage.Value.PageSize);
+        Assert.Equal(50, clampedPage.Value.Items.Count);
+    }
+
+    [Fact]
+    public async Task Dashboard_missing_score_count_is_not_limited_to_first_page()
+    {
+        await using var db = Db();
+        var refs = SeedReferences(db);
+        for (var i = 0; i < 101; i++)
+        {
+            var program = new AdmissionProgram(Guid.NewGuid(), refs.University.Id, refs.Specialty.Id, refs.Cluster.Id,
+                AdmissionType.Budget, StudyForm.FullTime, StudyLanguage.Tajik, 2026, null, true, Now);
+            db.AdmissionPrograms.Add(program);
+            if (i < 100)
+                db.PassingScores.Add(new PassingScoreHistory(Guid.NewGuid(), program.Id, 2025, 250m, null, null, null, Now));
+        }
+        await db.SaveChangesAsync();
+
+        var stats = await new MmtDashboardService(db, new Clock(), Options.Create(new MmtOptions { CurrentAdmissionYear = 2027 }))
+            .GetAsync(default);
+
+        Assert.Equal(101, stats.PublishedProgramsCount);
+        Assert.Equal(1, stats.ProgramsMissingLatestScoreCount);
+        Assert.Equal(2027, stats.CurrentAdmissionYear);
     }
 
     [Fact]
@@ -174,6 +243,20 @@ public sealed class MmtModuleTests
     }
 
     [Fact]
+    public async Task Import_updates_score_by_program_year_and_distribution_round()
+    {
+        await using var db = Db(); var service = Import(db);
+        await service.ConfirmAsync(new MmtImportConfirmRequestDto { File = File(Workbook(Row(round: "Main"))), CreateMissingReferences = true }, default);
+        await service.ConfirmAsync(new MmtImportConfirmRequestDto { File = File(Workbook(Row(score: "240", round: "Repeat"))), CreateMissingReferences = true }, default);
+        var result = await service.ConfirmAsync(new MmtImportConfirmRequestDto { File = File(Workbook(Row(score: "235", round: "Repeat"))), CreateMissingReferences = true, ExistingScoreMode = (int)ExistingScoreMode.UpdateExisting }, default);
+
+        Assert.Equal(1, result.Value!.UpdatedScores);
+        Assert.Equal(2, await db.PassingScores.CountAsync());
+        Assert.Equal(287.50m, (await db.PassingScores.SingleAsync(x => x.DistributionRound == DistributionRound.Main)).PassingScore);
+        Assert.Equal(235m, (await db.PassingScores.SingleAsync(x => x.DistributionRound == DistributionRound.Repeat)).PassingScore);
+    }
+
+    [Fact]
     public async Task Malformed_workbook_is_rejected_as_validation_error()
     {
         await using var db = Db();
@@ -200,14 +283,16 @@ public sealed class MmtModuleTests
         db.Add(program); await db.SaveChangesAsync(); return program;
     }
     private static IFormFile File(byte[] bytes) => new FormFile(new MemoryStream(bytes), 0, bytes.Length, "File", "mmt.xlsx") { Headers = new HeaderDictionary(), ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
-    private static string[] Row(string clusterCode = "C2", string score = "287.50") => ["2026", clusterCode, "Cluster 2", "Tajik National University", "TNU", "Dushanbe", "Public", "LAW", "Law", "Budget", "FullTime", "Tajik", "50", score, "MMT", ""];
+    private static string[] Row(string clusterCode = "C2", string score = "287.50", string round = "Main") => ["2026", clusterCode, "Cluster 2", "Tajik National University", "TNU", "Dushanbe", "Public", "LAW", "Law", "Budget", "FullTime", "Tajik", "50", score, round, "MMT", ""];
     private static byte[] Workbook(params string[][] rows)
+        => WorkbookWithHeaders(MmtSpreadsheet.Headers, rows);
+    private static byte[] WorkbookWithHeaders(string[] headers, params string[][] rows)
     {
         using var stream = new MemoryStream();
         using (var document = DocumentFormat.OpenXml.Packaging.SpreadsheetDocument.Create(stream, DocumentFormat.OpenXml.SpreadsheetDocumentType.Workbook, true))
         {
             var wb = document.AddWorkbookPart(); wb.Workbook = new DocumentFormat.OpenXml.Spreadsheet.Workbook(); var ws = wb.AddNewPart<DocumentFormat.OpenXml.Packaging.WorksheetPart>();
-            var data = new DocumentFormat.OpenXml.Spreadsheet.SheetData(); data.Append(MakeRow(MmtSpreadsheet.Headers)); foreach (var row in rows) data.Append(MakeRow(row));
+            var data = new DocumentFormat.OpenXml.Spreadsheet.SheetData(); data.Append(MakeRow(headers)); foreach (var row in rows) data.Append(MakeRow(row));
             ws.Worksheet = new DocumentFormat.OpenXml.Spreadsheet.Worksheet(data); var sheets = wb.Workbook.AppendChild(new DocumentFormat.OpenXml.Spreadsheet.Sheets()); sheets.Append(new DocumentFormat.OpenXml.Spreadsheet.Sheet { Id = wb.GetIdOfPart(ws), SheetId = 1, Name = "Import" }); wb.Workbook.Save();
         }
         return stream.ToArray();

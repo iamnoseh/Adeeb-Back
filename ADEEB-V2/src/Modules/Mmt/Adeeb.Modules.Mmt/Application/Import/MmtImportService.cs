@@ -63,7 +63,7 @@ public sealed class MmtImportService(MmtDbContext db, IDateTimeProvider clock, M
                 .ToListAsync(ct)).ToDictionary(ProgramKey);
             var programIds = programs.Values.Select(x => x.Id).ToArray();
             var scores = (await db.PassingScores.Where(x => programIds.Contains(x.AdmissionProgramId) && years.Contains(x.Year)).ToListAsync(ct))
-                .ToDictionary(x => ScoreKey(x.AdmissionProgramId, x.Year));
+                .ToDictionary(x => ScoreKey(x.AdmissionProgramId, x.Year, x.DistributionRound));
             var importedPrograms = 0; var inserted = 0; var updated = 0; var skipped = 0;
             foreach (var preview in rows.Where(x => x.IsValid))
             {
@@ -78,10 +78,11 @@ public sealed class MmtImportService(MmtDbContext db, IDateTimeProvider clock, M
                     programs.Add(key, program); db.AdmissionPrograms.Add(program); importedPrograms++;
                 }
                 else if (request.PublishAdmissionPrograms && !program.IsPublished) program.SetPublished(true, clock.UtcNow);
-                var scoreKey = ScoreKey(program.Id, row.Year);
+                var round = (DistributionRound)row.DistributionRound;
+                var scoreKey = ScoreKey(program.Id, row.Year, round);
                 scores.TryGetValue(scoreKey, out var score);
-                if (score is null) { score = new PassingScoreHistory(Guid.NewGuid(), program.Id, row.Year, row.PassingScore, row.SeatsCount, row.Source, row.Note, clock.UtcNow); scores.Add(scoreKey, score); db.PassingScores.Add(score); inserted++; }
-                else if (mode == ExistingScoreMode.UpdateExisting) { score.Update(row.Year, row.PassingScore, row.SeatsCount, row.Source, row.Note, clock.UtcNow); updated++; }
+                if (score is null) { score = new PassingScoreHistory(Guid.NewGuid(), program.Id, row.Year, row.PassingScore, row.SeatsCount, row.Source, row.Note, clock.UtcNow, round); scores.Add(scoreKey, score); db.PassingScores.Add(score); inserted++; }
+                else if (mode == ExistingScoreMode.UpdateExisting) { score.Update(row.Year, row.PassingScore, row.SeatsCount, row.Source, row.Note, clock.UtcNow, round); updated++; }
                 else if (mode == ExistingScoreMode.FailOnExisting)
                 {
                     if (transaction is not null) await transaction.RollbackAsync(ct);
@@ -157,7 +158,7 @@ public sealed class MmtImportService(MmtDbContext db, IDateTimeProvider clock, M
         var programMap = programs.ToDictionary(ProgramKey, StringComparer.Ordinal);
         var programIds = programs.Select(x => x.Id).ToArray();
         HashSet<string> existingScores = mode == ExistingScoreMode.FailOnExisting
-            ? (await db.PassingScores.AsNoTracking().Where(x => programIds.Contains(x.AdmissionProgramId) && years.Contains(x.Year)).Select(x => new { x.AdmissionProgramId, x.Year }).ToListAsync(ct)).Select(x => $"{x.AdmissionProgramId:N}|{x.Year}").ToHashSet(StringComparer.Ordinal)
+            ? (await db.PassingScores.AsNoTracking().Where(x => programIds.Contains(x.AdmissionProgramId) && years.Contains(x.Year)).Select(x => new { x.AdmissionProgramId, x.Year, x.DistributionRound }).ToListAsync(ct)).Select(x => ScoreKey(x.AdmissionProgramId, x.Year, x.DistributionRound)).ToHashSet(StringComparer.Ordinal)
             : [];
         var rows = new List<MmtImportRowPreviewDto>(source.Count);
         foreach (var item in source)
@@ -173,7 +174,7 @@ public sealed class MmtImportService(MmtDbContext db, IDateTimeProvider clock, M
             if (cluster is not null && university is not null && specialty is not null)
             {
                 programMap.TryGetValue(ProgramKey(university.Id, specialty.Id, cluster.Id, r.AdmissionType, r.StudyForm, r.StudyLanguage, r.Year), out var program);
-                if (program is not null && mode == ExistingScoreMode.FailOnExisting && existingScores.Contains($"{program.Id:N}|{r.Year}")) errors.Add("Passing score already exists.");
+                if (program is not null && mode == ExistingScoreMode.FailOnExisting && existingScores.Contains(ScoreKey(program.Id, r.Year, (DistributionRound)r.DistributionRound))) errors.Add("Passing score already exists.");
             }
             rows.Add(item with { IsValid = errors.Count == 0, ValidationErrors = errors });
         }
@@ -183,6 +184,6 @@ public sealed class MmtImportService(MmtDbContext db, IDateTimeProvider clock, M
     private static MmtImportPreviewResultDto Summarize(IReadOnlyList<MmtImportRowPreviewDto> rows) => new(rows.Count, rows.Count(x => x.IsValid), rows.Count(x => !x.IsValid), rows.Count(x => x.IsDuplicate), rows);
     private static string ProgramKey(AdmissionProgram x) => ProgramKey(x.UniversityId, x.SpecialtyId, x.MmtClusterId, (int)x.AdmissionType, (int)x.StudyForm, (int)x.StudyLanguage, x.AdmissionYear);
     private static string ProgramKey(Guid university, Guid specialty, Guid cluster, int type, int form, int language, int year) => $"{university:N}|{specialty:N}|{cluster:N}|{type}|{form}|{language}|{year}";
-    private static string ScoreKey(Guid programId, int year) => $"{programId:N}|{year}";
+    private static string ScoreKey(Guid programId, int year, DistributionRound distributionRound) => $"{programId:N}|{year}|{(int)distributionRound}";
     private static Result<T> InvalidFile<T>(string message) => Result<T>.ValidationFailure(new Dictionary<string, IReadOnlyList<Adeeb.SharedKernel.Errors.Error>> { ["file"] = [Adeeb.SharedKernel.Errors.Error.Validation("mmt.import.file_invalid", message)] });
 }

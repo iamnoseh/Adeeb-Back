@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Edit3, Plus, Power } from "lucide-react";
+import { Eye, PenLine, Plus, Power } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { mmtApi, mmtKeys } from "@/features/mmt/api/mmt.api";
 import { subjectKeys, subjectsApi } from "@/features/academic/api/subjects.api";
-import { errorMessage, enumLabel } from "@/features/mmt/lib/mmt";
+import { errorMessage, enumLabel, mmtDefaultPageSize, mmtPage } from "@/features/mmt/lib/mmt";
 import { useMmtLabels } from "@/features/mmt/lib/useMmtLabels";
 import type {
   CatalogDto,
@@ -22,6 +22,8 @@ import {
   Modal,
   Pagination,
 } from "@/features/mmt/ui/MmtUi";
+import { MmtFilterToolbar } from "@/features/mmt/ui/MmtFilterToolbar";
+import { useColumnVisibility, type AdminListColumn } from "@/shared/ui/useColumnVisibility";
 import { Button } from "@/shared/ui/Button";
 import { FormField } from "@/shared/ui/FormField";
 import { Input, Textarea } from "@/shared/ui/Input";
@@ -30,6 +32,7 @@ import { MultiSelectField } from "@/shared/ui/MultiSelectField";
 import { PageHeader } from "@/shared/ui/PageHeader";
 import { EmptyState, ErrorState } from "@/shared/ui/StateBlock";
 import { Table, TableShell } from "@/shared/ui/Table";
+import { TableActionButton } from "@/shared/ui/TableActionButton";
 
 export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
   const { t } = useTranslation();
@@ -55,7 +58,7 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
     { title: string; description: string; empty: string }
   >;
   const [params, setParams] = useSearchParams();
-  const page = Math.max(1, Number(params.get("page") ?? 1));
+  const page = mmtPage(params.get("page"));
   const search = params.get("search") ?? "";
   const [searchInput, setSearchInput] = useState(search);
   const activeValue = params.get("active") ?? "";
@@ -63,11 +66,17 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
   const [editing, setEditing] = useState<CatalogDto | "new" | null>(null);
   const toast = useMmtToast();
   const queryClient = useQueryClient();
+  const columns: AdminListColumn[] = kind === "clusters"
+    ? [{ id: "primary", label: t("mmt.code"), locked: true }, { id: "name", label: t("mmt.name") }, { id: "subjects", label: t("mmt.subjects") }, { id: "status", label: t("mmt.status") }, { id: "actions", label: t("mmt.actions"), locked: true }]
+    : kind === "universities"
+      ? [{ id: "primary", label: t("mmt.university"), locked: true }, { id: "city", label: t("mmt.city") }, { id: "type", label: t("mmt.universityType") }, { id: "status", label: t("mmt.status") }, { id: "actions", label: t("mmt.actions"), locked: true }]
+      : [{ id: "primary", label: t("mmt.code"), locked: true }, { id: "name", label: t("mmt.specialty") }, { id: "status", label: t("mmt.status") }, { id: "actions", label: t("mmt.actions"), locked: true }];
+  const columnVisibility = useColumnVisibility(`adeeb.columns.mmt.${kind}`, columns);
   const queryParams = {
     search: search || undefined,
     isActive,
     page,
-    pageSize: 20,
+    pageSize: mmtDefaultPageSize,
   };
   const query = useQuery({
     queryKey: mmtKeys.catalog(kind, queryParams),
@@ -77,7 +86,10 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
     mutationFn: ({ id, next }: { id: string; next: boolean }) =>
       mmtApi.setCatalogStatus(kind, id, next),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["mmt", kind] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["mmt", kind] }),
+        queryClient.invalidateQueries({ queryKey: mmtKeys.dashboard() }),
+      ]);
       toast.success(t("mmt.statusSaved"));
     },
     onError: (error) =>
@@ -87,6 +99,7 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
   const updateParam = useCallback(
     (key: string, value: string) => {
       const next = new URLSearchParams(params);
+      next.delete("pageSize");
       if (value) next.set(key, value);
       else next.delete(key);
       if (key !== "page") next.set("page", "1");
@@ -103,6 +116,12 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
     );
     return () => window.clearTimeout(timeout);
   }, [search, searchInput, updateParam]);
+  function clearFilters() {
+    const next = new URLSearchParams();
+    if (search) next.set("search", search);
+    next.set("page", "1");
+    setParams(next);
+  }
 
   return (
     <>
@@ -115,13 +134,7 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
           </Button>
         }
       />
-      <div className="mb-4 grid gap-3 rounded-2xl border border-[var(--border)] bg-white p-4 md:grid-cols-[1fr_220px]">
-        <Input
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-          placeholder={t("mmt.searchCatalog")}
-          aria-label={t("mmt.search")}
-        />
+      <MmtFilterToolbar searchValue={searchInput} onSearchChange={setSearchInput} searchPlaceholder={t("mmt.searchCatalog")} filterCount={params.has("active") ? 1 : 0} onClearFilters={clearFilters} columns={columns} columnVisibility={columnVisibility}>
         <SelectField
           value={activeValue}
           options={[
@@ -131,7 +144,7 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
           ]}
           onValueChange={(value) => updateParam("active", value)}
         />
-      </div>
+      </MmtFilterToolbar>
 
       {query.isLoading ? (
         <p className="text-sm text-[var(--muted)]">{t("mmt.loading")}</p>
@@ -152,7 +165,7 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
         <TableShell>
           <Table>
             <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]">
-              <CatalogHead kind={kind} />
+              <CatalogHead kind={kind} isVisible={columnVisibility.isVisible} />
             </thead>
             <tbody>
               {query.data.items.map((item) => (
@@ -160,6 +173,7 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
                   key={item.id}
                   kind={kind}
                   item={item}
+                  isVisible={columnVisibility.isVisible}
                   onEdit={() => setEditing(item)}
                   onStatus={() => {
                     if (
@@ -175,13 +189,15 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
               ))}
             </tbody>
           </Table>
-          <Pagination
-            page={query.data.page}
-            pageSize={query.data.pageSize}
-            total={query.data.totalCount}
-            onPage={(value) => updateParam("page", String(value))}
-          />
         </TableShell>
+      ) : null}
+      {query.data && query.data.totalCount > query.data.pageSize ? (
+        <Pagination
+          page={query.data.page}
+          pageSize={query.data.pageSize}
+          total={query.data.totalCount}
+          onPage={(value) => updateParam("page", String(value))}
+        />
       ) : null}
       {editing ? (
         <CatalogForm
@@ -192,7 +208,10 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
           onClose={() => setEditing(null)}
           onSaved={async () => {
             setEditing(null);
-            await queryClient.invalidateQueries({ queryKey: ["mmt", kind] });
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: ["mmt", kind] }),
+              queryClient.invalidateQueries({ queryKey: mmtKeys.dashboard() }),
+            ]);
             toast.success(t("mmt.recordSaved"));
           }}
           onError={toast.error}
@@ -203,15 +222,15 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
   );
 }
 
-function CatalogHead({ kind }: { kind: CatalogKind }) {
+function CatalogHead({ kind, isVisible }: { kind: CatalogKind; isVisible: (id: string) => boolean }) {
   const { t } = useTranslation();
   if (kind === "clusters")
     return (
       <tr>
         <th className="px-4 py-3">{t("mmt.code")}</th>
-        <th className="px-4 py-3">{t("mmt.name")}</th>
-        <th className="px-4 py-3">{t("mmt.subjects")}</th>
-        <th className="px-4 py-3">{t("mmt.status")}</th>
+        {isVisible("name") ? <th className="px-4 py-3">{t("mmt.name")}</th> : null}
+        {isVisible("subjects") ? <th className="px-4 py-3">{t("mmt.subjects")}</th> : null}
+        {isVisible("status") ? <th className="px-4 py-3">{t("mmt.status")}</th> : null}
         <th className="px-4 py-3 text-right">{t("mmt.actions")}</th>
       </tr>
     );
@@ -219,17 +238,17 @@ function CatalogHead({ kind }: { kind: CatalogKind }) {
     return (
       <tr>
         <th className="px-4 py-3">{t("mmt.university")}</th>
-        <th className="px-4 py-3">{t("mmt.city")}</th>
-        <th className="px-4 py-3">{t("mmt.universityType")}</th>
-        <th className="px-4 py-3">{t("mmt.status")}</th>
+        {isVisible("city") ? <th className="px-4 py-3">{t("mmt.city")}</th> : null}
+        {isVisible("type") ? <th className="px-4 py-3">{t("mmt.universityType")}</th> : null}
+        {isVisible("status") ? <th className="px-4 py-3">{t("mmt.status")}</th> : null}
         <th className="px-4 py-3 text-right">{t("mmt.actions")}</th>
       </tr>
     );
   return (
     <tr>
       <th className="px-4 py-3">{t("mmt.code")}</th>
-      <th className="px-4 py-3">{t("mmt.specialty")}</th>
-      <th className="px-4 py-3">{t("mmt.status")}</th>
+      {isVisible("name") ? <th className="px-4 py-3">{t("mmt.specialty")}</th> : null}
+      {isVisible("status") ? <th className="px-4 py-3">{t("mmt.status")}</th> : null}
       <th className="px-4 py-3 text-right">{t("mmt.actions")}</th>
     </tr>
   );
@@ -240,11 +259,13 @@ function CatalogRow({
   item,
   onEdit,
   onStatus,
+  isVisible,
 }: {
   kind: CatalogKind;
   item: CatalogDto;
   onEdit: () => void;
   onStatus: () => void;
+  isVisible: (id: string) => boolean;
 }) {
   const { t } = useTranslation();
   const { universityTypes } = useMmtLabels();
@@ -284,31 +305,24 @@ function CatalogRow({
           ];
   return (
     <tr className="border-t border-[var(--border)]">
-      {cells.map((cell, index) => (
+      {cells.filter((_, index) => {
+        const ids = kind === "clusters" ? ["primary", "name", "subjects"] : kind === "universities" ? ["primary", "city", "type"] : ["primary", "name"];
+        return index === 0 || Boolean(ids[index] && isVisible(ids[index]!));
+      }).map((cell, index) => (
         <td className="px-4 py-3" key={index}>
           {cell}
         </td>
       ))}
-      <td className="px-4 py-3">
+      {isVisible("status") ? <td className="px-4 py-3">
         <BooleanBadge value={item.isActive} />
-      </td>
+      </td> : null}
       <td className="px-4 py-3">
         <div className="flex justify-end gap-2">
-          <Button
-            variant="secondary"
-            className="h-10 min-h-10 px-3"
-            onClick={onEdit}
-          >
-            <Edit3 className="h-4 w-4" /> {t("mmt.edit")}
-          </Button>
-          <Button
-            variant="ghost"
-            className="h-10 min-h-10 px-3"
-            onClick={onStatus}
-          >
-            <Power className="h-4 w-4" />{" "}
-            {item.isActive ? t("mmt.deactivate") : t("mmt.activate")}
-          </Button>
+          {kind !== "clusters" ? (
+            <TableActionButton to={`/admin/mmt/${kind}/${item.id}`} label={t("mmt.open")} icon={<Eye className="h-5 w-5" />} />
+          ) : null}
+          <TableActionButton label={t("mmt.edit")} icon={<PenLine className="h-5 w-5" />} onClick={onEdit} />
+          <TableActionButton label={item.isActive ? t("mmt.deactivate") : t("mmt.activate")} icon={<Power className="h-5 w-5" />} onClick={onStatus} />
         </div>
       </td>
     </tr>

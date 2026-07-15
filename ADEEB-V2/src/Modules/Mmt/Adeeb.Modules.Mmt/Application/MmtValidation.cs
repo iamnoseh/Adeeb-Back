@@ -27,12 +27,13 @@ internal static class MmtValidation
     public static Result ValidateProgram(UpdateAdmissionProgramDto r) => ValidateProgramValues(r.UniversityId, r.SpecialtyId, r.MmtClusterId,
         r.AdmissionType, r.StudyForm, r.StudyLanguage, r.AdmissionYear, r.SeatsCount);
 
-    public static Result ValidateScore(int year, decimal score, int? seats, string? source, string? note)
+    public static Result ValidateScore(int year, decimal score, int? seats, string? source, string? note, int distributionRound)
     {
         var errors = TextErrors([("source", source, 500, false), ("note", note, 2000, false)]);
         if (year is < 2000 or > 2100) Add(errors, "year", "mmt.year.invalid", "MMT.YearInvalid");
         if (score <= 0 || score > 1000 || Scale(score) > 2) Add(errors, "passingScore", "mmt.score.invalid", "MMT.ScoreInvalid");
         if (seats < 0) Add(errors, "seatsCount", "mmt.seats.invalid", "MMT.SeatsInvalid");
+        AddEnum<DistributionRound>(errors, "distributionRound", distributionRound);
         return Finish(errors);
     }
 

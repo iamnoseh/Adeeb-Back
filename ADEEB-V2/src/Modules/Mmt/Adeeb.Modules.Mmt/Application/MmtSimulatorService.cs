@@ -204,7 +204,7 @@ public sealed class MmtSimulatorService(
         if (filter.UserId.HasValue) query = query.Where(x => x.UserId == filter.UserId);
         if (filter.AdmissionYear.HasValue) query = query.Where(x => x.AdmissionYear == filter.AdmissionYear);
         if (filter.IsActive.HasValue) query = query.Where(x => x.IsActive == filter.IsActive);
-        var page = Math.Max(1, filter.Page); var size = Math.Clamp(filter.PageSize, 1, 100);
+        var page = MmtPaging.Page(filter.Page); var size = MmtPaging.PageSize(filter.PageSize);
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(x => x.AdmissionYear).ThenByDescending(x => x.UpdatedAtUtc)
             .Skip((page - 1) * size).Take(size).ToListAsync(ct);
@@ -215,6 +215,14 @@ public sealed class MmtSimulatorService(
     {
         var profile = await ProfileQuery().SingleOrDefaultAsync(x => x.Id == id, ct);
         return profile is null ? Result<StudentMmtProfileDto>.Failure(MmtErrors.StudentProfileNotFound) : Result<StudentMmtProfileDto>.Success(ToProfileDto(profile));
+    }
+
+    public async Task<Result<IReadOnlyList<StudentAdmissionChoiceDto>>> GetAdminChoicesAsync(Guid profileId, CancellationToken ct)
+    {
+        if (!await db.StudentProfiles.AsNoTracking().AnyAsync(x => x.Id == profileId, ct))
+            return Result<IReadOnlyList<StudentAdmissionChoiceDto>>.Failure(MmtErrors.StudentProfileNotFound);
+
+        return Result<IReadOnlyList<StudentAdmissionChoiceDto>>.Success(await ChoiceDtos(profileId).ToListAsync(ct));
     }
 
     public Task<Result<PagedResponse<MmtEvaluationListItemDto>>> GetAdminEvaluationsAsync(MmtEvaluationFilter filter, CancellationToken ct) =>
@@ -240,7 +248,7 @@ public sealed class MmtSimulatorService(
         else if (filter.UserId.HasValue) query = query.Where(x => x.UserId == filter.UserId);
         if (filter.StudentMmtProfileId.HasValue) query = query.Where(x => x.StudentMmtProfileId == filter.StudentMmtProfileId);
         if (filter.AdmissionYear.HasValue) query = query.Where(x => x.AdmissionYear == filter.AdmissionYear);
-        var page = Math.Max(1, filter.Page); var size = Math.Clamp(filter.PageSize, 1, 100);
+        var page = MmtPaging.Page(filter.Page); var size = MmtPaging.PageSize(filter.PageSize);
         var total = await query.CountAsync(ct);
         var items = await query.OrderByDescending(x => x.EvaluatedAtUtc).Skip((page - 1) * size).Take(size)
             .Select(x => new MmtEvaluationListItemDto(x.Id, x.TotalScore, x.AdmissionYear, x.ClusterId,
@@ -266,7 +274,7 @@ public sealed class MmtSimulatorService(
                 x.AdmissionProgram.MmtClusterId, x.AdmissionProgram.MmtCluster.Code, x.AdmissionProgram.MmtCluster.NameFor(MmtCatalogService.CurrentLanguage),
                 (int)x.AdmissionProgram.AdmissionType, (int)x.AdmissionProgram.StudyForm, (int)x.AdmissionProgram.StudyLanguage,
                 x.AdmissionProgram.AdmissionYear, x.AdmissionProgram.SeatsCount, x.AdmissionProgram.IsPublished,
-                x.AdmissionProgram.IsActive, x.AdmissionProgram.PassingScores.OrderByDescending(s => s.Year)
+                x.AdmissionProgram.IsActive, x.AdmissionProgram.PassingScores.Where(s => s.DistributionRound == DistributionRound.Main).OrderByDescending(s => s.Year)
                     .Select(s => (decimal?)s.PassingScore).FirstOrDefault()),
             x.CreatedAtUtc,
             x.UpdatedAtUtc));
@@ -296,7 +304,8 @@ public sealed class MmtSimulatorService(
 
     private static (decimal? Latest, decimal? Threshold) Threshold(IEnumerable<PassingScoreHistory> history)
     {
-        var newest = history.OrderByDescending(x => x.Year).Select(x => x.PassingScore).Take(3).ToList();
+        var newest = history.Where(x => x.DistributionRound == DistributionRound.Main)
+            .OrderByDescending(x => x.Year).Select(x => x.PassingScore).Take(3).ToList();
         if (newest.Count == 0) return (null, null);
         var latest = newest[0];
         var average = decimal.Round(newest.Average(), 2, MidpointRounding.AwayFromZero);

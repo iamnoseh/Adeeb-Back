@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace Adeeb.Modules.Mmt.Contracts;
 
-public sealed record MmtPageQuery(string? Search = null, bool? IsActive = null, int Page = 1, int PageSize = 20);
+public sealed record MmtPageQuery(string? Search = null, bool? IsActive = null, int Page = 1, int PageSize = 10);
 public sealed record PagedResponse<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount);
 public sealed record StatusRequest(bool IsActive);
 public sealed record PublishRequest(bool IsPublished);
@@ -40,7 +40,7 @@ public sealed record UpdateAdmissionProgramDto(Guid UniversityId, Guid Specialty
     int StudyForm, int StudyLanguage, int AdmissionYear, int? SeatsCount, bool IsPublished, bool IsActive);
 public sealed record AdmissionProgramFilter(Guid? ClusterId = null, Guid? UniversityId = null, Guid? SpecialtyId = null,
     int? AdmissionType = null, int? StudyForm = null, int? StudyLanguage = null, int? AdmissionYear = null,
-    bool? IsPublished = null, bool? IsActive = null, string? Search = null, int Page = 1, int PageSize = 20);
+    bool? IsPublished = null, bool? IsActive = null, string? Search = null, int Page = 1, int PageSize = 10);
 public sealed record AdmissionProgramListItemDto(Guid Id, Guid UniversityId, string UniversityName, Guid SpecialtyId,
     string SpecialtyCode, string SpecialtyName, Guid MmtClusterId, string ClusterCode, string ClusterName,
     int AdmissionType, int StudyForm, int StudyLanguage, int AdmissionYear, int? SeatsCount, bool IsPublished,
@@ -50,10 +50,13 @@ public sealed record AdmissionProgramDto(Guid Id, UniversityDto University, Spec
     bool IsActive, decimal? LatestPassingScore, decimal? AveragePassingScoreLast3Years, decimal? ConservativeThreshold,
     DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
 
-public sealed record CreatePassingScoreHistoryDto(int Year, decimal PassingScore, int? SeatsCount, string? Source, string? Note);
-public sealed record UpdatePassingScoreHistoryDto(int Year, decimal PassingScore, int? SeatsCount, string? Source, string? Note);
+public sealed record CreatePassingScoreHistoryDto(int Year, decimal PassingScore, int? SeatsCount, string? Source, string? Note,
+    int DistributionRound = 0);
+public sealed record UpdatePassingScoreHistoryDto(int Year, decimal PassingScore, int? SeatsCount, string? Source, string? Note,
+    int DistributionRound = 0);
 public sealed record PassingScoreHistoryDto(Guid Id, Guid AdmissionProgramId, int Year, decimal PassingScore,
-    int? SeatsCount, string? Source, string? Note, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
+    int? SeatsCount, string? Source, string? Note, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc,
+    int DistributionRound = 0);
 public sealed record PassingScoreAnalyticsDto(decimal? LatestPassingScore, decimal? AverageLast3Years, decimal? ConservativeThreshold);
 
 public sealed class MmtImportPreviewRequestDto
@@ -73,7 +76,8 @@ public sealed class MmtImportConfirmRequestDto
 }
 public sealed record MmtImportNormalizedRowDto(int Year, string ClusterCode, string ClusterName, string UniversityFullName,
     string? UniversityShortName, string UniversityCity, int UniversityType, string SpecialtyCode, string SpecialtyName,
-    int AdmissionType, int StudyForm, int StudyLanguage, int? SeatsCount, decimal PassingScore, string? Source, string? Note);
+    int AdmissionType, int StudyForm, int StudyLanguage, int? SeatsCount, decimal PassingScore, string? Source, string? Note,
+    int DistributionRound = 0);
 public sealed record MmtImportRowPreviewDto(int RowNumber, MmtImportNormalizedRowDto? Values, bool IsValid,
     bool IsDuplicate, IReadOnlyList<string> ValidationErrors);
 public sealed record MmtImportPreviewResultDto(int TotalRows, int ValidRowsCount, int InvalidRowsCount,
@@ -102,6 +106,18 @@ public sealed record MmtEvaluationDto(Guid Id, Guid UserId, Guid StudentMmtProfi
     decimal? ReadinessPercentage, string MotivationalMessageKey, DateTimeOffset CreatedAtUtc,
     IReadOnlyList<MmtAdmissionChoiceSnapshotDto> Choices);
 public sealed record StudentMmtProfileFilter(Guid? UserId = null, int? AdmissionYear = null, bool? IsActive = null,
-    int Page = 1, int PageSize = 20);
+    int Page = 1, int PageSize = 10);
 public sealed record MmtEvaluationFilter(Guid? UserId = null, Guid? StudentMmtProfileId = null,
-    int? AdmissionYear = null, int Page = 1, int PageSize = 20);
+    int? AdmissionYear = null, int Page = 1, int PageSize = 10);
+
+public sealed record MmtDashboardStatsDto(
+    int ActiveClustersCount,
+    int ActiveUniversitiesCount,
+    int ActiveSpecialtiesCount,
+    int PublishedProgramsCount,
+    int ActiveProgramsCount,
+    int ProgramsMissingLatestScoreCount,
+    int ProgramsMissingAnyScoreCount,
+    int CurrentAdmissionYear,
+    int EvaluationsCount,
+    int StudentProfilesCount);

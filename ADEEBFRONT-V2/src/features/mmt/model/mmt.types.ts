@@ -8,6 +8,18 @@ export type PagedResponse<T> = {
   pageSize: number;
   totalCount: number;
 };
+export type MmtDashboardStatsDto = {
+  activeClustersCount: number;
+  activeUniversitiesCount: number;
+  activeSpecialtiesCount: number;
+  publishedProgramsCount: number;
+  activeProgramsCount: number;
+  programsMissingLatestScoreCount: number;
+  programsMissingAnyScoreCount: number;
+  currentAdmissionYear: number;
+  evaluationsCount: number;
+  studentProfilesCount: number;
+};
 export type ListQuery = {
   search?: string | undefined;
   isActive?: boolean | undefined;
@@ -131,6 +143,7 @@ export type PassingScoreHistoryDto = {
   note: string | null;
   createdAtUtc: string;
   updatedAtUtc: string;
+  distributionRound: number;
 };
 export type PassingScoreInput = {
   year: number;
@@ -138,6 +151,7 @@ export type PassingScoreInput = {
   seatsCount: number | null;
   source: string | null;
   note: string | null;
+  distributionRound: number;
 };
 export type PassingScoreAnalyticsDto = {
   latestPassingScore: number | null;
@@ -162,6 +176,7 @@ export type MmtImportNormalizedRowDto = {
   passingScore: number;
   source: string | null;
   note: string | null;
+  distributionRound: number;
 };
 export type MmtImportRowPreviewDto = {
   rowNumber: number;
@@ -205,6 +220,11 @@ export type StudentMmtProfileDto = {
   createdAtUtc: string;
   updatedAtUtc: string;
 };
+export type UpsertStudentMmtProfileInput = {
+  mmtClusterId: string;
+  admissionYear?: number | null;
+  goalAdmissionProgramId?: string | null;
+};
 export type StudentProfileQuery = {
   userId?: string | undefined;
   admissionYear?: number | undefined;
@@ -219,6 +239,11 @@ export type StudentAdmissionChoiceDto = {
   createdAtUtc: string;
   updatedAtUtc: string;
 };
+export type AdmissionChoiceInput = {
+  admissionProgramId: string;
+  priorityOrder: number;
+};
+export type SimulateMmtEvaluationInput = { totalScore: number };
 export type MmtAdmissionChoiceSnapshotDto = {
   id: string;
   priorityOrder: number;
@@ -285,6 +310,12 @@ export const StudyLanguage = {
   Other: 3,
 } as const;
 export const UniversityType = { Public: 0, Private: 1, Other: 2 } as const;
+export const DistributionRound = {
+  Main: 0,
+  Repeat: 1,
+  Additional: 2,
+  Other: 3,
+} as const;
 export const ExistingScoreMode = {
   SkipExisting: 0,
   UpdateExisting: 1,

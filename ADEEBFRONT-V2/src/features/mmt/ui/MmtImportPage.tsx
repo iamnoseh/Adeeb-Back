@@ -1,8 +1,8 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download, FileCheck2, FileSpreadsheet, Upload } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { mmtApi } from "@/features/mmt/api/mmt.api";
+import { mmtApi, mmtKeys } from "@/features/mmt/api/mmt.api";
 import { enumLabel, errorMessage } from "@/features/mmt/lib/mmt";
 import { useMmtLabels } from "@/features/mmt/lib/useMmtLabels";
 import type {
@@ -23,6 +23,7 @@ import { Table, TableShell } from "@/shared/ui/Table";
 export function MmtImportPage() {
   const { t } = useTranslation();
   const labels = useMmtLabels();
+  const queryClient = useQueryClient();
   const [scoreMode, setScoreMode] = useState(
     String(ExistingScoreMode.SkipExisting),
   );
@@ -57,8 +58,9 @@ export function MmtImportPage() {
   });
   const confirm = useMutation({
     mutationFn: mmtApi.confirmImport,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setResult(data);
+      await queryClient.invalidateQueries({ queryKey: mmtKeys.all });
       toast.success(t("mmt.importCompleted"));
     },
     onError: (error) => toast.error(errorMessage(error, t("mmt.importFailed"))),
@@ -174,6 +176,7 @@ export function MmtImportPage() {
                   <th className="px-3 py-3">{t("mmt.cluster")}</th>
                   <th className="px-3 py-3">{t("mmt.year")}</th>
                   <th className="px-3 py-3">{t("mmt.score")}</th>
+                  <th className="px-3 py-3">{t("mmt.distributionRound")}</th>
                   <th className="px-3 py-3">{t("mmt.statusErrors")}</th>
                 </tr>
               </thead>
@@ -214,6 +217,11 @@ export function MmtImportPage() {
                     <td className="px-3 py-3">{row.values?.year ?? "—"}</td>
                     <td className="px-3 py-3 font-semibold">
                       {row.values?.passingScore?.toFixed(2) ?? "—"}
+                    </td>
+                    <td className="px-3 py-3">
+                      {row.values
+                        ? enumLabel(labels.distributionRounds, row.values.distributionRound, labels.unknown)
+                        : "—"}
                     </td>
                     <td className="px-3 py-3">
                       {row.isValid && !row.isDuplicate ? (

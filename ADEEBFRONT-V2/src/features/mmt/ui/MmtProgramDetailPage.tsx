@@ -1,5 +1,5 @@
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, Edit3, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Edit3, PenLine, Plus, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
@@ -21,8 +21,10 @@ import { Button } from "@/shared/ui/Button";
 import { FormField } from "@/shared/ui/FormField";
 import { Input, Textarea } from "@/shared/ui/Input";
 import { PageHeader } from "@/shared/ui/PageHeader";
+import { SelectField } from "@/shared/ui/SelectField";
 import { ErrorState } from "@/shared/ui/StateBlock";
 import { Table, TableShell } from "@/shared/ui/Table";
+import { TableActionButton } from "@/shared/ui/TableActionButton";
 
 export function MmtProgramDetailPage() {
   const { t } = useTranslation();
@@ -33,7 +35,7 @@ export function MmtProgramDetailPage() {
   const [scoreForm, setScoreForm] = useState<
     PassingScoreHistoryDto | "new" | null
   >(null);
-  const [program, scores, analytics] = useQueries({
+  const [program, scores, analytics, dashboard] = useQueries({
     queries: [
       {
         queryKey: mmtKeys.program(programId),
@@ -49,6 +51,10 @@ export function MmtProgramDetailPage() {
         queryKey: mmtKeys.analytics(programId),
         queryFn: () => mmtApi.analytics(programId),
         enabled: Boolean(programId),
+      },
+      {
+        queryKey: mmtKeys.dashboard(),
+        queryFn: mmtApi.dashboard,
       },
     ],
   });
@@ -67,6 +73,7 @@ export function MmtProgramDetailPage() {
       queryClient.invalidateQueries({ queryKey: mmtKeys.scores(programId) }),
       queryClient.invalidateQueries({ queryKey: mmtKeys.analytics(programId) }),
       queryClient.invalidateQueries({ queryKey: ["mmt", "programs"] }),
+      queryClient.invalidateQueries({ queryKey: mmtKeys.dashboard() }),
     ]);
   }
   if (program.isLoading || scores.isLoading || analytics.isLoading)
@@ -118,6 +125,9 @@ export function MmtProgramDetailPage() {
         <Metric label={t("mmt.seats")} value={item.seatsCount ?? "—"} />
       </section>
       <div className="mb-5 grid gap-4 rounded-2xl border border-[var(--border)] bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
+        <Info label={t("mmt.university")} value={item.university.fullName} />
+        <Info label={t("mmt.specialty")} value={`${item.specialty.code} · ${item.specialty.name}`} />
+        <Info label={t("mmt.cluster")} value={`${item.cluster.code} · ${item.cluster.name}`} />
         <Info
           label={t("mmt.admissionType")}
           value={enumLabel(
@@ -168,6 +178,7 @@ export function MmtProgramDetailPage() {
             <thead className="bg-[var(--surface-muted)] text-xs uppercase text-[var(--muted)]">
               <tr>
                 <th className="px-4 py-3">{t("mmt.year")}</th>
+                <th className="px-4 py-3">{t("mmt.distributionRound")}</th>
                 <th className="px-4 py-3">{t("mmt.score")}</th>
                 <th className="px-4 py-3">{t("mmt.seats")}</th>
                 <th className="px-4 py-3">{t("mmt.source")}</th>
@@ -179,6 +190,9 @@ export function MmtProgramDetailPage() {
               {scores.data?.map((score) => (
                 <tr key={score.id} className="border-t border-[var(--border)]">
                   <td className="px-4 py-3 font-bold">{score.year}</td>
+                  <td className="px-4 py-3">
+                    {enumLabel(labels.distributionRounds, score.distributionRound, labels.unknown)}
+                  </td>
                   <td className="px-4 py-3 font-black">
                     {score.passingScore.toFixed(2)}
                   </td>
@@ -189,24 +203,16 @@ export function MmtProgramDetailPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="secondary"
-                        className="h-10 min-h-10 px-3"
-                        onClick={() => setScoreForm(score)}
-                      >
-                        <Edit3 className="h-4 w-4" /> {t("mmt.edit")}
-                      </Button>
-                      <Button
-                        variant="danger"
-                        className="h-10 min-h-10 px-3"
-                        aria-label={t("delete")}
+                      <TableActionButton label={t("mmt.edit")} icon={<PenLine className="h-5 w-5" />} onClick={() => setScoreForm(score)} />
+                      <TableActionButton
+                        label={t("delete")}
+                        icon={<Trash2 className="h-5 w-5" />}
+                        tone="danger"
                         onClick={() => {
                           if (window.confirm(t("mmt.deleteScoreConfirm")))
                             remove.mutate(score.id);
                         }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      />
                     </div>
                   </td>
                 </tr>
@@ -219,6 +225,7 @@ export function MmtProgramDetailPage() {
         <ScoreForm
           programId={programId}
           score={scoreForm === "new" ? null : scoreForm}
+          currentAdmissionYear={dashboard.data?.currentAdmissionYear}
           onClose={() => setScoreForm(null)}
           onSaved={async () => {
             setScoreForm(null);
@@ -245,17 +252,23 @@ function Info({ label, value }: { label: string; value: string }) {
 function ScoreForm({
   programId,
   score,
+  currentAdmissionYear,
   onClose,
   onSaved,
   onError,
 }: {
   programId: string;
   score: PassingScoreHistoryDto | null;
+  currentAdmissionYear: number | undefined;
   onClose: () => void;
   onSaved: () => void;
   onError: (message: string) => void;
 }) {
   const { t } = useTranslation();
+  const labels = useMmtLabels();
+  const [distributionRound, setDistributionRound] = useState(
+    String(score?.distributionRound ?? 0),
+  );
   const mutation = useMutation({
     mutationFn: (input: PassingScoreInput) =>
       score
@@ -273,6 +286,7 @@ function ScoreForm({
       seatsCount: numberOrNull(data.get("seatsCount")),
       source: String(data.get("source") || "") || null,
       note: String(data.get("note") || "") || null,
+      distributionRound: Number(distributionRound),
     });
   }
   return (
@@ -281,15 +295,23 @@ function ScoreForm({
       onClose={onClose}
     >
       <form className="grid gap-4" onSubmit={submit}>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <FormField label={t("mmt.year")}>
             <Input
               name="year"
               type="number"
               min="2000"
               max="2100"
-              defaultValue={score?.year ?? new Date().getUTCFullYear()}
+              defaultValue={score?.year ?? currentAdmissionYear ?? ""}
               required
+            />
+          </FormField>
+          <FormField label={t("mmt.distributionRound")}>
+            <SelectField
+              name="distributionRound"
+              value={distributionRound}
+              onValueChange={setDistributionRound}
+              options={labels.distributionRounds.map((label, value) => ({ value: String(value), label }))}
             />
           </FormField>
           <FormField label={t("mmt.passingScore")}>

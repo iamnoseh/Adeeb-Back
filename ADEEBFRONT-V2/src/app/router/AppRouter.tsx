@@ -70,6 +70,11 @@ const MmtProgramsPage = lazy(() =>
     default: module.MmtProgramsPage,
   })),
 );
+const MmtReferenceDetailPage = lazy(() =>
+  import("@/features/mmt/ui/MmtReferenceDetailPage").then((module) => ({
+    default: module.MmtReferenceDetailPage,
+  })),
+);
 
 function MmtRouteFallback() {
   const { t } = useTranslation();
@@ -131,10 +136,12 @@ export function AppRouter() {
               path="universities"
               element={<MmtCatalogPage kind="universities" />}
             />
+            <Route path="universities/:universityId" element={<MmtReferenceDetailPage kind="universities" />} />
             <Route
               path="specialties"
               element={<MmtCatalogPage kind="specialties" />}
             />
+            <Route path="specialties/:specialtyId" element={<MmtReferenceDetailPage kind="specialties" />} />
             <Route path="programs" element={<MmtProgramsPage />} />
             <Route path="programs/new" element={<MmtProgramFormPage />} />
             <Route

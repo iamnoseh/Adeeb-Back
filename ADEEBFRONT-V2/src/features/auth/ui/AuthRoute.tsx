@@ -16,6 +16,7 @@ export function AuthRoute({ children }: AuthRouteProps) {
   }
 
   if (!isAuthenticated) return <Navigate to="/login" replace />
+  // TODO(identity): use permission claims when /api/v2/auth/me exposes them.
   if (user?.role !== 'SuperAdmin' && user?.role !== 'Admin') return <Navigate to="/login" replace />
 
   return <>{children}</>

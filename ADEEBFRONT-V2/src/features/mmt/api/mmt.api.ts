@@ -16,18 +16,25 @@ import type {
   MmtEvaluationListItemDto,
   MmtImportPreviewResultDto,
   MmtImportResultDto,
+  MmtDashboardStatsDto,
   PagedResponse,
   PassingScoreAnalyticsDto,
   PassingScoreHistoryDto,
   PassingScoreInput,
   StudentMmtProfileDto,
+  StudentAdmissionChoiceDto,
+  UpsertStudentMmtProfileInput,
+  AdmissionChoiceInput,
+  SimulateMmtEvaluationInput,
   StudentProfileQuery,
 } from "@/features/mmt/model/mmt.types";
 
 const root = "/api/v2/admin/mmt";
+const studentRoot = "/api/v2/mmt";
 
 export const mmtKeys = {
   all: ["mmt"] as const,
+  dashboard: () => ["mmt", "dashboard"] as const,
   catalog: (kind: CatalogKind, query: ListQuery = {}) =>
     ["mmt", kind, query, getStoredUiLanguage()] as const,
   catalogDetail: (kind: CatalogKind, id: string) =>
@@ -43,13 +50,64 @@ export const mmtKeys = {
     ["mmt", "profiles", query, getStoredUiLanguage()] as const,
   profile: (id: string) =>
     ["mmt", "profile", id, getStoredUiLanguage()] as const,
+  profileChoices: (id: string) =>
+    ["mmt", "profile", id, "choices", getStoredUiLanguage()] as const,
   evaluations: (query: EvaluationQuery = {}) =>
     ["mmt", "evaluations", query, getStoredUiLanguage()] as const,
   evaluation: (id: string) =>
     ["mmt", "evaluation", id, getStoredUiLanguage()] as const,
 };
 
+export const mmtStudentApi = {
+  async programs(query: AdmissionProgramQuery = {}) {
+    const response = await httpClient.get<PagedResponse<AdmissionProgramListItemDto>>(
+      `${studentRoot}/admission-programs${queryString(query)}`,
+    );
+    return response.data;
+  },
+  async program(id: string) {
+    const response = await httpClient.get<AdmissionProgramDto>(
+      `${studentRoot}/admission-programs/${id}`,
+    );
+    return response.data;
+  },
+  async profile() {
+    const response = await httpClient.get<StudentMmtProfileDto>(`${studentRoot}/profile`);
+    return response.data;
+  },
+  async upsertProfile(input: UpsertStudentMmtProfileInput) {
+    const response = await httpClient.put<StudentMmtProfileDto>(`${studentRoot}/profile`, input);
+    return response.data;
+  },
+  async choices() {
+    const response = await httpClient.get<StudentAdmissionChoiceDto[]>(`${studentRoot}/profile/choices`);
+    return response.data;
+  },
+  async replaceChoices(choices: AdmissionChoiceInput[]) {
+    const response = await httpClient.put<StudentAdmissionChoiceDto[]>(`${studentRoot}/profile/choices`, { choices });
+    return response.data;
+  },
+  async simulate(input: SimulateMmtEvaluationInput) {
+    const response = await httpClient.post<MmtEvaluationDto>(`${studentRoot}/evaluations/simulate`, input);
+    return response.data;
+  },
+  async evaluations(query: EvaluationQuery = {}) {
+    const response = await httpClient.get<PagedResponse<MmtEvaluationListItemDto>>(
+      `${studentRoot}/evaluations${queryString(query)}`,
+    );
+    return response.data;
+  },
+  async evaluation(id: string) {
+    const response = await httpClient.get<MmtEvaluationDto>(`${studentRoot}/evaluations/${id}`);
+    return response.data;
+  },
+};
+
 export const mmtApi = {
+  async dashboard() {
+    const response = await httpClient.get<MmtDashboardStatsDto>(`${root}/dashboard`);
+    return response.data;
+  },
   async catalogList<T extends CatalogDto>(
     kind: CatalogKind,
     query: ListQuery = {},
@@ -178,6 +236,12 @@ export const mmtApi = {
   async profile(id: string) {
     const response = await httpClient.get<StudentMmtProfileDto>(
       `${root}/student-profiles/${id}`,
+    );
+    return response.data;
+  },
+  async profileChoices(id: string) {
+    const response = await httpClient.get<StudentAdmissionChoiceDto[]>(
+      `${root}/student-profiles/${id}/choices`,
     );
     return response.data;
   },

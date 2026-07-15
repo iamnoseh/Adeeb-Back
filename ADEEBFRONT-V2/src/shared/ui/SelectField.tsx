@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Search } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { cn } from '@/shared/lib/cn'
 
@@ -16,6 +16,8 @@ type SelectFieldProps = {
   name?: string
   disabled?: boolean
   className?: string
+  searchable?: boolean
+  searchPlaceholder?: string
 }
 
 export function SelectField({
@@ -26,11 +28,17 @@ export function SelectField({
   name,
   disabled = false,
   className,
+  searchable = false,
+  searchPlaceholder,
 }: SelectFieldProps) {
   const id = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const selectedOption = options.find((option) => option.value === value)
+  const visibleOptions = searchable
+    ? options.filter((option) => option.label.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
+    : options
 
   useEffect(() => {
     function closeOnOutsideClick(event: MouseEvent) {
@@ -47,6 +55,7 @@ export function SelectField({
     if (option.disabled) return
     onValueChange(option.value)
     setOpen(false)
+    setSearch('')
   }
 
   return (
@@ -79,7 +88,19 @@ export function SelectField({
           role="listbox"
           className="absolute left-0 right-0 top-[calc(100%+0.45rem)] max-h-72 overflow-auto rounded-[1.25rem] border border-[var(--border)] bg-white p-1.5 shadow-[0_22px_55px_rgb(24_49_45/0.18)]"
         >
-          {options.map((option) => {
+          {searchable ? (
+            <div className="relative mb-1.5">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" aria-hidden />
+              <input
+                autoFocus
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={searchPlaceholder}
+                className="min-h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] pl-9 pr-3 text-sm outline-none focus:border-[var(--primary)]"
+              />
+            </div>
+          ) : null}
+          {visibleOptions.map((option) => {
             const selected = option.value === value
             return (
               <button
