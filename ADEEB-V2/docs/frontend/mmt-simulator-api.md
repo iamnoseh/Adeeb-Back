@@ -27,11 +27,12 @@ official admission result.
 ## Localization
 
 Send `X-Adeeb-Language: tg-TJ` or `ru-RU`. Cluster, university, city, and specialty
-names/descriptions are resolved in that language with Tajik fallback. Admin create and
-update operations edit the translation for the current request language; a newly
-created or imported legacy value initializes both languages so reads never return an
-empty required name. Error titles are localized, while stable `code` values never
-change by language.
+names/descriptions are resolved in that language with Tajik fallback. Admin catalog
+responses additionally return explicit `*Tg` and `*Ru` fields, and admin create/update
+requests may submit both translations in one operation. Legacy requests and spreadsheet
+imports initialize both languages from their single value, so required names never
+become empty. Error titles are localized, while stable `code` values never change by
+language.
 
 ## Authentication And Authorization
 

@@ -1,5 +1,6 @@
 import { httpClient } from "@/shared/api/http-client";
 import { queryString } from "@/features/mmt/lib/mmt";
+import { getStoredUiLanguage } from "@/shared/i18n/language";
 import type {
   AdmissionProgramDto,
   AdmissionProgramInput,
@@ -28,19 +29,24 @@ const root = "/api/v2/admin/mmt";
 export const mmtKeys = {
   all: ["mmt"] as const,
   catalog: (kind: CatalogKind, query: ListQuery = {}) =>
-    ["mmt", kind, query] as const,
-  catalogDetail: (kind: CatalogKind, id: string) => ["mmt", kind, id] as const,
+    ["mmt", kind, query, getStoredUiLanguage()] as const,
+  catalogDetail: (kind: CatalogKind, id: string) =>
+    ["mmt", kind, id, getStoredUiLanguage()] as const,
   programs: (query: AdmissionProgramQuery = {}) =>
-    ["mmt", "programs", query] as const,
-  program: (id: string) => ["mmt", "program", id] as const,
-  scores: (id: string) => ["mmt", "scores", id] as const,
-  analytics: (id: string) => ["mmt", "analytics", id] as const,
+    ["mmt", "programs", query, getStoredUiLanguage()] as const,
+  program: (id: string) =>
+    ["mmt", "program", id, getStoredUiLanguage()] as const,
+  scores: (id: string) => ["mmt", "scores", id, getStoredUiLanguage()] as const,
+  analytics: (id: string) =>
+    ["mmt", "analytics", id, getStoredUiLanguage()] as const,
   profiles: (query: StudentProfileQuery = {}) =>
-    ["mmt", "profiles", query] as const,
-  profile: (id: string) => ["mmt", "profile", id] as const,
+    ["mmt", "profiles", query, getStoredUiLanguage()] as const,
+  profile: (id: string) =>
+    ["mmt", "profile", id, getStoredUiLanguage()] as const,
   evaluations: (query: EvaluationQuery = {}) =>
-    ["mmt", "evaluations", query] as const,
-  evaluation: (id: string) => ["mmt", "evaluation", id] as const,
+    ["mmt", "evaluations", query, getStoredUiLanguage()] as const,
+  evaluation: (id: string) =>
+    ["mmt", "evaluation", id, getStoredUiLanguage()] as const,
 };
 
 export const mmtApi = {

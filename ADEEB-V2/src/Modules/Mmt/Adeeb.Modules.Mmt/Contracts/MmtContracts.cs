@@ -7,15 +7,29 @@ public sealed record PagedResponse<T>(IReadOnlyList<T> Items, int Page, int Page
 public sealed record StatusRequest(bool IsActive);
 public sealed record PublishRequest(bool IsPublished);
 
-public sealed record CreateMmtClusterDto(string Name, string Code, string? Description);
-public sealed record UpdateMmtClusterDto(string Name, string Code, string? Description, bool IsActive);
-public sealed record MmtClusterDto(Guid Id, string Name, string Code, string? Description, bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
-public sealed record CreateUniversityDto(string FullName, string? ShortName, string City, int Type, string? LogoUrl);
-public sealed record UpdateUniversityDto(string FullName, string? ShortName, string City, int Type, string? LogoUrl, bool IsActive);
-public sealed record UniversityDto(Guid Id, string FullName, string? ShortName, string City, int Type, string? LogoUrl, bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
-public sealed record CreateSpecialtyDto(string Code, string Name, string? Description);
-public sealed record UpdateSpecialtyDto(string Code, string Name, string? Description, bool IsActive);
-public sealed record SpecialtyDto(Guid Id, string Code, string Name, string? Description, bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
+public sealed record CreateMmtClusterDto(string Name, string Code, string? Description,
+    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null);
+public sealed record UpdateMmtClusterDto(string Name, string Code, string? Description, bool IsActive,
+    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null);
+public sealed record MmtClusterDto(Guid Id, string Name, string Code, string? Description, bool IsActive,
+    DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc, string NameTg = "", string NameRu = "",
+    string? DescriptionTg = null, string? DescriptionRu = null);
+public sealed record CreateUniversityDto(string FullName, string? ShortName, string City, int Type, string? LogoUrl,
+    string? FullNameTg = null, string? FullNameRu = null, string? ShortNameTg = null, string? ShortNameRu = null,
+    string? CityTg = null, string? CityRu = null);
+public sealed record UpdateUniversityDto(string FullName, string? ShortName, string City, int Type, string? LogoUrl, bool IsActive,
+    string? FullNameTg = null, string? FullNameRu = null, string? ShortNameTg = null, string? ShortNameRu = null,
+    string? CityTg = null, string? CityRu = null);
+public sealed record UniversityDto(Guid Id, string FullName, string? ShortName, string City, int Type, string? LogoUrl,
+    bool IsActive, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc, string FullNameTg = "", string FullNameRu = "",
+    string? ShortNameTg = null, string? ShortNameRu = null, string CityTg = "", string CityRu = "");
+public sealed record CreateSpecialtyDto(string Code, string Name, string? Description,
+    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null);
+public sealed record UpdateSpecialtyDto(string Code, string Name, string? Description, bool IsActive,
+    string? NameTg = null, string? NameRu = null, string? DescriptionTg = null, string? DescriptionRu = null);
+public sealed record SpecialtyDto(Guid Id, string Code, string Name, string? Description, bool IsActive,
+    DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc, string NameTg = "", string NameRu = "",
+    string? DescriptionTg = null, string? DescriptionRu = null);
 
 public sealed record CreateAdmissionProgramDto(Guid UniversityId, Guid SpecialtyId, Guid MmtClusterId, int AdmissionType,
     int StudyForm, int StudyLanguage, int AdmissionYear, int? SeatsCount, bool IsPublished = false);

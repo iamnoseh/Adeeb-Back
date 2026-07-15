@@ -20,6 +20,10 @@ export type MmtClusterDto = {
   name: string;
   code: string;
   description: string | null;
+  nameTg: string;
+  nameRu: string;
+  descriptionTg: string | null;
+  descriptionRu: string | null;
   isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc: string;
@@ -29,6 +33,12 @@ export type UniversityDto = {
   fullName: string;
   shortName: string | null;
   city: string;
+  fullNameTg: string;
+  fullNameRu: string;
+  shortNameTg: string | null;
+  shortNameRu: string | null;
+  cityTg: string;
+  cityRu: string;
   type: number;
   logoUrl: string | null;
   isActive: boolean;
@@ -40,6 +50,10 @@ export type SpecialtyDto = {
   code: string;
   name: string;
   description: string | null;
+  nameTg: string;
+  nameRu: string;
+  descriptionTg: string | null;
+  descriptionRu: string | null;
   isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc: string;

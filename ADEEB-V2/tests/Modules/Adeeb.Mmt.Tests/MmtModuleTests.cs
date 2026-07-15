@@ -1,4 +1,3 @@
-using System.Globalization;
 using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Mmt.Application;
@@ -29,23 +28,15 @@ public sealed class MmtModuleTests
     public async Task Catalog_reads_resolve_the_current_request_language()
     {
         await using var db = Db();
-        var cluster = new MmtCluster(Guid.NewGuid(), "Кластери 2", "C2", "Тавсиф", Now);
-        cluster.UpdateTranslation(SupportedLanguage.Russian, "Кластер 2", "Описание", "C2", true, Now);
-        db.Clusters.Add(cluster);
-        await db.SaveChangesAsync();
+        var service = new MmtCatalogService(db, new Clock());
+        var created = await service.CreateClusterAsync(new("Кластери 2", "C2", "Тавсиф",
+            NameTg: "Кластери 2", NameRu: "Кластер 2", DescriptionTg: "Тавсиф", DescriptionRu: "Описание"), default);
 
-        var previous = CultureInfo.CurrentUICulture;
-        try
-        {
-            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("ru-RU");
-            var result = await new MmtCatalogService(db, new Clock()).GetClusterAsync(cluster.Id, default);
-            Assert.Equal("Кластер 2", result.Value!.Name);
-            Assert.Equal("Описание", result.Value.Description);
-        }
-        finally
-        {
-            CultureInfo.CurrentUICulture = previous;
-        }
+        var result = await service.GetClusterAsync(created.Value!.Id, SupportedLanguage.Russian, default);
+        Assert.Equal("Кластер 2", result.Value!.Name);
+        Assert.Equal("Описание", result.Value.Description);
+        Assert.Equal("Кластери 2", result.Value.NameTg);
+        Assert.Equal("Кластер 2", result.Value.NameRu);
     }
 
     [Fact]
@@ -116,7 +107,7 @@ public sealed class MmtModuleTests
             new(Guid.NewGuid(), refs.University.Id, refs.Specialty.Id, refs.Cluster.Id, AdmissionType.Contract, StudyForm.FullTime, StudyLanguage.Tajik, 2026, null, false, Now),
             new(Guid.NewGuid(), refs.University.Id, refs.Specialty.Id, refs.Cluster.Id, AdmissionType.Budget, StudyForm.PartTime, StudyLanguage.Tajik, 2025, null, true, Now));
         await db.SaveChangesAsync();
-        var result = await Programs(db).GetProgramsAsync(new AdmissionProgramFilter(), false, default);
+        var result = await Programs(db).GetProgramsAsync(new AdmissionProgramFilter(), false, SupportedLanguage.Tajik, default);
         Assert.Single(result.Value!.Items);
     }
 
@@ -129,10 +120,30 @@ public sealed class MmtModuleTests
             new(Guid.NewGuid(), refs.University.Id, refs.Specialty.Id, refs.Cluster.Id, AdmissionType.Contract, StudyForm.FullTime, StudyLanguage.Tajik, 2026, null, true, Now));
         await db.SaveChangesAsync();
 
-        var result = await Programs(db, 2027).GetProgramsAsync(new AdmissionProgramFilter(), false, default);
+        var result = await Programs(db, 2027).GetProgramsAsync(new AdmissionProgramFilter(), false, SupportedLanguage.Tajik, default);
 
         var item = Assert.Single(result.Value!.Items);
         Assert.Equal(2027, item.AdmissionYear);
+    }
+
+    [Fact]
+    public async Task Program_reads_use_the_explicit_requested_language()
+    {
+        await using var db = Db();
+        var refs = SeedReferences(db);
+        refs.University.UpdateTranslation(SupportedLanguage.Russian, "Russian University", "RU", "Russian City", UniversityType.Public, null, true, Now);
+        refs.Specialty.UpdateTranslation(SupportedLanguage.Russian, "LAW", "Russian Specialty", null, true, Now);
+        refs.Cluster.UpdateTranslation(SupportedLanguage.Russian, "Russian Cluster", null, "C2", true, Now);
+        db.AdmissionPrograms.Add(new AdmissionProgram(Guid.NewGuid(), refs.University.Id, refs.Specialty.Id, refs.Cluster.Id,
+            AdmissionType.Budget, StudyForm.FullTime, StudyLanguage.Russian, 2026, null, true, Now));
+        await db.SaveChangesAsync();
+
+        var result = await Programs(db).GetProgramsAsync(new AdmissionProgramFilter(), false, SupportedLanguage.Russian, default);
+
+        var item = Assert.Single(result.Value!.Items);
+        Assert.Equal("Russian University", item.UniversityName);
+        Assert.Equal("Russian Specialty", item.SpecialtyName);
+        Assert.Equal("Russian Cluster", item.ClusterName);
     }
 
     [Fact]

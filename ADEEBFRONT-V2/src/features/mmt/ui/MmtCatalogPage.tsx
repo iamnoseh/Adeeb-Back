@@ -343,16 +343,26 @@ function CatalogForm({
     let input: CatalogInput;
     if (kind === "clusters")
       input = {
-        name: String(form.get("name")),
+        name: String(form.get("nameTg")),
         code: String(form.get("code")),
-        description: optionalText(form.get("description")),
+        description: optionalText(form.get("descriptionTg")),
+        nameTg: String(form.get("nameTg")),
+        nameRu: String(form.get("nameRu")),
+        descriptionTg: optionalText(form.get("descriptionTg")),
+        descriptionRu: optionalText(form.get("descriptionRu")),
         ...(item ? { isActive: active } : {}),
       };
     else if (kind === "universities")
       input = {
-        fullName: String(form.get("fullName")),
-        shortName: optionalText(form.get("shortName")),
-        city: String(form.get("city")),
+        fullName: String(form.get("fullNameTg")),
+        shortName: optionalText(form.get("shortNameTg")),
+        city: String(form.get("cityTg")),
+        fullNameTg: String(form.get("fullNameTg")),
+        fullNameRu: String(form.get("fullNameRu")),
+        shortNameTg: optionalText(form.get("shortNameTg")),
+        shortNameRu: optionalText(form.get("shortNameRu")),
+        cityTg: String(form.get("cityTg")),
+        cityRu: String(form.get("cityRu")),
         type: Number(form.get("type")),
         logoUrl: optionalText(form.get("logoUrl")),
         ...(item ? { isActive: active } : {}),
@@ -360,8 +370,12 @@ function CatalogForm({
     else
       input = {
         code: String(form.get("code")),
-        name: String(form.get("name")),
-        description: optionalText(form.get("description")),
+        name: String(form.get("nameTg")),
+        description: optionalText(form.get("descriptionTg")),
+        nameTg: String(form.get("nameTg")),
+        nameRu: String(form.get("nameRu")),
+        descriptionTg: optionalText(form.get("descriptionTg")),
+        descriptionRu: optionalText(form.get("descriptionRu")),
         ...(item ? { isActive: active } : {}),
       };
     mutation.mutate(input);
@@ -377,26 +391,53 @@ function CatalogForm({
       <form className="grid gap-4" onSubmit={submit}>
         {kind === "universities" ? (
           <>
-            <FormField label={t("mmt.fullName")}>
-              <Input
-                name="fullName"
-                defaultValue={university?.fullName}
-                required
-                maxLength={300}
-              />
-            </FormField>
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label={t("mmt.shortName")}>
+              <FormField label={t("mmt.fullNameTg")}>
                 <Input
-                  name="shortName"
-                  defaultValue={university?.shortName ?? ""}
+                  name="fullNameTg"
+                  defaultValue={university?.fullNameTg ?? university?.fullName}
+                  required
+                  maxLength={300}
+                />
+              </FormField>
+              <FormField label={t("mmt.fullNameRu")}>
+                <Input
+                  name="fullNameRu"
+                  defaultValue={university?.fullNameRu ?? university?.fullName}
+                  required
+                  maxLength={300}
+                />
+              </FormField>
+              <FormField label={t("mmt.shortNameTg")}>
+                <Input
+                  name="shortNameTg"
+                  defaultValue={
+                    university?.shortNameTg ?? university?.shortName ?? ""
+                  }
                   maxLength={120}
                 />
               </FormField>
-              <FormField label={t("mmt.city")}>
+              <FormField label={t("mmt.shortNameRu")}>
                 <Input
-                  name="city"
-                  defaultValue={university?.city}
+                  name="shortNameRu"
+                  defaultValue={
+                    university?.shortNameRu ?? university?.shortName ?? ""
+                  }
+                  maxLength={120}
+                />
+              </FormField>
+              <FormField label={t("mmt.cityTg")}>
+                <Input
+                  name="cityTg"
+                  defaultValue={university?.cityTg ?? university?.city}
+                  required
+                  maxLength={120}
+                />
+              </FormField>
+              <FormField label={t("mmt.cityRu")}>
+                <Input
+                  name="cityRu"
+                  defaultValue={university?.cityRu ?? university?.city}
                   required
                   maxLength={120}
                 />
@@ -425,36 +466,63 @@ function CatalogForm({
           </>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
-              <FormField label={t("mmt.code")}>
+            <FormField label={t("mmt.code")}>
+              <Input
+                name="code"
+                defaultValue={
+                  kind === "clusters" ? cluster?.code : specialty?.code
+                }
+                required
+              />
+            </FormField>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label={t("mmt.nameTg")}>
                 <Input
-                  name="code"
+                  name="nameTg"
                   defaultValue={
-                    kind === "clusters" ? cluster?.code : specialty?.code
+                    kind === "clusters"
+                      ? (cluster?.nameTg ?? cluster?.name)
+                      : (specialty?.nameTg ?? specialty?.name)
                   }
                   required
                 />
               </FormField>
-              <FormField label={t("mmt.name")}>
+              <FormField label={t("mmt.nameRu")}>
                 <Input
-                  name="name"
+                  name="nameRu"
                   defaultValue={
-                    kind === "clusters" ? cluster?.name : specialty?.name
+                    kind === "clusters"
+                      ? (cluster?.nameRu ?? cluster?.name)
+                      : (specialty?.nameRu ?? specialty?.name)
                   }
                   required
                 />
               </FormField>
             </div>
-            <FormField label={t("mmt.description")}>
-              <Textarea
-                name="description"
-                defaultValue={
-                  (kind === "clusters"
-                    ? cluster?.description
-                    : specialty?.description) ?? ""
-                }
-              />
-            </FormField>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label={t("mmt.descriptionTg")}>
+                <Textarea
+                  name="descriptionTg"
+                  defaultValue={
+                    (kind === "clusters"
+                      ? (cluster?.descriptionTg ?? cluster?.description)
+                      : (specialty?.descriptionTg ?? specialty?.description)) ??
+                    ""
+                  }
+                />
+              </FormField>
+              <FormField label={t("mmt.descriptionRu")}>
+                <Textarea
+                  name="descriptionRu"
+                  defaultValue={
+                    (kind === "clusters"
+                      ? (cluster?.descriptionRu ?? cluster?.description)
+                      : (specialty?.descriptionRu ?? specialty?.description)) ??
+                    ""
+                  }
+                />
+              </FormField>
+            </div>
           </>
         )}
         <div className="flex justify-end gap-2 border-t border-[var(--border)] pt-4">
