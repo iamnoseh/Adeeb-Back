@@ -12,6 +12,6 @@
   <data name="Testing.MmtProfileRequired" xml:space="preserve"><value>Пеш аз оғози тест профили фаъоли ММТ созед</value></data>
   <data name="Testing.MmtChoicesRequired" xml:space="preserve"><value>Пеш аз имтиҳони моҳона ҳамаи 12 комбинатсияи қабулро нигоҳ доред</value></data>
   <data name="Testing.MonthlyExamClosed" xml:space="preserve"><value>Имтиҳони моҳона ҳоло дастрас нест</value></data>
-  <data name="Testing.MonthlyExamAlreadySubmitted" xml:space="preserve"><value>Шумо ин имтиҳони моҳонаро аллакай оғоз кардаед</value></data>
+  <data name="Testing.MonthlyExamAlreadyStarted" xml:space="preserve"><value>Шумо дар ин равзана имтиҳони моҳонаро аллакай оғоз кардаед</value></data>
   <data name="Testing.RedListItemNotFound" xml:space="preserve"><value>Савол дар рӯйхати хатоҳо ёфт нашуд</value></data>
 </root>

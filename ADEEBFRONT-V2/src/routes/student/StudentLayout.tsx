@@ -1,4 +1,4 @@
-import { BookOpenCheck, CalendarCheck2, ChevronDown, HelpCircle, Home, LogOut, PanelLeftClose, PanelLeftOpen, Route, Settings, ShieldCheck, Swords, Trophy, UserRound, type LucideIcon } from 'lucide-react'
+import { BookOpenCheck, CalendarCheck2, ChevronDown, HelpCircle, Home, ListChecks, LogOut, PanelLeftClose, PanelLeftOpen, Route, Settings, ShieldCheck, Swords, Trophy, UserRound, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -26,6 +26,7 @@ function StudentLayoutContent() {
   const navGroups: StudentNavGroup[] = [
     { id: 'practice', label: t('student.practice'), icon: BookOpenCheck, items: [
       { to: '/student/tests', label: t('student.tests'), icon: ShieldCheck },
+      { to: '/student/red-list', label: t('student.testing.redList.shortTitle'), icon: ListChecks },
       { to: '/student/daily-tasks', label: t('student.dailyTasks'), icon: CalendarCheck2 },
     ] },
     { id: 'competition', label: t('student.competition'), icon: Swords, items: [
@@ -93,7 +94,7 @@ function StudentLayoutContent() {
           <main className="mx-auto w-full max-w-[1450px] px-4 py-5 pb-28 sm:px-6 md:pb-8 lg:px-8 lg:py-6"><Outlet /></main>
         </div>
 
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--student-border)] bg-[var(--student-surface)]/96 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-lg lg:hidden" aria-label={t('student.navigation')}><div className="mx-auto grid max-w-lg grid-cols-4">{[homeItem, mmtItem, navGroups[0]!.items[0]!, navGroups[2]!.items[0]!].map((item) => <MobileNavLink key={item.to} item={item} />)}</div></nav>
+        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--student-border)] bg-[var(--student-surface)]/96 px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-lg lg:hidden" aria-label={t('student.navigation')}><div className="mx-auto grid max-w-lg grid-cols-5">{[homeItem, mmtItem, navGroups[0]!.items[0]!, navGroups[0]!.items[1]!, navGroups[2]!.items[0]!].map((item) => <MobileNavLink key={item.to} item={item} />)}</div></nav>
       </div>
     </div>
   )

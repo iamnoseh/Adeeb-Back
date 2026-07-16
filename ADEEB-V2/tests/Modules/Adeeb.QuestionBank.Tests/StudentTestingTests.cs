@@ -1,3 +1,4 @@
+using Adeeb.Application.Abstractions.AcademicCatalog;
 using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.QuestionBank.Application;
@@ -12,14 +13,16 @@ namespace Adeeb.QuestionBank.Tests;
 public sealed class StudentTestingTests
 {
     [Theory]
-    [InlineData(2026, 7, 1, 12, true, "2026-07-01")]
-    [InlineData(2026, 7, 2, 1, false, null)]
-    [InlineData(2026, 7, 16, 23, true, "2026-07-16")]
-    [InlineData(2026, 7, 17, 0, false, null)]
+    [InlineData(2026, 6, 30, 18, 59, false, null)]
+    [InlineData(2026, 6, 30, 19, 0, true, "2026-07-01")]
+    [InlineData(2026, 7, 1, 18, 59, true, "2026-07-01")]
+    [InlineData(2026, 7, 1, 19, 0, false, null)]
+    [InlineData(2026, 7, 15, 19, 0, true, "2026-07-16")]
+    [InlineData(2026, 7, 16, 19, 0, false, null)]
     public void Monthly_exam_opens_only_inside_first_and_sixteenth_windows(
-        int year, int month, int day, int hour, bool expectedOpen, string? expectedKey)
+        int year, int month, int day, int hour, int minute, bool expectedOpen, string? expectedKey)
     {
-        var clock = new FakeClock(new DateTimeOffset(year, month, day, hour, 0, 0, TimeSpan.Zero));
+        var clock = new FakeClock(new DateTimeOffset(year, month, day, hour, minute, 0, TimeSpan.Zero));
         var service = new MonthlyExamAvailabilityService(clock, Options.Create(new StudentTestingOptions
         {
             MonthlyExamWindowHours = 24
@@ -29,6 +32,26 @@ public sealed class StudentTestingTests
 
         Assert.Equal(expectedOpen, availability.IsOpen);
         Assert.Equal(expectedKey, availability.WindowKey);
+        if (expectedOpen)
+        {
+            Assert.Equal(TimeSpan.Zero, availability.OpensAtUtc!.Value.Offset);
+            Assert.Equal(19, availability.OpensAtUtc.Value.Hour);
+        }
+    }
+
+    [Theory]
+    [InlineData("MATH", 40)]
+    [InlineData("physics", 40)]
+    [InlineData("HISTORY", 20)]
+    public async Task Subject_timing_uses_configured_subject_code_policy(string code, int expectedMinutes)
+    {
+        var subjectId = Guid.NewGuid();
+        var policy = new SubjectTestTimingPolicy(new FakeSubjectLookup(subjectId, code),
+            Options.Create(new StudentTestingOptions()));
+
+        var duration = await policy.DurationMinutesAsync(subjectId, 20, SupportedLanguage.Tajik, default);
+
+        Assert.Equal(expectedMinutes, duration);
     }
 
     [Fact]
@@ -144,7 +167,10 @@ public sealed class StudentTestingTests
 
         Assert.DoesNotContain("IsCorrect", questionProperties);
         Assert.DoesNotContain("CorrectAnswer", questionProperties);
+        Assert.DoesNotContain("MatchingRightOptions", questionProperties);
+        Assert.Contains("MatchingOptions", questionProperties);
         Assert.DoesNotContain("IsCorrect", optionProperties);
+        Assert.DoesNotContain("MatchPairText", optionProperties);
     }
 
     private static QuestionBankDbContext CreateDb() => new(new DbContextOptionsBuilder<QuestionBankDbContext>()
@@ -175,7 +201,16 @@ public sealed class StudentTestingTests
     private sealed class FakeClock(DateTimeOffset now) : IDateTimeProvider
     {
         public DateTimeOffset UtcNow { get; } = now;
-        public DateTimeOffset DushanbeNow => UtcNow.AddHours(5);
+        public DateTimeOffset DushanbeNow => UtcNow.ToOffset(TimeSpan.FromHours(5));
         public DateTimeOffset ToDushanbeTime(DateTimeOffset value) => value.ToOffset(TimeSpan.FromHours(5));
+    }
+
+    private sealed class FakeSubjectLookup(Guid subjectId, string code) : IAcademicSubjectLookup
+    {
+        public Task<IReadOnlyList<AcademicSubjectLookupItem>> GetActiveSubjectsAsync(
+            IReadOnlyCollection<Guid> subjectIds,
+            SupportedLanguage language,
+            CancellationToken ct) => Task.FromResult<IReadOnlyList<AcademicSubjectLookupItem>>(
+                subjectIds.Contains(subjectId) ? [new(subjectId, code, code)] : []);
     }
 }

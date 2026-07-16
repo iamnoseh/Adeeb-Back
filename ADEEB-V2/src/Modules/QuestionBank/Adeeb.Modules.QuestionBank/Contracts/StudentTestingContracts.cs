@@ -2,7 +2,6 @@ namespace Adeeb.Modules.QuestionBank.Contracts;
 
 public sealed record StartSubjectTestRequest(Guid SubjectId, int QuestionCount, bool IncludeRedList = true);
 public sealed record StartMmtPracticeRequest(bool StrictSimulation = false, int? QuestionCount = null);
-public sealed record StartMonthlyExamRequest;
 public sealed record StartRedListPracticeRequest(int? QuestionCount = null);
 public sealed record SubmitAttemptRequest(IReadOnlyList<SubmitAnswerDto> Answers);
 public sealed record SubmitAnswerDto(Guid QuestionId, Guid? SelectedOptionId = null, string? TextResponse = null,
@@ -17,7 +16,7 @@ public sealed record TestAttemptDto(Guid Id, int Mode, int Status, Guid? Subject
     int QuestionCount, IReadOnlyList<TestQuestionDto> Questions);
 public sealed record TestQuestionDto(Guid Id, int Order, Guid SubjectId, Guid? TopicId, int Type, int Difficulty,
     string Content, string? ImageUrl, IReadOnlyList<TestAnswerOptionDto> Options,
-    IReadOnlyList<string> MatchingRightOptions);
+    IReadOnlyList<string> MatchingOptions);
 public sealed record TestAnswerOptionDto(Guid Id, string Text);
 
 public sealed record TestResultDto(Guid AttemptId, int Mode, int Status, int QuestionCount, int CorrectCount,

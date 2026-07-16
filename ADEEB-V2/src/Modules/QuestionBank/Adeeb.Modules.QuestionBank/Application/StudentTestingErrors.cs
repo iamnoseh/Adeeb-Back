@@ -14,7 +14,7 @@ public static class StudentTestingErrors
     public static readonly Error ProfileRequired = Error.Validation("mmt.profile_required", "Testing.MmtProfileRequired");
     public static readonly Error ChoicesRequired = Error.Validation("mmt.choices_required", "Testing.MmtChoicesRequired");
     public static readonly Error MonthlyExamClosed = Error.Validation("monthly_exam.closed", "Testing.MonthlyExamClosed");
-    public static readonly Error MonthlyExamAlreadySubmitted = Error.Conflict("monthly_exam.already_submitted", "Testing.MonthlyExamAlreadySubmitted");
+    public static readonly Error MonthlyExamAlreadyStarted = Error.Conflict("monthly_exam.already_started", "Testing.MonthlyExamAlreadyStarted");
     public static readonly Error UserRequired = Error.Unauthorized("test.user_required", "Common.Unauthorized");
     public static readonly Error RedListItemNotFound = Error.NotFound("redlist.item_not_found", "Testing.RedListItemNotFound");
 }

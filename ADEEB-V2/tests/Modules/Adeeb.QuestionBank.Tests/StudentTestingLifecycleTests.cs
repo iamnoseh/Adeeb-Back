@@ -8,6 +8,8 @@ using Adeeb.Modules.QuestionBank.Domain;
 using Adeeb.Modules.QuestionBank.Infrastructure.Persistence;
 using Adeeb.SharedKernel.Results;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Adeeb.QuestionBank.Tests;
@@ -106,6 +108,58 @@ public sealed class StudentTestingLifecycleTests
     }
 
     [Fact]
+    public async Task Background_finalizer_auto_submits_without_a_user_request()
+    {
+        var databaseName = Guid.NewGuid().ToString();
+        var clock = new MutableClock(new DateTimeOffset(2026, 7, 16, 8, 0, 0, TimeSpan.Zero));
+        var testingOptions = Options.Create(new StudentTestingOptions());
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IDateTimeProvider>(clock);
+        services.AddSingleton<IOptions<StudentTestingOptions>>(testingOptions);
+        services.AddDbContext<QuestionBankDbContext>(builder => builder.UseInMemoryDatabase(databaseName));
+        services.AddSingleton<ITestingRandomizer, StableRandomizer>();
+        services.AddScoped<IQuestionPickerService, QuestionPickerService>();
+        services.AddScoped<IAnswerEvaluationService>(_ => new AnswerEvaluationService(
+            [new SingleChoiceAnswerEvaluator(), new ClosedAnswerEvaluator(), new MatchingAnswerEvaluator()]));
+        services.AddScoped<RedListService>();
+        services.AddScoped<IStudentMmtTestingContext>(_ => new FakeMmtContext(null));
+        services.AddScoped<IMonthlyExamAvailabilityService, MonthlyExamAvailabilityService>();
+        services.AddScoped<ISubjectTestTimingPolicy, FakeTimingPolicy>();
+        services.AddScoped<StudentTestingService>();
+        await using var provider = services.BuildServiceProvider();
+
+        Guid attemptId;
+        using (var setupScope = provider.CreateScope())
+        {
+            var db = setupScope.ServiceProvider.GetRequiredService<QuestionBankDbContext>();
+            var subjectId = Guid.NewGuid();
+            db.Questions.AddRange(Enumerable.Range(0, 15)
+                .Select(_ => CreateActiveQuestion(QuestionType.SingleChoice, subjectId)));
+            await db.SaveChangesAsync();
+            var service = setupScope.ServiceProvider.GetRequiredService<StudentTestingService>();
+            var attempt = await service.StartSubjectAsync(Guid.NewGuid(), new(subjectId, 15, false),
+                SupportedLanguage.Tajik, default);
+            attemptId = attempt.Value!.Id;
+            clock.UtcNow = attempt.Value.ExpiresAtUtc.AddSeconds(1);
+        }
+
+        var finalizer = new ExpiredTestAttemptFinalizer(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            clock,
+            testingOptions,
+            provider.GetRequiredService<ILogger<ExpiredTestAttemptFinalizer>>());
+        var finalized = await finalizer.FinalizeBatchAsync(default);
+
+        using var assertionScope = provider.CreateScope();
+        var assertionDb = assertionScope.ServiceProvider.GetRequiredService<QuestionBankDbContext>();
+        var persisted = await assertionDb.TestAttempts.AsNoTracking().SingleAsync(x => x.Id == attemptId);
+        Assert.Equal(1, finalized);
+        Assert.Equal(TestAttemptStatus.AutoSubmitted, persisted.Status);
+        Assert.NotNull(persisted.SubmittedAtUtc);
+    }
+
+    [Fact]
     public async Task Mmt_strict_simulation_and_monthly_exam_disable_red_list_injection()
     {
         await using var db = CreateDb();
@@ -125,6 +179,48 @@ public sealed class StudentTestingLifecycleTests
         Assert.True(monthly.IsSuccess);
         Assert.False(monthlyRequest.InjectRedList);
         Assert.Equal(TestMode.MonthlyExam, monthlyRequest.Mode);
+    }
+
+    [Fact]
+    public async Task Monthly_exam_allows_one_start_per_window_and_reports_started_semantics()
+    {
+        await using var db = CreateDb();
+        var userId = Guid.NewGuid();
+        var clock = new MutableClock(new DateTimeOffset(2026, 7, 15, 20, 0, 0, TimeSpan.Zero));
+        var picker = new CapturingPicker();
+        var context = new StudentMmtTestingContext(Guid.NewGuid(), Guid.NewGuid(), [Guid.NewGuid()], 12, 2026);
+        var service = CreateService(db, clock, picker, new FakeMmtContext(context));
+
+        var first = await service.StartMonthlyExamAsync(userId, SupportedLanguage.Tajik, default);
+        var duplicate = await service.StartMonthlyExamAsync(userId, SupportedLanguage.Tajik, default);
+
+        Assert.True(first.IsSuccess);
+        Assert.Equal("monthly_exam.already_started", duplicate.Error?.Code);
+    }
+
+    [Fact]
+    public async Task Matching_display_pool_is_shuffled_once_without_exposing_the_mapping()
+    {
+        await using var db = CreateDb();
+        var subjectId = Guid.NewGuid();
+        var matching = CreateActiveQuestion(QuestionType.Matching, subjectId);
+        db.Questions.Add(matching);
+        db.Questions.AddRange(Enumerable.Range(0, 14)
+            .Select(_ => CreateActiveQuestion(QuestionType.SingleChoice, subjectId)));
+        await db.SaveChangesAsync();
+        var service = CreateService(db, new MutableClock(DateTimeOffset.UtcNow), randomizer: new ReverseRandomizer());
+
+        var attempt = await service.StartSubjectAsync(Guid.NewGuid(), new(subjectId, 15, false),
+            SupportedLanguage.Tajik, default);
+        var presented = attempt.Value!.Questions.Single(x => x.Id == matching.Id);
+        var canonical = matching.AnswerOptions.OrderBy(x => x.DisplayOrder)
+            .Select(x => x.Translations.Single().MatchPairText).ToList();
+        var secondRead = await service.GetAttemptAsync(
+            (await db.TestAttempts.AsNoTracking().SingleAsync()).UserId, attempt.Value.Id, default);
+
+        Assert.Equal(canonical.AsEnumerable().Reverse(), presented.MatchingOptions);
+        Assert.Equal(presented.MatchingOptions, secondRead.Value!.Questions.Single(x => x.Id == matching.Id).MatchingOptions);
+        Assert.All(presented.Options, option => Assert.DoesNotContain(option.Text, presented.MatchingOptions));
     }
 
     [Fact]
@@ -156,16 +252,18 @@ public sealed class StudentTestingLifecycleTests
         QuestionBankDbContext db,
         MutableClock clock,
         IQuestionPickerService? picker = null,
-        IStudentMmtTestingContext? mmtContext = null) => new(
+        IStudentMmtTestingContext? mmtContext = null,
+        ITestingRandomizer? randomizer = null) => new(
             db,
-            picker ?? new QuestionPickerService(db, new StableRandomizer()),
+            picker ?? new QuestionPickerService(db, randomizer ?? new StableRandomizer()),
             new AnswerEvaluationService([new SingleChoiceAnswerEvaluator(), new ClosedAnswerEvaluator(), new MatchingAnswerEvaluator()]),
             new RedListService(db, clock),
             mmtContext ?? new FakeMmtContext(null),
             new MonthlyExamAvailabilityService(clock, Options.Create(new StudentTestingOptions())),
+            new FakeTimingPolicy(),
             clock,
             Options.Create(new StudentTestingOptions()),
-            new StableRandomizer());
+            randomizer ?? new StableRandomizer());
 
     private static QuestionBankDbContext CreateDb() => new(new DbContextOptionsBuilder<QuestionBankDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
@@ -192,10 +290,28 @@ public sealed class StudentTestingLifecycleTests
         public void Shuffle<T>(IList<T> values) { }
     }
 
+    private sealed class ReverseRandomizer : ITestingRandomizer
+    {
+        public void Shuffle<T>(IList<T> values)
+        {
+            for (var left = 0; left < values.Count / 2; left++)
+            {
+                var right = values.Count - left - 1;
+                (values[left], values[right]) = (values[right], values[left]);
+            }
+        }
+    }
+
+    private sealed class FakeTimingPolicy : ISubjectTestTimingPolicy
+    {
+        public Task<int> DurationMinutesAsync(Guid subjectId, int questionCount, SupportedLanguage language,
+            CancellationToken ct) => Task.FromResult(questionCount);
+    }
+
     private sealed class MutableClock(DateTimeOffset now) : IDateTimeProvider
     {
         public DateTimeOffset UtcNow { get; set; } = now;
-        public DateTimeOffset DushanbeNow => UtcNow.AddHours(5);
+        public DateTimeOffset DushanbeNow => UtcNow.ToOffset(TimeSpan.FromHours(5));
         public DateTimeOffset ToDushanbeTime(DateTimeOffset value) => value.ToOffset(TimeSpan.FromHours(5));
     }
 

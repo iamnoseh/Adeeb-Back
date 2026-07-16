@@ -22,6 +22,7 @@ public sealed class StudentTestingService(
     RedListService redList,
     IStudentMmtTestingContext mmtContext,
     IMonthlyExamAvailabilityService monthlyAvailability,
+    ISubjectTestTimingPolicy subjectTiming,
     IDateTimeProvider clock,
     IOptions<StudentTestingOptions> options,
     ITestingRandomizer randomizer)
@@ -38,13 +39,14 @@ public sealed class StudentTestingService(
             value.MmtDurationMinutes, availability.IsOpen, availability.ClosesAtUtc));
     }
 
-    public Task<Result<TestAttemptDto>> StartSubjectAsync(Guid userId, StartSubjectTestRequest request,
+    public async Task<Result<TestAttemptDto>> StartSubjectAsync(Guid userId, StartSubjectTestRequest request,
         SupportedLanguage language, CancellationToken ct)
     {
         if (request.SubjectId == Guid.Empty || !SubjectCounts.Contains(request.QuestionCount))
-            return Task.FromResult(Result<TestAttemptDto>.Failure(StudentTestingErrors.InvalidQuestionCount));
-        return StartAsync(userId, TestMode.SubjectTest, request.QuestionCount, request.SubjectId, null, null,
-            request.IncludeRedList, language, request.QuestionCount * options.Value.MinutesPerSubjectQuestion, ct);
+            return Result<TestAttemptDto>.Failure(StudentTestingErrors.InvalidQuestionCount);
+        var duration = await subjectTiming.DurationMinutesAsync(request.SubjectId, request.QuestionCount, language, ct);
+        return await StartAsync(userId, TestMode.SubjectTest, request.QuestionCount, request.SubjectId, null, null,
+            request.IncludeRedList, language, duration, ct);
     }
 
     public async Task<Result<TestAttemptDto>> StartMmtPracticeAsync(Guid userId, StartMmtPracticeRequest request,
@@ -67,7 +69,7 @@ public sealed class StudentTestingService(
         if (!availability.IsOpen) return Result<TestAttemptDto>.Failure(StudentTestingErrors.MonthlyExamClosed);
         if (await db.TestAttempts.AsNoTracking().AnyAsync(x => x.UserId == userId && x.Mode == TestMode.MonthlyExam
             && x.MonthlyWindowKey == availability.WindowKey, ct))
-            return Result<TestAttemptDto>.Failure(StudentTestingErrors.MonthlyExamAlreadySubmitted);
+            return Result<TestAttemptDto>.Failure(StudentTestingErrors.MonthlyExamAlreadyStarted);
         return await StartAsync(userId, TestMode.MonthlyExam, options.Value.MonthlyExamQuestionCount, null,
             context.ClusterId, context.SubjectIds, false, language, options.Value.MmtDurationMinutes, ct,
             availability.WindowKey);
@@ -186,22 +188,27 @@ public sealed class StudentTestingService(
             && StudentTestingDatabaseNames.IsMonthlyWindowViolation(exception))
         {
             db.ChangeTracker.Clear();
-            return Result<TestAttemptDto>.Failure(StudentTestingErrors.MonthlyExamAlreadySubmitted);
+            return Result<TestAttemptDto>.Failure(StudentTestingErrors.MonthlyExamAlreadyStarted);
         }
         return await GetAttemptAsync(userId, attempt.Id, ct);
     }
 
-    private static TestQuestionSnapshot Snapshot(Question question, SupportedLanguage language)
+    private TestQuestionSnapshot Snapshot(Question question, SupportedLanguage language)
     {
         var translation = question.Translations.FirstOrDefault(x => x.Language == language)
             ?? question.Translations.FirstOrDefault(x => x.Language == SupportedLanguage.Tajik)
             ?? question.Translations.First();
+        var optionSnapshots = question.AnswerOptions.OrderBy(x => x.DisplayOrder).Select(option => new TestOptionSnapshot(
+            option.Id, option.DisplayOrder, option.IsCorrect,
+            AssessmentText.TextFor(option.Translations, language, x => x.Text),
+            AssessmentText.TextFor(option.Translations, language, x => x.MatchPairText))).ToList();
+        var matchingDisplayOrder = question.Type == QuestionType.Matching
+            ? optionSnapshots.Where(x => !string.IsNullOrWhiteSpace(x.MatchPairText)).Select(x => x.Id).ToList()
+            : null;
+        if (matchingDisplayOrder is not null) randomizer.Shuffle(matchingDisplayOrder);
         return new(TestQuestionSnapshot.CurrentVersion, question.Id, question.SubjectId, question.TopicId,
             (int)question.Type, (int)question.Difficulty, translation.Content, translation.Explanation, question.ImageUrl,
-            language, question.AnswerOptions.OrderBy(x => x.DisplayOrder).Select(option => new TestOptionSnapshot(
-                option.Id, option.DisplayOrder, option.IsCorrect,
-                AssessmentText.TextFor(option.Translations, language, x => x.Text),
-                AssessmentText.TextFor(option.Translations, language, x => x.MatchPairText))).ToList());
+            language, optionSnapshots, matchingDisplayOrder);
     }
 
     private static Question SnapshotQuestion(TestQuestionSnapshot snapshot)
@@ -224,12 +231,21 @@ public sealed class StudentTestingService(
         {
             var snapshot = DeserializeQuestion(x.QuestionSnapshotJson);
             var options = snapshot.Options.OrderBy(option => option.DisplayOrder).Select(option => new TestAnswerOptionDto(option.Id, option.Text)).ToList();
-            var right = snapshot.Type == (int)QuestionType.Matching
-                ? snapshot.Options.Select(option => option.MatchPairText).Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!).Reverse().ToList()
-                : [];
+            var matchingOptions = MatchingOptions(snapshot);
             return new TestQuestionDto(snapshot.QuestionId, x.DisplayOrder, snapshot.SubjectId, snapshot.TopicId,
-                snapshot.Type, snapshot.Difficulty, snapshot.Content, snapshot.ImageUrl, options, right);
+                snapshot.Type, snapshot.Difficulty, snapshot.Content, snapshot.ImageUrl, options, matchingOptions);
         }).ToList());
+
+    private static IReadOnlyList<string> MatchingOptions(TestQuestionSnapshot snapshot)
+    {
+        if (snapshot.Type != (int)QuestionType.Matching) return [];
+        var values = snapshot.Options.Where(x => !string.IsNullOrWhiteSpace(x.MatchPairText))
+            .ToDictionary(x => x.Id, x => x.MatchPairText!);
+        var order = snapshot.MatchingDisplayOrder is { Count: > 0 }
+            ? snapshot.MatchingDisplayOrder
+            : values.Keys.OrderBy(x => x).ToList();
+        return order.Where(values.ContainsKey).Select(x => values[x]).ToList();
+    }
 
     private static TestResultDto ToResultDto(TestAttempt attempt, IReadOnlyList<TopicBreakdownDto> breakdown,
         IReadOnlyList<StoredAnswerResult> answers)

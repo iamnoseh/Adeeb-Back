@@ -12,6 +12,6 @@
   <data name="Testing.MmtProfileRequired" xml:space="preserve"><value>Create an active MMT profile before starting this test</value></data>
   <data name="Testing.MmtChoicesRequired" xml:space="preserve"><value>Save all 12 admission choices before starting the monthly exam</value></data>
   <data name="Testing.MonthlyExamClosed" xml:space="preserve"><value>The monthly exam is not available now</value></data>
-  <data name="Testing.MonthlyExamAlreadySubmitted" xml:space="preserve"><value>You have already started this monthly exam</value></data>
+  <data name="Testing.MonthlyExamAlreadyStarted" xml:space="preserve"><value>You have already started the monthly exam in this window</value></data>
   <data name="Testing.RedListItemNotFound" xml:space="preserve"><value>The Red List item was not found</value></data>
 </root>

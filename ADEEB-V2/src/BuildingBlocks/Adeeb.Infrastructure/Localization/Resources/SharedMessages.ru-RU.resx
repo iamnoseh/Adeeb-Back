@@ -12,6 +12,6 @@
   <data name="Testing.MmtProfileRequired" xml:space="preserve"><value>Перед началом теста создайте активный профиль ММТ</value></data>
   <data name="Testing.MmtChoicesRequired" xml:space="preserve"><value>Перед месячным экзаменом сохраните все 12 комбинаций поступления</value></data>
   <data name="Testing.MonthlyExamClosed" xml:space="preserve"><value>Месячный экзамен сейчас недоступен</value></data>
-  <data name="Testing.MonthlyExamAlreadySubmitted" xml:space="preserve"><value>Вы уже начали этот месячный экзамен</value></data>
+  <data name="Testing.MonthlyExamAlreadyStarted" xml:space="preserve"><value>Вы уже начали месячный экзамен в этом окне</value></data>
   <data name="Testing.RedListItemNotFound" xml:space="preserve"><value>Вопрос не найден в списке ошибок</value></data>
 </root>

@@ -366,7 +366,7 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Testing.MmtProfileRequired"] = "Пеш аз оғози тест профили фаъоли ММТ созед",
             ["Testing.MmtChoicesRequired"] = "Пеш аз имтиҳони моҳона ҳамаи 12 комбинатсияи қабулро нигоҳ доред",
             ["Testing.MonthlyExamClosed"] = "Имтиҳони моҳона ҳоло дастрас нест",
-            ["Testing.MonthlyExamAlreadySubmitted"] = "Шумо ин имтиҳони моҳонаро аллакай оғоз кардаед",
+            ["Testing.MonthlyExamAlreadyStarted"] = "Шумо дар ин равзана имтиҳони моҳонаро аллакай оғоз кардаед",
             ["Testing.RedListItemNotFound"] = "Савол дар рӯйхати хатоҳо ёфт нашуд"
         },
         ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
@@ -381,7 +381,7 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Testing.MmtProfileRequired"] = "Перед началом теста создайте активный профиль ММТ",
             ["Testing.MmtChoicesRequired"] = "Перед месячным экзаменом сохраните все 12 комбинаций поступления",
             ["Testing.MonthlyExamClosed"] = "Месячный экзамен сейчас недоступен",
-            ["Testing.MonthlyExamAlreadySubmitted"] = "Вы уже начали этот месячный экзамен",
+            ["Testing.MonthlyExamAlreadyStarted"] = "Вы уже начали месячный экзамен в этом окне",
             ["Testing.RedListItemNotFound"] = "Вопрос не найден в списке ошибок"
         },
         ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
@@ -396,7 +396,7 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Testing.MmtProfileRequired"] = "Create an active MMT profile before starting this test",
             ["Testing.MmtChoicesRequired"] = "Save all 12 admission choices before starting the monthly exam",
             ["Testing.MonthlyExamClosed"] = "The monthly exam is not available now",
-            ["Testing.MonthlyExamAlreadySubmitted"] = "You have already started this monthly exam",
+            ["Testing.MonthlyExamAlreadyStarted"] = "You have already started the monthly exam in this window",
             ["Testing.RedListItemNotFound"] = "The Red List item was not found"
         }
     };

@@ -21,7 +21,7 @@ public static class StudentTestingEndpoints
             (await WithUser(context, id => service.StartSubjectAsync(id, request, CurrentLanguage(), ct))).ToHttpResult(context, localizer));
         tests.MapPost("/mmt-practice/start", async (StartMmtPracticeRequest request, StudentTestingService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await WithUser(context, id => service.StartMmtPracticeAsync(id, request, CurrentLanguage(), ct))).ToHttpResult(context, localizer));
-        tests.MapPost("/monthly-exam/start", async ([FromBody] StartMonthlyExamRequest request, StudentTestingService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
+        tests.MapPost("/monthly-exam/start", async (StudentTestingService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await WithUser(context, id => service.StartMonthlyExamAsync(id, CurrentLanguage(), ct))).ToHttpResult(context, localizer));
         tests.MapPost("/red-list/start", async (StartRedListPracticeRequest request, StudentTestingService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await WithUser(context, id => service.StartRedListAsync(id, request, CurrentLanguage(), ct))).ToHttpResult(context, localizer));
