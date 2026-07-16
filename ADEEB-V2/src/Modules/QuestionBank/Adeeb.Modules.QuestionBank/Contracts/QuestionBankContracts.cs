@@ -17,14 +17,28 @@ public sealed class QuestionFormRequest
 {
     public Guid SubjectId { get; init; }
     public Guid? TopicId { get; init; }
-    public string Content { get; init; } = string.Empty;
-    public string Explanation { get; init; } = string.Empty;
+    public string? ContentTg { get; init; }
+    public string? ContentRu { get; init; }
+    public string? ExplanationTg { get; init; }
+    public string? ExplanationRu { get; init; }
+    public string? Content { get; init; }
+    public string? Explanation { get; init; }
     public int Type { get; init; }
     public int Difficulty { get; init; }
     public int Status { get; init; } = 1;
     public string? AnswersJson { get; init; }
+    public string? CorrectAnswerTg { get; init; }
+    public string? CorrectAnswerRu { get; init; }
     public string? CorrectAnswer { get; init; }
     public IFormFile? Image { get; init; }
 }
 
-public sealed record LegacyAnswerFormRequest(string? Text, string? Answer, bool IsCorrect, string? MatchPair);
+public sealed record QuestionAnswerFormRequest(
+    string? TextTg,
+    string? TextRu,
+    bool IsCorrect,
+    string? MatchPairTg,
+    string? MatchPairRu,
+    string? Text = null,
+    string? Answer = null,
+    string? MatchPair = null);

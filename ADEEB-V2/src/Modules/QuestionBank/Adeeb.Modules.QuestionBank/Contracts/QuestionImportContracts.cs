@@ -7,10 +7,11 @@ public sealed class QuestionImportParseFormRequest
     public Guid SubjectId { get; init; }
     public Guid? TopicId { get; init; }
     public int Difficulty { get; init; }
+    public int Language { get; init; }
     public IFormFile? File { get; init; }
 }
 
-public sealed record QuestionImportConfirmRequest(Guid SubjectId, Guid? TopicId, int Difficulty, IReadOnlyList<QuestionImportConfirmQuestionRequest> Questions);
+public sealed record QuestionImportConfirmRequest(Guid SubjectId, Guid? TopicId, int Difficulty, int Language, IReadOnlyList<QuestionImportConfirmQuestionRequest> Questions);
 public sealed record QuestionImportConfirmQuestionRequest(string QuestionText, IReadOnlyList<QuestionImportConfirmOptionRequest> Options, int? QuestionType = null, string? ExpectedAnswer = null);
 public sealed record QuestionImportConfirmOptionRequest(string Text, bool IsCorrect);
 

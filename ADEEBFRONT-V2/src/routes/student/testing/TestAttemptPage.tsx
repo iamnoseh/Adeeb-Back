@@ -7,19 +7,21 @@ import { studentTestingApi, studentTestingKeys } from '@/features/student-testin
 import { buildSubmitPayload, clearDraft, formatTimer, isAnswered, readDraft, secondsUntil, testingErrorKey, writeDraft } from '@/features/student-testing/lib/student-testing'
 import { TestAttemptStatus, TestQuestionType, type AttemptAnswers, type DraftAnswer, type TestQuestionDto } from '@/features/student-testing/model/student-testing.types'
 import { TestingButton, TestingCard, TestingError, TestingLoading } from '@/features/student-testing/ui/TestingUi'
+import { AttemptExitGuard } from '@/features/student-testing/ui/AttemptExitGuard'
 import { cn } from '@/shared/lib/cn'
 import { SelectField } from '@/shared/ui/SelectField'
 
 export function TestAttemptPage() {
   const { attemptId = '' } = useParams(); const { t } = useTranslation(); const navigate = useNavigate()
   const attempt = useQuery({ queryKey: studentTestingKeys.attempt(attemptId), queryFn: () => studentTestingApi.getAttempt(attemptId), enabled: Boolean(attemptId), refetchOnWindowFocus: false })
-  const [currentIndex, setCurrentIndex] = useState(0); const [answers, setAnswers] = useState<AttemptAnswers>(() => readDraft(attemptId)); const answersRef = useRef(answers); const [confirmOpen, setConfirmOpen] = useState(false); const autoSubmitted = useRef(false)
+  const [currentIndex, setCurrentIndex] = useState(0); const [answers, setAnswers] = useState<AttemptAnswers>(() => readDraft(attemptId)); const answersRef = useRef(answers); const [confirmOpen, setConfirmOpen] = useState(false); const autoSubmitted = useRef(false); const allowExit = useRef(false)
   useEffect(() => { answersRef.current = answers; if (attemptId) writeDraft(attemptId, answers) }, [answers, attemptId])
   const submit = useMutation({
     mutationFn: () => studentTestingApi.submitAttempt(attemptId, buildSubmitPayload(attempt.data?.questions ?? [], answersRef.current)),
-    onSuccess: () => { clearDraft(attemptId); navigate(`/student/tests/attempts/${attemptId}/result`, { replace: true }) },
+    onSuccess: () => { allowExit.current = true; clearDraft(attemptId); navigate(`/student/tests/attempts/${attemptId}/result`, { replace: true }) },
     onError: (error) => {
       if (testingErrorKey(error) === 'alreadySubmitted') {
+        allowExit.current = true
         clearDraft(attemptId)
         navigate(`/student/tests/attempts/${attemptId}/result`, { replace: true })
       }
@@ -28,7 +30,7 @@ export function TestAttemptPage() {
   const submitNow = useCallback(() => { if (!submit.isPending) submit.mutate() }, [submit])
   const remaining = useAttemptTimer(attempt.data?.expiresAtUtc, () => { if (!autoSubmitted.current) { autoSubmitted.current = true; submitNow() } })
   useEffect(() => {
-    if (attempt.data && [TestAttemptStatus.submitted, TestAttemptStatus.autoSubmitted].includes(attempt.data.status as 2 | 3)) navigate(`/student/tests/attempts/${attemptId}/result`, { replace: true })
+    if (attempt.data && [TestAttemptStatus.submitted, TestAttemptStatus.autoSubmitted].includes(attempt.data.status as 2 | 3)) { allowExit.current = true; navigate(`/student/tests/attempts/${attemptId}/result`, { replace: true }) }
   }, [attempt.data, attemptId, navigate])
   if (attempt.isLoading) return <TestingLoading />
   if (attempt.isError) return <TestingError error={attempt.error} onRetry={() => void attempt.refetch()} />
@@ -53,6 +55,7 @@ export function TestAttemptPage() {
     </main>
     <aside className="order-first min-w-0 xl:order-none"><TestingCard className="xl:sticky xl:top-20"><div className="flex items-center justify-between gap-3"><h2 className="font-black">{t('student.testing.navigation')}</h2><span className="text-xs font-bold text-[var(--student-muted)]">{answeredCount}/{attempt.data.questionCount}</span></div><div className="mt-4 flex gap-2 overflow-x-auto pb-2 xl:grid xl:grid-cols-5 xl:overflow-visible">{attempt.data.questions.map((item, index) => <button key={item.id} type="button" onClick={() => setCurrentIndex(index)} aria-label={t('student.testing.goToQuestion', { number: index + 1 })} className={cn('h-10 w-10 shrink-0 rounded-lg border text-sm font-black', index === currentIndex ? 'border-[#5146f0] bg-[#5146f0] text-white' : isAnswered(answers[item.id]) ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-[var(--student-border)] text-[var(--student-muted)]')}>{index + 1}</button>)}</div><div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold text-[var(--student-muted)]"><span>{t('student.testing.answered')}: {answeredCount}</span><span>{t('student.testing.unanswered')}: {attempt.data.questionCount - answeredCount}</span></div><TestingButton className="mt-5 w-full" onClick={() => setConfirmOpen(true)}>{t('student.testing.finish')}</TestingButton></TestingCard></aside>
     {confirmOpen ? <ConfirmSubmit unanswered={attempt.data.questionCount - answeredCount} pending={submit.isPending} onCancel={() => setConfirmOpen(false)} onConfirm={submitNow} /> : null}
+    <AttemptExitGuard active={attempt.data.status === TestAttemptStatus.inProgress} allowExit={allowExit} finishing={submit.isPending} unanswered={attempt.data.questionCount - answeredCount} onFinish={submitNow} />
   </div>
 }
 

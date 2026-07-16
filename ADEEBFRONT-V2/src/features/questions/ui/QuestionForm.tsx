@@ -22,17 +22,17 @@ type QuestionFormProps = {
 }
 
 const defaultAnswers = [
-  { text: '', isCorrect: true },
-  { text: '', isCorrect: false },
-  { text: '', isCorrect: false },
-  { text: '', isCorrect: false },
+  { textTg: '', textRu: '', isCorrect: true },
+  { textTg: '', textRu: '', isCorrect: false },
+  { textTg: '', textRu: '', isCorrect: false },
+  { textTg: '', textRu: '', isCorrect: false },
 ]
 
 const defaultMatchingPairs = [
-  { text: '', matchPair: '' },
-  { text: '', matchPair: '' },
-  { text: '', matchPair: '' },
-  { text: '', matchPair: '' },
+  { textTg: '', textRu: '', matchPairTg: '', matchPairRu: '' },
+  { textTg: '', textRu: '', matchPairTg: '', matchPairRu: '' },
+  { textTg: '', textRu: '', matchPairTg: '', matchPairRu: '' },
+  { textTg: '', textRu: '', matchPairTg: '', matchPairRu: '' },
 ]
 
 export function QuestionForm({ questionId }: QuestionFormProps) {
@@ -46,14 +46,17 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
     defaultValues: {
       subjectId: '',
       topicId: '',
-      content: '',
-      explanation: '',
+      contentTg: '',
+      contentRu: '',
+      explanationTg: '',
+      explanationRu: '',
       type: 1,
       difficulty: 1,
       status: 1,
       answers: defaultAnswers,
       matchingPairs: defaultMatchingPairs,
-      correctAnswer: '',
+      correctAnswerTg: '',
+      correctAnswerRu: '',
     },
   })
 
@@ -61,8 +64,8 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
   const selectedType = form.watch('type')
 
   const subjectsQuery = useQuery({
-    queryKey: subjectKeys.publicList({ pageSize: 100 }),
-    queryFn: () => subjectsApi.publicList({ pageSize: 100 }),
+    queryKey: subjectKeys.publicList({ pageSize: 50 }),
+    queryFn: () => subjectsApi.publicList({ pageSize: 50 }),
   })
   const topicsQuery = useQuery({
     queryKey: selectedSubjectId ? topicKeys.bySubject(selectedSubjectId) : ['topics', 'empty'],
@@ -81,25 +84,34 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
 
     const sortedOptions = [...question.answerOptions].sort((a, b) => a.displayOrder - b.displayOrder)
     const asAnswer = sortedOptions.map((option) => ({
-      text: option.translations[0]?.text ?? '',
+      textTg: optionTranslation(option.translations, 0)?.text ?? '',
+      textRu: optionTranslation(option.translations, 1)?.text ?? '',
       isCorrect: option.isCorrect,
     }))
     const asPairs = sortedOptions.map((option) => ({
-      text: option.translations[0]?.text ?? '',
-      matchPair: option.translations[0]?.matchPairText ?? '',
+      textTg: optionTranslation(option.translations, 0)?.text ?? '',
+      textRu: optionTranslation(option.translations, 1)?.text ?? '',
+      matchPairTg: optionTranslation(option.translations, 0)?.matchPairText ?? '',
+      matchPairRu: optionTranslation(option.translations, 1)?.matchPairText ?? '',
     }))
+    const tajik = question.translations.find((translation) => translation.language === 0)
+    const russian = question.translations.find((translation) => translation.language === 1)
+    const closedOption = sortedOptions[0]
 
     form.reset({
       subjectId: question.subjectId,
       topicId: question.topicId ?? '',
-      content: question.content,
-      explanation: question.translations[0]?.explanation ?? '',
+      contentTg: tajik?.content ?? '',
+      contentRu: russian?.content ?? '',
+      explanationTg: tajik?.explanation ?? '',
+      explanationRu: russian?.explanation ?? '',
       type: question.type,
       difficulty: question.difficulty,
       status: question.status,
       answers: padAnswers(asAnswer),
       matchingPairs: padPairs(asPairs),
-      correctAnswer: question.type === 3 ? sortedOptions[0]?.translations[0]?.text ?? '' : '',
+      correctAnswerTg: question.type === 3 ? optionTranslation(closedOption?.translations, 0)?.text ?? '' : '',
+      correctAnswerRu: question.type === 3 ? optionTranslation(closedOption?.translations, 1)?.text ?? '' : '',
     })
   }, [form, questionQuery.data])
 
@@ -195,21 +207,36 @@ export function QuestionForm({ questionId }: QuestionFormProps) {
         </FormField>
       </section>
 
-      <FormField label={t('questionText')} error={form.formState.errors.content?.message}>
-        <Textarea rows={5} {...form.register('content')} />
-      </FormField>
+      <BilingualSection title={t('questionText')}>
+        <FormField label={t('tajikLanguage')} error={form.formState.errors.contentTg?.message}>
+          <Textarea rows={5} {...form.register('contentTg')} />
+        </FormField>
+        <FormField label={t('russianLanguage')} error={form.formState.errors.contentRu?.message}>
+          <Textarea rows={5} {...form.register('contentRu')} />
+        </FormField>
+      </BilingualSection>
 
       {selectedType === 1 ? <SingleChoiceEditor form={form} /> : null}
       {selectedType === 2 ? <MatchingEditor form={form} /> : null}
       {selectedType === 3 ? (
-        <FormField label={t('correctAnswer')} error={form.formState.errors.correctAnswer?.message}>
-          <Input {...form.register('correctAnswer')} />
-        </FormField>
+        <BilingualSection title={t('correctAnswer')}>
+          <FormField label={t('tajikLanguage')} error={form.formState.errors.correctAnswerTg?.message}>
+            <Input {...form.register('correctAnswerTg')} />
+          </FormField>
+          <FormField label={t('russianLanguage')} error={form.formState.errors.correctAnswerRu?.message}>
+            <Input {...form.register('correctAnswerRu')} />
+          </FormField>
+        </BilingualSection>
       ) : null}
 
-      <FormField label={t('explanation')}>
-        <Textarea rows={4} {...form.register('explanation')} />
-      </FormField>
+      <BilingualSection title={t('explanation')}>
+        <FormField label={t('tajikLanguage')}>
+          <Textarea rows={4} {...form.register('explanationTg')} />
+        </FormField>
+        <FormField label={t('russianLanguage')}>
+          <Textarea rows={4} {...form.register('explanationRu')} />
+        </FormField>
+      </BilingualSection>
 
       <div className="flex justify-end gap-2 border-t border-[var(--border)] pt-5">
         <Button type="button" variant="secondary" onClick={() => navigate('/admin/questions')}>
@@ -240,7 +267,7 @@ function SingleChoiceEditor({ form }: QuestionFormInnerProps) {
       </div>
       {answersError ? <p className="text-sm font-semibold text-[var(--danger)]">{answersError}</p> : null}
       {[0, 1, 2, 3].map((index) => (
-        <div key={index} className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 md:grid-cols-[74px_1fr]">
+        <div key={index} className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 md:grid-cols-[74px_minmax(0,1fr)_minmax(0,1fr)]">
           <label className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-black shadow-sm">
             <input
               type="radio"
@@ -253,7 +280,12 @@ function SingleChoiceEditor({ form }: QuestionFormInnerProps) {
             />
             {String.fromCharCode(65 + index)}
           </label>
-          <Input placeholder={`${t('option')} ${String.fromCharCode(65 + index)}`} {...form.register(`answers.${index}.text`)} />
+          <FormField label={t('tajikLanguage')}>
+            <Input placeholder={`${t('option')} ${String.fromCharCode(65 + index)}`} {...form.register(`answers.${index}.textTg`)} />
+          </FormField>
+          <FormField label={t('russianLanguage')}>
+            <Input placeholder={`${t('option')} ${String.fromCharCode(65 + index)}`} {...form.register(`answers.${index}.textRu`)} />
+          </FormField>
         </div>
       ))}
     </section>
@@ -272,19 +304,40 @@ function MatchingEditor({ form }: QuestionFormInnerProps) {
       </div>
       {matchingError ? <p className="text-sm font-semibold text-[var(--danger)]">{matchingError}</p> : null}
       {[0, 1, 2, 3].map((index) => (
-        <div key={index} className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 md:grid-cols-[1fr_1fr]">
-          <Input placeholder={`${t('left')} ${index + 1}`} {...form.register(`matchingPairs.${index}.text`)} />
-          <Input placeholder={`${t('right')} ${index + 1}`} {...form.register(`matchingPairs.${index}.matchPair`)} />
+        <div key={index} className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-3 lg:grid-cols-2">
+          <fieldset className="grid gap-2 rounded-xl border border-[var(--border)] bg-white p-3">
+            <legend className="px-1 text-xs font-black text-[var(--muted)]">{t('tajikLanguage')}</legend>
+            <Input placeholder={`${t('left')} ${index + 1}`} {...form.register(`matchingPairs.${index}.textTg`)} />
+            <Input placeholder={`${t('right')} ${index + 1}`} {...form.register(`matchingPairs.${index}.matchPairTg`)} />
+          </fieldset>
+          <fieldset className="grid gap-2 rounded-xl border border-[var(--border)] bg-white p-3">
+            <legend className="px-1 text-xs font-black text-[var(--muted)]">{t('russianLanguage')}</legend>
+            <Input placeholder={`${t('left')} ${index + 1}`} {...form.register(`matchingPairs.${index}.textRu`)} />
+            <Input placeholder={`${t('right')} ${index + 1}`} {...form.register(`matchingPairs.${index}.matchPairRu`)} />
+          </fieldset>
         </div>
       ))}
     </section>
   )
 }
 
-function padAnswers(values: { text: string; isCorrect: boolean }[]) {
+function BilingualSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="grid gap-3">
+      <h2 className="text-base font-bold">{title}</h2>
+      <div className="grid gap-4 md:grid-cols-2">{children}</div>
+    </section>
+  )
+}
+
+function optionTranslation<T extends { language: number }>(translations: T[] | undefined, language: number) {
+  return translations?.find((translation) => translation.language === language)
+}
+
+function padAnswers(values: { textTg: string; textRu: string; isCorrect: boolean }[]) {
   return [...values, ...defaultAnswers].slice(0, 4)
 }
 
-function padPairs(values: { text: string; matchPair: string }[]) {
+function padPairs(values: { textTg: string; textRu: string; matchPairTg: string; matchPairRu: string }[]) {
   return [...values, ...defaultMatchingPairs].slice(0, 4)
 }

@@ -1,4 +1,5 @@
 import { httpClient } from '@/shared/api/http-client'
+import { getStoredUiLanguage } from '@/shared/i18n/language'
 import type {
   QuestionFormValues,
   QuestionImportConfirmRequest,
@@ -11,8 +12,8 @@ import type {
 } from '@/features/questions/model/question.types'
 
 export const questionKeys = {
-  list: (query: QuestionListQuery = {}) => ['questions', 'list', query] as const,
-  detail: (id: string) => ['questions', 'detail', id] as const,
+  list: (query: QuestionListQuery = {}) => ['questions', 'list', query, getStoredUiLanguage()] as const,
+  detail: (id: string) => ['questions', 'detail', id, getStoredUiLanguage()] as const,
 }
 
 export const questionsApi = {
@@ -43,6 +44,7 @@ export const questionsApi = {
     body.append('SubjectId', values.subjectId)
     if (values.topicId) body.append('TopicId', values.topicId)
     body.append('Difficulty', String(values.difficulty))
+    body.append('Language', String(values.language))
     body.append('File', values.file)
 
     const response = await httpClient.post<QuestionImportPreviewResponse>('/api/v2/admin/questions/import/parse', body)
@@ -72,8 +74,10 @@ function toQuestionFormData(values: QuestionFormValues) {
   const body = new FormData()
   body.append('SubjectId', values.subjectId)
   if (values.topicId) body.append('TopicId', values.topicId)
-  body.append('Content', values.content)
-  body.append('Explanation', values.explanation)
+  body.append('ContentTg', values.contentTg)
+  body.append('ContentRu', values.contentRu)
+  body.append('ExplanationTg', values.explanationTg)
+  body.append('ExplanationRu', values.explanationRu)
   body.append('Type', String(values.type))
   body.append('Difficulty', String(values.difficulty))
   body.append('Status', String(values.status))
@@ -87,7 +91,8 @@ function toQuestionFormData(values: QuestionFormValues) {
   }
 
   if (values.type === 3) {
-    body.append('CorrectAnswer', values.correctAnswer)
+    body.append('CorrectAnswerTg', values.correctAnswerTg)
+    body.append('CorrectAnswerRu', values.correctAnswerRu)
   }
 
   const image = values.image?.item(0)

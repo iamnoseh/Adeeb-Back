@@ -21,7 +21,7 @@ public sealed class QuestionImportService(
 
     public async Task<Result<QuestionImportPreviewResponse>> ParseAsync(QuestionImportParseFormRequest request, CancellationToken cancellationToken)
     {
-        var validation = await ValidateImportContextAsync(request.SubjectId, request.TopicId, request.Difficulty, cancellationToken);
+        var validation = await ValidateImportContextAsync(request.SubjectId, request.TopicId, request.Difficulty, request.Language, cancellationToken);
         if (validation.IsFailure)
         {
             return validation.ValidationErrors is not null
@@ -94,7 +94,7 @@ public sealed class QuestionImportService(
     {
         logger.LogInformation("Question import confirm started. SubjectId={SubjectId} TopicId={TopicId} Count={Count}", request.SubjectId, request.TopicId, request.Questions.Count);
 
-        var validation = await ValidateImportContextAsync(request.SubjectId, request.TopicId, request.Difficulty, cancellationToken);
+        var validation = await ValidateImportContextAsync(request.SubjectId, request.TopicId, request.Difficulty, request.Language, cancellationToken);
         if (validation.IsFailure)
         {
             return validation.ValidationErrors is not null
@@ -140,7 +140,7 @@ public sealed class QuestionImportService(
                 continue;
             }
 
-            requests.Add(ToUpsertRequest(request.SubjectId, request.TopicId, request.Difficulty, parsed));
+            requests.Add(ToUpsertRequest(request.SubjectId, request.TopicId, request.Difficulty, (SupportedLanguage)request.Language, parsed));
         }
 
         if (errors.Count > 0)
@@ -148,7 +148,7 @@ public sealed class QuestionImportService(
             return Result<QuestionImportConfirmResponse>.ValidationFailure(errors);
         }
 
-        var created = await questionService.CreateQuestionsAsync(requests, SupportedLanguage.Tajik, cancellationToken);
+        var created = await questionService.CreateQuestionsAsync(requests, (SupportedLanguage)request.Language, cancellationToken);
         if (created.IsFailure)
         {
             return created.ValidationErrors is not null
@@ -161,7 +161,7 @@ public sealed class QuestionImportService(
         return Result<QuestionImportConfirmResponse>.Success(new QuestionImportConfirmResponse(ids.Count, ids));
     }
 
-    private async Task<Result> ValidateImportContextAsync(Guid subjectId, Guid? topicId, int difficulty, CancellationToken cancellationToken)
+    private async Task<Result> ValidateImportContextAsync(Guid subjectId, Guid? topicId, int difficulty, int language, CancellationToken cancellationToken)
     {
         var errors = new Dictionary<string, IReadOnlyList<Error>>(StringComparer.OrdinalIgnoreCase);
         if (subjectId == Guid.Empty)
@@ -172,6 +172,11 @@ public sealed class QuestionImportService(
         if (!Enum.IsDefined(typeof(Domain.DifficultyLevel), difficulty))
         {
             errors["difficulty"] = [Error.Validation("question.difficulty.invalid", "QuestionBank.InvalidDifficulty")];
+        }
+
+        if (!Enum.IsDefined(typeof(SupportedLanguage), language) || language == (int)SupportedLanguage.English)
+        {
+            errors["language"] = [Error.Validation("question.language.unsupported", "Validation.UnsupportedLanguage")];
         }
 
         if (errors.Count > 0)
@@ -301,23 +306,19 @@ public sealed class QuestionImportService(
             responseQuestions);
     }
 
-    private static QuestionUpsertRequest ToUpsertRequest(Guid subjectId, Guid? topicId, int difficulty, ParsedQuestion question) =>
+    internal static QuestionUpsertRequest ToUpsertRequest(Guid subjectId, Guid? topicId, int difficulty, SupportedLanguage language, ParsedQuestion question) =>
         new(
             subjectId,
             topicId,
             null,
             (int)question.QuestionType,
             difficulty,
-            (int)Domain.QuestionStatus.Active,
+            (int)Domain.QuestionStatus.Draft,
             null,
-            [
-                new((int)SupportedLanguage.Tajik, question.QuestionText, null),
-                new((int)SupportedLanguage.Russian, question.QuestionText, null),
-                new((int)SupportedLanguage.English, question.QuestionText, null)
-            ],
-            ToAnswerOptions(question));
+            [new((int)language, question.QuestionText, null)],
+            ToAnswerOptions(question, language));
 
-    private static IReadOnlyList<AnswerOptionRequest> ToAnswerOptions(ParsedQuestion question)
+    private static IReadOnlyList<AnswerOptionRequest> ToAnswerOptions(ParsedQuestion question, SupportedLanguage language)
     {
         if (question.QuestionType == Domain.QuestionType.ClosedAnswer)
         {
@@ -327,22 +328,14 @@ public sealed class QuestionImportService(
                 new AnswerOptionRequest(
                     1,
                     true,
-                    [
-                        new((int)SupportedLanguage.Tajik, answer, null),
-                        new((int)SupportedLanguage.Russian, answer, null),
-                        new((int)SupportedLanguage.English, answer, null)
-                    ])
+                    [new((int)language, answer, null)])
             ];
         }
 
         return question.Options.Select((option, index) => new AnswerOptionRequest(
                 index + 1,
                 option.IsCorrect,
-                [
-                    new((int)SupportedLanguage.Tajik, option.Text, null),
-                    new((int)SupportedLanguage.Russian, option.Text, null),
-                    new((int)SupportedLanguage.English, option.Text, null)
-                ])).ToList();
+                [new((int)language, option.Text, null)])).ToList();
     }
 
     private static Domain.QuestionType DetectConfirmQuestionType(QuestionImportConfirmQuestionRequest question)
