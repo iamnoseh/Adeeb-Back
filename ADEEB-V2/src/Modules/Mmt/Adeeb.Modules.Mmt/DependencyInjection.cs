@@ -1,6 +1,7 @@
 using Adeeb.Modules.Mmt.Application;
 using Adeeb.Modules.Mmt.Application.Import;
 using Adeeb.Modules.Mmt.Infrastructure.Persistence;
+using Adeeb.Application.Abstractions.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<AdmissionProgramService>();
         services.AddScoped<MmtSimulatorService>();
         services.AddScoped<MmtDashboardService>();
+        services.AddScoped<IStudentMmtTestingContext, StudentMmtTestingContextProvider>();
         services.AddScoped<MmtImportService>();
         services.AddSingleton<MmtSpreadsheet>();
         return services;

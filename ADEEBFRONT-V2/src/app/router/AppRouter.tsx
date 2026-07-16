@@ -26,7 +26,7 @@ import { StudentLearningPage } from "@/routes/student/StudentLearningPage";
 import { StudentProfilePage } from "@/routes/student/StudentProfilePage";
 import { StudentSectionPage } from "@/routes/student/StudentSectionPage";
 import { StudentSettingsPage } from "@/routes/student/StudentSettingsPage";
-import { Award, CalendarCheck2, HelpCircle, Rocket, ShieldCheck, Swords, Trophy } from "lucide-react";
+import { Award, CalendarCheck2, HelpCircle, Rocket, Swords, Trophy } from "lucide-react";
 
 const MmtCatalogPage = lazy(() =>
   import("@/features/mmt/ui/MmtCatalogPage").then((module) => ({
@@ -83,10 +83,28 @@ const MmtReferenceDetailPage = lazy(() =>
     default: module.MmtReferenceDetailPage,
   })),
 );
+const StudentTestsHubPage = lazy(() => import("@/routes/student/testing/StudentTestsHubPage").then((module) => ({ default: module.StudentTestsHubPage })));
+const SubjectTestStartPage = lazy(() => import("@/routes/student/testing/StudentTestStartPages").then((module) => ({ default: module.SubjectTestStartPage })));
+const MmtPracticeStartPage = lazy(() => import("@/routes/student/testing/StudentTestStartPages").then((module) => ({ default: module.MmtPracticeStartPage })));
+const MonthlyExamStartPage = lazy(() => import("@/routes/student/testing/StudentTestStartPages").then((module) => ({ default: module.MonthlyExamStartPage })));
+const RedListPracticeStartPage = lazy(() => import("@/routes/student/testing/StudentTestStartPages").then((module) => ({ default: module.RedListPracticeStartPage })));
+const TestAttemptPage = lazy(() => import("@/routes/student/testing/TestAttemptPage").then((module) => ({ default: module.TestAttemptPage })));
+const TestResultPage = lazy(() => import("@/routes/student/testing/StudentTestingResultsPages").then((module) => ({ default: module.TestResultPage })));
+const TestHistoryPage = lazy(() => import("@/routes/student/testing/StudentTestingResultsPages").then((module) => ({ default: module.TestHistoryPage })));
+const StudentRedListPage = lazy(() => import("@/routes/student/testing/StudentTestingResultsPages").then((module) => ({ default: module.StudentRedListPage })));
 
 function MmtRouteFallback() {
   const { t } = useTranslation();
   return <div className="text-sm text-[var(--muted)]">{t("mmt.loading")}</div>;
+}
+
+function StudentTestingFallback() {
+  const { t } = useTranslation();
+  return <div className="text-sm text-[var(--student-muted)]">{t("student.testing.loading")}</div>;
+}
+
+function StudentTestingRoute({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<StudentTestingFallback />}>{children}</Suspense>;
 }
 
 export function AppRouter() {
@@ -191,8 +209,17 @@ export function AppRouter() {
         >
           <Route index element={<StudentHomePage />} />
           <Route path="mmt" element={<StudentMmtPage />} />
+          <Route path="mmt/setup" element={<StudentMmtPage />} />
           <Route path="learning" element={<StudentLearningPage />} />
-          <Route path="tests" element={<StudentSectionPage titleKey="student.tests" icon={ShieldCheck} />} />
+          <Route path="tests" element={<StudentTestingRoute><StudentTestsHubPage /></StudentTestingRoute>} />
+          <Route path="tests/subject" element={<StudentTestingRoute><SubjectTestStartPage /></StudentTestingRoute>} />
+          <Route path="tests/mmt-practice" element={<StudentTestingRoute><MmtPracticeStartPage /></StudentTestingRoute>} />
+          <Route path="tests/monthly-exam" element={<StudentTestingRoute><MonthlyExamStartPage /></StudentTestingRoute>} />
+          <Route path="tests/red-list" element={<StudentTestingRoute><RedListPracticeStartPage /></StudentTestingRoute>} />
+          <Route path="tests/attempts/:attemptId" element={<StudentTestingRoute><TestAttemptPage /></StudentTestingRoute>} />
+          <Route path="tests/attempts/:attemptId/result" element={<StudentTestingRoute><TestResultPage /></StudentTestingRoute>} />
+          <Route path="tests/history" element={<StudentTestingRoute><TestHistoryPage /></StudentTestingRoute>} />
+          <Route path="red-list" element={<StudentTestingRoute><StudentRedListPage /></StudentTestingRoute>} />
           <Route path="duels" element={<StudentSectionPage titleKey="student.duel" icon={Swords} />} />
           <Route path="daily-tasks" element={<StudentSectionPage titleKey="student.dailyTasks" icon={CalendarCheck2} />} />
           <Route path="missions" element={<StudentSectionPage titleKey="student.missions" icon={Rocket} />} />

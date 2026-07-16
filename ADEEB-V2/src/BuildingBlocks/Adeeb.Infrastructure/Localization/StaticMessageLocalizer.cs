@@ -352,6 +352,55 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
         }
     };
 
+    private static readonly Dictionary<string, Dictionary<string, string>> TestingMessages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["tg-TJ"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Testing.RedListNotEnough"] = "Барои машқ ҳадди ақал 20 саволи фаъоли рӯйхати хатоҳо лозим аст",
+            ["Testing.NotEnoughQuestions"] = "Барои ин тест саволҳои фаъол кофӣ нестанд",
+            ["Testing.AttemptNotFound"] = "Кӯшиши тестёбӣ ёфт нашуд",
+            ["Testing.AttemptAlreadySubmitted"] = "Ин кӯшиш аллакай анҷом дода шудааст",
+            ["Testing.AttemptExpired"] = "Вақти ин кӯшиш ба охир расидааст",
+            ["Testing.InvalidMode"] = "Реҷаи интихобшудаи тест нодуруст аст",
+            ["Testing.InvalidQuestionCount"] = "Миқдори интихобшудаи саволҳо нодуруст аст",
+            ["Testing.MmtProfileRequired"] = "Пеш аз оғози тест профили фаъоли ММТ созед",
+            ["Testing.MmtChoicesRequired"] = "Пеш аз имтиҳони моҳона ҳамаи 12 комбинатсияи қабулро нигоҳ доред",
+            ["Testing.MonthlyExamClosed"] = "Имтиҳони моҳона ҳоло дастрас нест",
+            ["Testing.MonthlyExamAlreadyStarted"] = "Шумо дар ин равзана имтиҳони моҳонаро аллакай оғоз кардаед",
+            ["Testing.RedListItemNotFound"] = "Савол дар рӯйхати хатоҳо ёфт нашуд"
+        },
+        ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Testing.RedListNotEnough"] = "Для практики требуется минимум 20 активных вопросов из списка ошибок",
+            ["Testing.NotEnoughQuestions"] = "Недостаточно активных вопросов для этого теста",
+            ["Testing.AttemptNotFound"] = "Попытка тестирования не найдена",
+            ["Testing.AttemptAlreadySubmitted"] = "Эта попытка уже завершена",
+            ["Testing.AttemptExpired"] = "Время этой попытки истекло",
+            ["Testing.InvalidMode"] = "Выбран недопустимый режим тестирования",
+            ["Testing.InvalidQuestionCount"] = "Выбрано недопустимое количество вопросов",
+            ["Testing.MmtProfileRequired"] = "Перед началом теста создайте активный профиль ММТ",
+            ["Testing.MmtChoicesRequired"] = "Перед месячным экзаменом сохраните все 12 комбинаций поступления",
+            ["Testing.MonthlyExamClosed"] = "Месячный экзамен сейчас недоступен",
+            ["Testing.MonthlyExamAlreadyStarted"] = "Вы уже начали месячный экзамен в этом окне",
+            ["Testing.RedListItemNotFound"] = "Вопрос не найден в списке ошибок"
+        },
+        ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Testing.RedListNotEnough"] = "At least 20 active Red List questions are required",
+            ["Testing.NotEnoughQuestions"] = "There are not enough active questions for this test",
+            ["Testing.AttemptNotFound"] = "Test attempt was not found",
+            ["Testing.AttemptAlreadySubmitted"] = "This test attempt has already been submitted",
+            ["Testing.AttemptExpired"] = "This test attempt has expired",
+            ["Testing.InvalidMode"] = "The selected test mode is invalid",
+            ["Testing.InvalidQuestionCount"] = "The selected question count is invalid",
+            ["Testing.MmtProfileRequired"] = "Create an active MMT profile before starting this test",
+            ["Testing.MmtChoicesRequired"] = "Save all 12 admission choices before starting the monthly exam",
+            ["Testing.MonthlyExamClosed"] = "The monthly exam is not available now",
+            ["Testing.MonthlyExamAlreadyStarted"] = "You have already started the monthly exam in this window",
+            ["Testing.RedListItemNotFound"] = "The Red List item was not found"
+        }
+    };
+
     private static readonly Dictionary<string, string> ClusterLockedMessages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["tg-TJ"] = "Кластери ММТ баъди оғози Роҳи Қабул тағйир дода намешавад",
@@ -421,6 +470,12 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
                 return mmtMessage;
             }
 
+            if (TestingMessages.TryGetValue(culture, out var testingLocalized)
+                && testingLocalized.TryGetValue(key, out var testingMessage))
+            {
+                return testingMessage;
+            }
+
             if (Messages["tg-TJ"].TryGetValue(key, out var fallback))
             {
                 return fallback;
@@ -429,6 +484,11 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             if (ContentMessages["tg-TJ"].TryGetValue(key, out var contentFallback))
             {
                 return contentFallback;
+            }
+
+            if (TestingMessages["tg-TJ"].TryGetValue(key, out var testingFallback))
+            {
+                return testingFallback;
             }
 
             return MmtMessages.GetValueOrDefault(key, key);
