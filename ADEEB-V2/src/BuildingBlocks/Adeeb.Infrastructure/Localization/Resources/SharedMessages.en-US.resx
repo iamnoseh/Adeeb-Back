@@ -2,4 +2,16 @@
 <root>
   <data name="Auth.InvalidCredentials" xml:space="preserve"><value>Invalid login credentials</value></data>
   <data name="Validation.InvalidEmail" xml:space="preserve"><value>Email address is invalid</value></data>
+  <data name="Testing.RedListNotEnough" xml:space="preserve"><value>At least 20 active Red List questions are required</value></data>
+  <data name="Testing.NotEnoughQuestions" xml:space="preserve"><value>There are not enough active questions for this test</value></data>
+  <data name="Testing.AttemptNotFound" xml:space="preserve"><value>Test attempt was not found</value></data>
+  <data name="Testing.AttemptAlreadySubmitted" xml:space="preserve"><value>This test attempt has already been submitted</value></data>
+  <data name="Testing.AttemptExpired" xml:space="preserve"><value>This test attempt has expired</value></data>
+  <data name="Testing.InvalidMode" xml:space="preserve"><value>The selected test mode is invalid</value></data>
+  <data name="Testing.InvalidQuestionCount" xml:space="preserve"><value>The selected question count is invalid</value></data>
+  <data name="Testing.MmtProfileRequired" xml:space="preserve"><value>Create an active MMT profile before starting this test</value></data>
+  <data name="Testing.MmtChoicesRequired" xml:space="preserve"><value>Save all 12 admission choices before starting the monthly exam</value></data>
+  <data name="Testing.MonthlyExamClosed" xml:space="preserve"><value>The monthly exam is not available now</value></data>
+  <data name="Testing.MonthlyExamAlreadySubmitted" xml:space="preserve"><value>You have already started this monthly exam</value></data>
+  <data name="Testing.RedListItemNotFound" xml:space="preserve"><value>The Red List item was not found</value></data>
 </root>

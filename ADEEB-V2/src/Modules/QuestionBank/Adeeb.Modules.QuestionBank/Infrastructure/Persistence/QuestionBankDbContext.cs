@@ -7,6 +7,11 @@ namespace Adeeb.Modules.QuestionBank.Infrastructure.Persistence;
 public sealed class QuestionBankDbContext(DbContextOptions<QuestionBankDbContext> options) : DbContext(options)
 {
     public DbSet<Question> Questions => Set<Question>();
+    public DbSet<TestAttempt> TestAttempts => Set<TestAttempt>();
+    public DbSet<TestAttemptQuestion> TestAttemptQuestions => Set<TestAttemptQuestion>();
+    public DbSet<TestAttemptAnswer> TestAttemptAnswers => Set<TestAttemptAnswer>();
+    public DbSet<TestAttemptResult> TestAttemptResults => Set<TestAttemptResult>();
+    public DbSet<StudentRedListItem> StudentRedListItems => Set<StudentRedListItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -15,6 +20,11 @@ public sealed class QuestionBankDbContext(DbContextOptions<QuestionBankDbContext
         modelBuilder.ApplyConfiguration(new QuestionTranslationMap());
         modelBuilder.ApplyConfiguration(new AnswerOptionMap());
         modelBuilder.ApplyConfiguration(new AnswerOptionTranslationMap());
+        modelBuilder.ApplyConfiguration(new TestAttemptConfiguration());
+        modelBuilder.ApplyConfiguration(new TestAttemptQuestionConfiguration());
+        modelBuilder.ApplyConfiguration(new TestAttemptAnswerConfiguration());
+        modelBuilder.ApplyConfiguration(new TestAttemptResultConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentRedListItemConfiguration());
     }
 }
 
