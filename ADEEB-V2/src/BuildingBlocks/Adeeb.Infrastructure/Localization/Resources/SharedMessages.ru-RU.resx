@@ -2,4 +2,16 @@
 <root>
   <data name="Auth.InvalidCredentials" xml:space="preserve"><value>Неверные данные для входа</value></data>
   <data name="Validation.InvalidEmail" xml:space="preserve"><value>Адрес электронной почты недействителен</value></data>
+  <data name="Testing.RedListNotEnough" xml:space="preserve"><value>Для практики требуется минимум 20 активных вопросов из списка ошибок</value></data>
+  <data name="Testing.NotEnoughQuestions" xml:space="preserve"><value>Недостаточно активных вопросов для этого теста</value></data>
+  <data name="Testing.AttemptNotFound" xml:space="preserve"><value>Попытка тестирования не найдена</value></data>
+  <data name="Testing.AttemptAlreadySubmitted" xml:space="preserve"><value>Эта попытка уже завершена</value></data>
+  <data name="Testing.AttemptExpired" xml:space="preserve"><value>Время этой попытки истекло</value></data>
+  <data name="Testing.InvalidMode" xml:space="preserve"><value>Выбран недопустимый режим тестирования</value></data>
+  <data name="Testing.InvalidQuestionCount" xml:space="preserve"><value>Выбрано недопустимое количество вопросов</value></data>
+  <data name="Testing.MmtProfileRequired" xml:space="preserve"><value>Перед началом теста создайте активный профиль ММТ</value></data>
+  <data name="Testing.MmtChoicesRequired" xml:space="preserve"><value>Перед месячным экзаменом сохраните все 12 комбинаций поступления</value></data>
+  <data name="Testing.MonthlyExamClosed" xml:space="preserve"><value>Месячный экзамен сейчас недоступен</value></data>
+  <data name="Testing.MonthlyExamAlreadySubmitted" xml:space="preserve"><value>Вы уже начали этот месячный экзамен</value></data>
+  <data name="Testing.RedListItemNotFound" xml:space="preserve"><value>Вопрос не найден в списке ошибок</value></data>
 </root>

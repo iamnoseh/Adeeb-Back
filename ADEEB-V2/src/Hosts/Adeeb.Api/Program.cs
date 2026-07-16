@@ -133,6 +133,7 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
 app.MapIdentityEndpoints();
 app.MapAcademicCatalogEndpoints();
 app.MapQuestionBankEndpoints();
+app.MapStudentTestingEndpoints();
 app.MapStudentEndpoints();
 app.MapCommerceEndpoints();
 app.MapMmtEndpoints();

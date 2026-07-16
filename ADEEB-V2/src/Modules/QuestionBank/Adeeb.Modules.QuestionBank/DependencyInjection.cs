@@ -29,6 +29,20 @@ public static class DependencyInjection
             .Validate(options => options.MaxQuestionsPerImport > 0, "Question import max questions must be positive.")
             .ValidateOnStart();
         services.AddScoped<QuestionBankService>();
+        services.AddOptions<StudentTestingOptions>()
+            .Bind(configuration.GetSection(StudentTestingOptions.SectionName))
+            .Validate(x => x.RedListMinimumQuestions >= 1 && x.RedListDefaultQuestions >= x.RedListMinimumQuestions,
+                "StudentTesting Red List question counts are invalid.")
+            .Validate(x => x.MmtPracticeDefaultQuestions is >= 1 and <= 200 && x.MonthlyExamQuestionCount is >= 1 and <= 200,
+                "StudentTesting exam question counts must be between 1 and 200.")
+            .Validate(x => x.MinutesPerSubjectQuestion > 0 && x.MmtDurationMinutes > 0 && x.MonthlyExamWindowHours is >= 1 and <= 72,
+                "StudentTesting timing values are invalid.")
+            .ValidateOnStart();
+        services.AddSingleton<ITestingRandomizer, TestingRandomizer>();
+        services.AddScoped<IQuestionPickerService, QuestionPickerService>();
+        services.AddScoped<RedListService>();
+        services.AddScoped<IMonthlyExamAvailabilityService, MonthlyExamAvailabilityService>();
+        services.AddScoped<StudentTestingService>();
         services.AddSingleton<IQuestionAnswerEvaluator, SingleChoiceAnswerEvaluator>();
         services.AddSingleton<IQuestionAnswerEvaluator, ClosedAnswerEvaluator>();
         services.AddSingleton<IQuestionAnswerEvaluator, MatchingAnswerEvaluator>();
