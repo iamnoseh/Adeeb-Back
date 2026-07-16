@@ -22,7 +22,6 @@ public partial class InitialQuestionBank : Migration
                 id = table.Column<Guid>(type: "uuid", nullable: false),
                 subject_id = table.Column<Guid>(type: "uuid", nullable: false),
                 topic_id = table.Column<Guid>(type: "uuid", nullable: true),
-                topic = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
                 type = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                 difficulty = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                 status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
