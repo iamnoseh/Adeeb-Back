@@ -132,6 +132,13 @@ export type AdmissionProgramQuery = ListQuery & {
   admissionYear?: number | undefined;
   isPublished?: boolean | undefined;
 };
+export type StudentSpecialtyLookupQuery = ListQuery & {
+  clusterId: string;
+};
+export type StudentUniversityLookupQuery = ListQuery & {
+  clusterId: string;
+  specialtyId: string;
+};
 
 export type PassingScoreHistoryDto = {
   id: string;

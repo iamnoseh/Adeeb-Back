@@ -87,3 +87,58 @@ textarea:focus-visible {
   scrollbar-width: thin;
   scrollbar-color: #c9d6d2 transparent;
 }
+
+.student-shell {
+  --student-bg: #f4f6fb;
+  --student-canvas: #f8f9fc;
+  --student-surface: #ffffff;
+  --student-surface-soft: #f7f8fc;
+  --student-text: #111b3d;
+  --student-muted: #68718c;
+  --student-border: #e1e4ef;
+}
+
+.student-shell.student-theme-dark {
+  color-scheme: dark;
+  --student-bg: #0c1020;
+  --student-canvas: #101526;
+  --student-surface: #171d30;
+  --student-surface-soft: #1d2439;
+  --student-text: #f3f5ff;
+  --student-muted: #aab2cb;
+  --student-border: #2c354d;
+}
+
+.student-shell .student-card {
+  border-color: var(--student-border);
+  background: var(--student-surface);
+  color: var(--student-text);
+}
+
+.student-theme-dark .bg-white,
+.student-theme-dark [class*="bg-white/"] {
+  background-color: var(--student-surface) !important;
+}
+
+.student-theme-dark [class*="bg-[#f8"],
+.student-theme-dark [class*="bg-[#f7"],
+.student-theme-dark [class*="bg-[#f6"],
+.student-theme-dark [class*="bg-[#faf"] {
+  background-color: var(--student-surface-soft) !important;
+}
+
+.student-theme-dark [class*="text-[#111b3d]"],
+.student-theme-dark [class*="text-[#171a2b]"],
+.student-theme-dark [class*="text-[#303957]"] {
+  color: var(--student-text) !important;
+}
+
+.student-theme-dark [class*="text-[#68718c]"],
+.student-theme-dark [class*="text-[#858da5]"] {
+  color: var(--student-muted) !important;
+}
+
+.student-theme-dark [class*="border-[#e"],
+.student-theme-dark [class*="border-[#d"] {
+  border-color: var(--student-border) !important;
+}

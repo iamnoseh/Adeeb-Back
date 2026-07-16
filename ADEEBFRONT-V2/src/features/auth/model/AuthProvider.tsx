@@ -10,6 +10,7 @@ import { authApi } from "@/features/auth/api/auth.api";
 import type {
   AuthResponse,
   LoginRequest,
+  RegisterRequest,
   UserResponse,
 } from "@/features/auth/model/auth.types";
 import {
@@ -92,6 +93,12 @@ export function AuthProvider({ queryClient, children }: AuthProviderProps) {
     return response;
   }, []);
 
+  const register = useCallback(async (request: RegisterRequest) => {
+    const response = await authApi.register(request);
+    applyAuthResponse(response, setUser);
+    return response;
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
@@ -106,9 +113,10 @@ export function AuthProvider({ queryClient, children }: AuthProviderProps) {
       isAuthenticated: user !== null,
       isBootstrapping,
       login,
+      register,
       logout,
     }),
-    [isBootstrapping, login, logout, user],
+    [isBootstrapping, login, logout, register, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

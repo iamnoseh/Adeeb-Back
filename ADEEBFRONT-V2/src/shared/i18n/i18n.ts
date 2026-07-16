@@ -3,6 +3,7 @@ import { initReactI18next } from "react-i18next";
 import { tgTJ } from "@/shared/i18n/locales/tg-TJ";
 import { ruRU } from "@/shared/i18n/locales/ru-RU";
 import { mmtRu, mmtTg } from "@/shared/i18n/locales/mmt";
+import { studentRu, studentTg } from "@/shared/i18n/locales/student";
 import { getStoredUiLanguage } from "@/shared/i18n/language";
 
 void i18n.use(initReactI18next).init({
@@ -13,10 +14,10 @@ void i18n.use(initReactI18next).init({
   },
   resources: {
     "tg-TJ": {
-      translation: { ...tgTJ, mmt: mmtTg },
+      translation: { ...tgTJ, mmt: mmtTg, student: studentTg },
     },
     "ru-RU": {
-      translation: { ...ruRU, mmt: mmtRu },
+      translation: { ...ruRU, mmt: mmtRu, student: studentRu },
     },
   },
 });

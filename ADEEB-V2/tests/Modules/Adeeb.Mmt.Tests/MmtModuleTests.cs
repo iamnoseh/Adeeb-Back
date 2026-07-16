@@ -75,6 +75,27 @@ public sealed class MmtModuleTests
     }
 
     [Fact]
+    public void PostgreSql_enum_comparisons_do_not_cast_string_columns_to_integer()
+    {
+        var options = new DbContextOptionsBuilder<MmtDbContext>()
+            .UseNpgsql("Host=localhost;Database=sql_generation_only;Username=test;Password=test")
+            .Options;
+        using var db = new MmtDbContext(options);
+        var admissionType = AdmissionType.Budget;
+        var studyForm = StudyForm.Distance;
+        var studyLanguage = StudyLanguage.Tajik;
+
+        var sql = db.AdmissionPrograms
+            .Where(x => x.AdmissionType == admissionType && x.StudyForm == studyForm && x.StudyLanguage == studyLanguage)
+            .ToQueryString();
+
+        Assert.DoesNotContain("::int", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Budget", sql, StringComparison.Ordinal);
+        Assert.Contains("Distance", sql, StringComparison.Ordinal);
+        Assert.Contains("Tajik", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Duplicate_score_for_program_year_and_round_is_rejected()
     {
         await using var db = Db(); var program = await SeedProgram(db); var service = Programs(db);
@@ -151,6 +172,36 @@ public sealed class MmtModuleTests
         await db.SaveChangesAsync();
         var result = await Programs(db).GetProgramsAsync(new AdmissionProgramFilter(), false, SupportedLanguage.Tajik, default);
         Assert.Single(result.Value!.Items);
+    }
+
+    [Fact]
+    public async Task Student_lookups_follow_cluster_specialty_and_university_program_availability()
+    {
+        await using var db = Db();
+        var firstCluster = new MmtCluster(Guid.NewGuid(), "Cluster 1", "C1", null, Now);
+        var secondCluster = new MmtCluster(Guid.NewGuid(), "Cluster 2", "C2", null, Now);
+        var law = new Specialty(Guid.NewGuid(), "LAW", "Law", null, Now);
+        var medicine = new Specialty(Guid.NewGuid(), "MED", "Medicine", null, Now);
+        var firstUniversity = new University(Guid.NewGuid(), "University A", null, "Dushanbe", UniversityType.Public, null, Now);
+        var secondUniversity = new University(Guid.NewGuid(), "University B", null, "Khujand", UniversityType.Public, null, Now);
+        var firstLaw = new AdmissionProgram(Guid.NewGuid(), firstUniversity.Id, law.Id, firstCluster.Id, AdmissionType.Budget, StudyForm.FullTime, StudyLanguage.Tajik, 2026, null, true, Now);
+        var secondLaw = new AdmissionProgram(Guid.NewGuid(), secondUniversity.Id, law.Id, firstCluster.Id, AdmissionType.Contract, StudyForm.FullTime, StudyLanguage.Russian, 2026, null, true, Now);
+        var medicineProgram = new AdmissionProgram(Guid.NewGuid(), secondUniversity.Id, medicine.Id, secondCluster.Id, AdmissionType.Budget, StudyForm.FullTime, StudyLanguage.Tajik, 2026, null, true, Now);
+        var unpublished = new AdmissionProgram(Guid.NewGuid(), firstUniversity.Id, medicine.Id, firstCluster.Id, AdmissionType.Budget, StudyForm.PartTime, StudyLanguage.Tajik, 2026, null, false, Now);
+        db.AddRange(firstCluster, secondCluster, law, medicine, firstUniversity, secondUniversity, firstLaw, secondLaw, medicineProgram, unpublished);
+        await db.SaveChangesAsync();
+        var service = Programs(db);
+
+        var clusters = await service.GetStudentClustersAsync(new(), SupportedLanguage.Tajik, default);
+        var specialties = await service.GetStudentSpecialtiesAsync(new(firstCluster.Id), SupportedLanguage.Tajik, default);
+        var universities = await service.GetStudentUniversitiesAsync(new(firstCluster.Id, law.Id), SupportedLanguage.Tajik, default);
+        var programs = await service.GetProgramsAsync(new(ClusterId: firstCluster.Id, UniversityId: secondUniversity.Id, SpecialtyId: law.Id), false, SupportedLanguage.Tajik, default);
+
+        Assert.Equal(new[] { firstCluster.Id, secondCluster.Id }.Order(), clusters.Value!.Items.Select(x => x.Id).Order());
+        Assert.Equal(law.Id, Assert.Single(specialties.Value!.Items).Id);
+        Assert.Equal(new[] { firstUniversity.Id, secondUniversity.Id }.Order(), universities.Value!.Items.Select(x => x.Id).Order());
+        Assert.Equal(secondLaw.Id, Assert.Single(programs.Value!.Items).Id);
+        Assert.NotEqual(firstLaw.Id, secondLaw.Id);
     }
 
     [Fact]

@@ -33,5 +33,6 @@ public static class MmtErrors
     public static readonly Error ChoicesRequired = Error.Conflict("mmt.choices_required", "MMT.ChoicesRequired");
     public static readonly Error EvaluationScoreInvalid = Error.Validation("mmt.evaluation_score_invalid", "MMT.ScoreInvalid");
     public static readonly Error ProfileConflict = Error.Conflict("mmt.profile_conflict", "MMT.ProfileConflict");
+    public static readonly Error ClusterLocked = Error.Conflict("mmt.cluster_locked", "MMT.ClusterLocked");
     public static readonly Error ChoiceUpdateConflict = Error.Conflict("mmt.choice_update_conflict", "MMT.ChoiceUpdateConflict");
 }

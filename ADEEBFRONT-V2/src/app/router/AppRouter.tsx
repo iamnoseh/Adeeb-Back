@@ -1,13 +1,13 @@
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Navigate,
   Outlet,
   Route,
   BrowserRouter as Router,
   Routes,
 } from "react-router-dom";
 import { LoginRoute } from "@/routes/login/LoginRoute";
+import { RegisterRoute } from "@/routes/register/RegisterRoute";
 import { AdminLayout } from "@/routes/admin/AdminLayout";
 import { AdminHomeRoute } from "@/routes/admin/AdminHomeRoute";
 import { SubjectsRoute } from "@/routes/admin/subjects/SubjectsRoute";
@@ -17,8 +17,16 @@ import { TopicFormRoute } from "@/routes/admin/topics/TopicFormRoute";
 import { QuestionsRoute } from "@/routes/admin/questions/QuestionsRoute";
 import { QuestionFormRoute } from "@/routes/admin/questions/QuestionFormRoute";
 import { QuestionImportRoute } from "@/routes/admin/questions/QuestionImportRoute";
-import { AuthRoute } from "@/features/auth/ui/AuthRoute";
+import { AuthRoute, AuthenticatedHomeRedirect } from "@/features/auth/ui/AuthRoute";
 import { GuestRoute } from "@/features/auth/ui/GuestRoute";
+import { StudentLayout } from "@/routes/student/StudentLayout";
+import { StudentHomePage } from "@/routes/student/StudentHomePage";
+import { StudentMmtPage } from "@/routes/student/StudentMmtPage";
+import { StudentLearningPage } from "@/routes/student/StudentLearningPage";
+import { StudentProfilePage } from "@/routes/student/StudentProfilePage";
+import { StudentSectionPage } from "@/routes/student/StudentSectionPage";
+import { StudentSettingsPage } from "@/routes/student/StudentSettingsPage";
+import { Award, CalendarCheck2, HelpCircle, Rocket, ShieldCheck, Swords, Trophy } from "lucide-react";
 
 const MmtCatalogPage = lazy(() =>
   import("@/features/mmt/ui/MmtCatalogPage").then((module) => ({
@@ -85,7 +93,7 @@ export function AppRouter() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Navigate to="/admin" replace />} />
+        <Route path="/" element={<AuthenticatedHomeRedirect />} />
         <Route
           path="/login"
           element={
@@ -95,9 +103,17 @@ export function AppRouter() {
           }
         />
         <Route
+          path="/register"
+          element={
+            <GuestRoute>
+              <RegisterRoute />
+            </GuestRoute>
+          }
+        />
+        <Route
           path="/admin"
           element={
-            <AuthRoute>
+            <AuthRoute audience="admin">
               <AdminLayout />
             </AuthRoute>
           }
@@ -165,7 +181,28 @@ export function AppRouter() {
             />
           </Route>
         </Route>
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        <Route
+          path="/student"
+          element={
+            <AuthRoute audience="student">
+              <StudentLayout />
+            </AuthRoute>
+          }
+        >
+          <Route index element={<StudentHomePage />} />
+          <Route path="mmt" element={<StudentMmtPage />} />
+          <Route path="learning" element={<StudentLearningPage />} />
+          <Route path="tests" element={<StudentSectionPage titleKey="student.tests" icon={ShieldCheck} />} />
+          <Route path="duels" element={<StudentSectionPage titleKey="student.duel" icon={Swords} />} />
+          <Route path="daily-tasks" element={<StudentSectionPage titleKey="student.dailyTasks" icon={CalendarCheck2} />} />
+          <Route path="missions" element={<StudentSectionPage titleKey="student.missions" icon={Rocket} />} />
+          <Route path="league" element={<StudentSectionPage titleKey="student.league" icon={Trophy} />} />
+          <Route path="achievements" element={<StudentSectionPage titleKey="student.achievements" icon={Award} />} />
+          <Route path="profile" element={<StudentProfilePage />} />
+          <Route path="settings" element={<StudentSettingsPage />} />
+          <Route path="support" element={<StudentSectionPage titleKey="student.support" icon={HelpCircle} />} />
+        </Route>
+        <Route path="*" element={<AuthenticatedHomeRedirect />} />
       </Routes>
     </Router>
   );

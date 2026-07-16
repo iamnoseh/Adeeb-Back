@@ -21,6 +21,13 @@ public static class MmtEndpoints
         var student = app.MapGroup("/api/v2/mmt/admission-programs").WithTags("MMT Admissions").RequireAuthorization();
         student.MapGet("/", async ([AsParameters] AdmissionProgramFilter filter, AdmissionProgramService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await service.GetProgramsAsync(filter, false, CurrentLanguage(c), ct)).ToHttpResult(c, l));
         student.MapGet("/{id:guid}", async (Guid id, AdmissionProgramService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await service.GetProgramAsync(id, false, CurrentLanguage(c), ct)).ToHttpResult(c, l));
+        var studentLookups = app.MapGroup("/api/v2/mmt").WithTags("MMT Student Lookups").RequireAuthorization();
+        studentLookups.MapGet("/clusters", async ([AsParameters] MmtPageQuery query, AdmissionProgramService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) =>
+            (await service.GetStudentClustersAsync(query, CurrentLanguage(c), ct)).ToHttpResult(c, l));
+        studentLookups.MapGet("/specialties", async ([AsParameters] StudentSpecialtyLookupQuery query, AdmissionProgramService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) =>
+            (await service.GetStudentSpecialtiesAsync(query, CurrentLanguage(c), ct)).ToHttpResult(c, l));
+        studentLookups.MapGet("/universities", async ([AsParameters] StudentUniversityLookupQuery query, AdmissionProgramService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) =>
+            (await service.GetStudentUniversitiesAsync(query, CurrentLanguage(c), ct)).ToHttpResult(c, l));
         MapSimulatorStudent(app);
         return app;
     }

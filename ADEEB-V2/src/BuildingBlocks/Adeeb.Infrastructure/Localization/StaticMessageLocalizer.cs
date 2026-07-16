@@ -352,6 +352,13 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
         }
     };
 
+    private static readonly Dictionary<string, string> ClusterLockedMessages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["tg-TJ"] = "Кластери ММТ баъди оғози Роҳи Қабул тағйир дода намешавад",
+        ["ru-RU"] = "Кластер ММТ нельзя изменить после начала Пути поступления",
+        ["en-US"] = "The MMT cluster cannot be changed after the admission path has started"
+    };
+
     private static readonly Dictionary<string, string> MmtMessages = new(StringComparer.OrdinalIgnoreCase)
     {
         ["MMT.ClusterNotFound"] = "MMT cluster was not found",
@@ -397,6 +404,8 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
         get
         {
             var culture = CultureInfo.CurrentUICulture.Name;
+            if (key.Equals("MMT.ClusterLocked", StringComparison.OrdinalIgnoreCase)
+                && ClusterLockedMessages.TryGetValue(culture, out var clusterLocked)) return clusterLocked;
             if (Messages.TryGetValue(culture, out var localized) && localized.TryGetValue(key, out var message))
             {
                 return message;
