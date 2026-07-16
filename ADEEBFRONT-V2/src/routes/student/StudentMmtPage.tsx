@@ -138,7 +138,7 @@ export function StudentMmtPage() {
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <SelectField value={admissionType} onValueChange={(value) => { setAdmissionType(value); setProgramPage(1) }} placeholder={t('mmt.allAdmissionTypes')} options={[{ value: '', label: t('mmt.allAdmissionTypes') }, ...labels.admissionTypes.map((label, value) => ({ value: String(value), label }))]} />
             <SelectField value={studyForm} onValueChange={(value) => { setStudyForm(value); setProgramPage(1) }} placeholder={t('mmt.allStudyForms')} options={[{ value: '', label: t('mmt.allStudyForms') }, ...labels.studyForms.map((label, value) => ({ value: String(value), label }))]} />
-            <SelectField value={studyLanguage} onValueChange={(value) => { setStudyLanguage(value); setProgramPage(1) }} placeholder={t('mmt.allStudyLanguages')} options={[{ value: '', label: t('mmt.allStudyLanguages') }, ...labels.studyLanguages.map((label, value) => ({ value: String(value), label }))]} />
+            <SelectField value={studyLanguage} onValueChange={(value) => { setStudyLanguage(value); setProgramPage(1) }} placeholder={t('mmt.allLanguages')} options={[{ value: '', label: t('mmt.allLanguages') }, ...labels.studyLanguages.map((label, value) => ({ value: String(value), label }))]} />
           </div>
         </article>
 

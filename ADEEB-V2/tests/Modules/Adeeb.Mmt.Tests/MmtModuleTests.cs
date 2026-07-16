@@ -75,6 +75,27 @@ public sealed class MmtModuleTests
     }
 
     [Fact]
+    public void PostgreSql_enum_comparisons_do_not_cast_string_columns_to_integer()
+    {
+        var options = new DbContextOptionsBuilder<MmtDbContext>()
+            .UseNpgsql("Host=localhost;Database=sql_generation_only;Username=test;Password=test")
+            .Options;
+        using var db = new MmtDbContext(options);
+        var admissionType = AdmissionType.Budget;
+        var studyForm = StudyForm.Distance;
+        var studyLanguage = StudyLanguage.Tajik;
+
+        var sql = db.AdmissionPrograms
+            .Where(x => x.AdmissionType == admissionType && x.StudyForm == studyForm && x.StudyLanguage == studyLanguage)
+            .ToQueryString();
+
+        Assert.DoesNotContain("::int", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Budget", sql, StringComparison.Ordinal);
+        Assert.Contains("Distance", sql, StringComparison.Ordinal);
+        Assert.Contains("Tajik", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Duplicate_score_for_program_year_and_round_is_rejected()
     {
         await using var db = Db(); var program = await SeedProgram(db); var service = Programs(db);

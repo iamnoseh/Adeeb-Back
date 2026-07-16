@@ -79,7 +79,7 @@ public sealed class MmtSimulatorService(
             .Where(x => x.UserId == userId && x.AdmissionYear == CurrentAdmissionYear && x.IsActive)
             .Select(x => (Guid?)x.Id).SingleOrDefaultAsync(ct);
         if (!profileId.HasValue) return Result<IReadOnlyList<StudentAdmissionChoiceDto>>.Failure(MmtErrors.StudentProfileNotFound);
-        return Result<IReadOnlyList<StudentAdmissionChoiceDto>>.Success(await ChoiceDtos(profileId.Value).ToListAsync(ct));
+        return Result<IReadOnlyList<StudentAdmissionChoiceDto>>.Success(await ChoiceDtosAsync(profileId.Value, ct));
     }
 
     public async Task<Result<IReadOnlyList<StudentAdmissionChoiceDto>>> ReplaceChoicesAsync(
@@ -122,7 +122,7 @@ public sealed class MmtSimulatorService(
         }
 
         db.ChangeTracker.Clear();
-        return Result<IReadOnlyList<StudentAdmissionChoiceDto>>.Success(await ChoiceDtos(profile.Id).ToListAsync(ct));
+        return Result<IReadOnlyList<StudentAdmissionChoiceDto>>.Success(await ChoiceDtosAsync(profile.Id, ct));
     }
 
     public async Task<Result<MmtEvaluationDto>> SimulateAsync(ClaimsPrincipal principal, SimulateMmtEvaluationDto request, CancellationToken ct)
@@ -223,7 +223,7 @@ public sealed class MmtSimulatorService(
         if (!await db.StudentProfiles.AsNoTracking().AnyAsync(x => x.Id == profileId, ct))
             return Result<IReadOnlyList<StudentAdmissionChoiceDto>>.Failure(MmtErrors.StudentProfileNotFound);
 
-        return Result<IReadOnlyList<StudentAdmissionChoiceDto>>.Success(await ChoiceDtos(profileId).ToListAsync(ct));
+        return Result<IReadOnlyList<StudentAdmissionChoiceDto>>.Success(await ChoiceDtosAsync(profileId, ct));
     }
 
     public Task<Result<PagedResponse<MmtEvaluationListItemDto>>> GetAdminEvaluationsAsync(MmtEvaluationFilter filter, CancellationToken ct) =>
@@ -263,10 +263,19 @@ public sealed class MmtSimulatorService(
     private IQueryable<MmtExamEvaluation> EvaluationQuery() => db.ExamEvaluations.AsNoTracking()
         .Include(x => x.ChoiceSnapshots).AsSplitQuery();
 
-    private IQueryable<StudentAdmissionChoiceDto> ChoiceDtos(Guid profileId) => db.StudentAdmissionChoices.AsNoTracking()
-        .Where(x => x.StudentMmtProfileId == profileId)
-        .OrderBy(x => x.PriorityOrder)
-        .Select(x => new StudentAdmissionChoiceDto(
+    private async Task<IReadOnlyList<StudentAdmissionChoiceDto>> ChoiceDtosAsync(Guid profileId, CancellationToken ct)
+    {
+        var choices = await db.StudentAdmissionChoices.AsNoTracking()
+            .Include(x => x.AdmissionProgram).ThenInclude(x => x.University)
+            .Include(x => x.AdmissionProgram).ThenInclude(x => x.Specialty)
+            .Include(x => x.AdmissionProgram).ThenInclude(x => x.MmtCluster)
+            .Include(x => x.AdmissionProgram).ThenInclude(x => x.PassingScores)
+            .Where(x => x.StudentMmtProfileId == profileId)
+            .OrderBy(x => x.PriorityOrder)
+            .AsSplitQuery()
+            .ToListAsync(ct);
+
+        return choices.Select(x => new StudentAdmissionChoiceDto(
             x.Id,
             x.PriorityOrder,
             new AdmissionProgramListItemDto(
@@ -278,7 +287,8 @@ public sealed class MmtSimulatorService(
                 x.AdmissionProgram.IsActive, x.AdmissionProgram.PassingScores.Where(s => s.DistributionRound == DistributionRound.Main).OrderByDescending(s => s.Year)
                     .Select(s => (decimal?)s.PassingScore).FirstOrDefault()),
             x.CreatedAtUtc,
-            x.UpdatedAtUtc));
+            x.UpdatedAtUtc)).ToList();
+    }
 
     private async Task<bool> ProgramMatchesProfileAsync(Guid programId, Guid clusterId, int year, CancellationToken ct) =>
         await db.AdmissionPrograms.AnyAsync(x => x.Id == programId && x.MmtClusterId == clusterId

@@ -134,7 +134,8 @@ public sealed class AdmissionProgramService(
     {
         var validation = MmtValidation.ValidateScore(request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note, request.DistributionRound); if (validation.IsFailure) return Invalid<PassingScoreHistoryDto>(validation);
         if (!await db.AdmissionPrograms.AnyAsync(x => x.Id == programId, ct)) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.ProgramNotFound);
-        if (await db.PassingScores.AnyAsync(x => x.AdmissionProgramId == programId && x.Year == request.Year && (int)x.DistributionRound == request.DistributionRound, ct)) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore);
+        var round = (DistributionRound)request.DistributionRound;
+        if (await db.PassingScores.AnyAsync(x => x.AdmissionProgramId == programId && x.Year == request.Year && x.DistributionRound == round, ct)) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore);
         var entity = new PassingScoreHistory(Guid.NewGuid(), programId, request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note, clock.UtcNow, (DistributionRound)request.DistributionRound);
         db.PassingScores.Add(entity);
         try { await db.SaveChangesAsync(ct); } catch (DbUpdateException ex) when (MmtDatabaseConstraints.IsUniqueViolation(ex, MmtDatabaseConstraints.ProgramYearRoundScore)) { db.ChangeTracker.Clear(); return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore); }
@@ -145,7 +146,8 @@ public sealed class AdmissionProgramService(
     {
         var validation = MmtValidation.ValidateScore(request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note, request.DistributionRound); if (validation.IsFailure) return Invalid<PassingScoreHistoryDto>(validation);
         var entity = await db.PassingScores.SingleOrDefaultAsync(x => x.Id == id, ct); if (entity is null) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.ScoreNotFound);
-        if (await db.PassingScores.AnyAsync(x => x.Id != id && x.AdmissionProgramId == entity.AdmissionProgramId && x.Year == request.Year && (int)x.DistributionRound == request.DistributionRound, ct)) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore);
+        var round = (DistributionRound)request.DistributionRound;
+        if (await db.PassingScores.AnyAsync(x => x.Id != id && x.AdmissionProgramId == entity.AdmissionProgramId && x.Year == request.Year && x.DistributionRound == round, ct)) return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore);
         entity.Update(request.Year, request.PassingScore, request.SeatsCount, request.Source, request.Note, clock.UtcNow, (DistributionRound)request.DistributionRound);
         try { await db.SaveChangesAsync(ct); } catch (DbUpdateException ex) when (MmtDatabaseConstraints.IsUniqueViolation(ex, MmtDatabaseConstraints.ProgramYearRoundScore)) { db.ChangeTracker.Clear(); return Result<PassingScoreHistoryDto>.Failure(MmtErrors.DuplicateScore); }
         return Result<PassingScoreHistoryDto>.Success(ToDto(entity));
@@ -182,9 +184,9 @@ public sealed class AdmissionProgramService(
         if (f.ClusterId.HasValue) q = q.Where(x => x.MmtClusterId == f.ClusterId);
         if (f.UniversityId.HasValue) q = q.Where(x => x.UniversityId == f.UniversityId);
         if (f.SpecialtyId.HasValue) q = q.Where(x => x.SpecialtyId == f.SpecialtyId);
-        if (f.AdmissionType.HasValue) q = q.Where(x => (int)x.AdmissionType == f.AdmissionType);
-        if (f.StudyForm.HasValue) q = q.Where(x => (int)x.StudyForm == f.StudyForm);
-        if (f.StudyLanguage.HasValue) q = q.Where(x => (int)x.StudyLanguage == f.StudyLanguage);
+        if (f.AdmissionType.HasValue) { var value = (AdmissionType)f.AdmissionType.Value; q = q.Where(x => x.AdmissionType == value); }
+        if (f.StudyForm.HasValue) { var value = (StudyForm)f.StudyForm.Value; q = q.Where(x => x.StudyForm == value); }
+        if (f.StudyLanguage.HasValue) { var value = (StudyLanguage)f.StudyLanguage.Value; q = q.Where(x => x.StudyLanguage == value); }
         if (admin && f.IsPublished.HasValue) q = q.Where(x => x.IsPublished == f.IsPublished);
         if (admin && f.IsActive.HasValue) q = q.Where(x => x.IsActive == f.IsActive);
         if (!string.IsNullOrWhiteSpace(f.Search)) { var s = f.Search.Trim().ToLower(); q = q.Where(x => x.University.FullName.ToLower().Contains(s) || x.University.FullNameRu.ToLower().Contains(s) || x.Specialty.Name.ToLower().Contains(s) || x.Specialty.NameRu.ToLower().Contains(s) || x.Specialty.Code.ToLower().Contains(s)); }
@@ -201,8 +203,15 @@ public sealed class AdmissionProgramService(
     }
     private async Task<bool> ReferencesActiveAsync(Guid university, Guid specialty, Guid cluster, CancellationToken ct) =>
         await db.Universities.AnyAsync(x => x.Id == university && x.IsActive, ct) && await db.Specialties.AnyAsync(x => x.Id == specialty && x.IsActive, ct) && await db.Clusters.AnyAsync(x => x.Id == cluster && x.IsActive, ct);
-    private Task<bool> DuplicateAsync(Guid? id, Guid university, Guid specialty, Guid cluster, int type, int form, int language, int year, CancellationToken ct) =>
-        db.AdmissionPrograms.AnyAsync(x => (!id.HasValue || x.Id != id) && x.UniversityId == university && x.SpecialtyId == specialty && x.MmtClusterId == cluster && (int)x.AdmissionType == type && (int)x.StudyForm == form && (int)x.StudyLanguage == language && x.AdmissionYear == year, ct);
+    private Task<bool> DuplicateAsync(Guid? id, Guid university, Guid specialty, Guid cluster, int type, int form, int language, int year, CancellationToken ct)
+    {
+        var admissionType = (AdmissionType)type;
+        var studyForm = (StudyForm)form;
+        var studyLanguage = (StudyLanguage)language;
+        return db.AdmissionPrograms.AnyAsync(x => (!id.HasValue || x.Id != id) && x.UniversityId == university
+            && x.SpecialtyId == specialty && x.MmtClusterId == cluster && x.AdmissionType == admissionType
+            && x.StudyForm == studyForm && x.StudyLanguage == studyLanguage && x.AdmissionYear == year, ct);
+    }
     private int CurrentAdmissionYear => options.CurrentAdmissionYear ?? clock.UtcNow.Year;
     private static Result<T> Invalid<T>(Result validation) => Result<T>.ValidationFailure(validation.ValidationErrors!);
     private static PassingScoreHistoryDto ToDto(PassingScoreHistory x) => new(x.Id, x.AdmissionProgramId, x.Year, x.PassingScore, x.SeatsCount, x.Source, x.Note, x.CreatedAtUtc, x.UpdatedAtUtc, (int)x.DistributionRound);
