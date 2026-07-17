@@ -59,6 +59,36 @@ namespace Adeeb.Modules.Students.Infrastructure.Persistence.Migrations
                     b.ToTable("students", "students");
                 });
 
+            modelBuilder.Entity("Adeeb.Modules.Students.Domain.Students.StudentDailyActivity", b =>
+                {
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.Property<DateOnly>("LocalDate")
+                        .HasColumnType("date")
+                        .HasColumnName("local_date");
+
+                    b.Property<DateTimeOffset>("FirstSeenAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_seen_at_utc");
+
+                    b.Property<DateTimeOffset>("LastSeenAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at_utc");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("time_zone_id");
+
+                    b.HasKey("StudentId", "LocalDate")
+                        .HasName("PK_student_daily_activities");
+
+                    b.ToTable("student_daily_activities", "students");
+                });
+
             modelBuilder.Entity("Adeeb.Modules.Students.Domain.Students.StudentProfile", b =>
                 {
                     b.Property<Guid>("StudentId")
@@ -98,6 +128,12 @@ namespace Adeeb.Modules.Students.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(160)")
                         .HasColumnName("school_name");
 
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("time_zone_id");
+
                     b.Property<DateTimeOffset>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at_utc");
@@ -105,6 +141,15 @@ namespace Adeeb.Modules.Students.Infrastructure.Persistence.Migrations
                     b.HasKey("StudentId");
 
                     b.ToTable("student_profiles", "students");
+                });
+
+            modelBuilder.Entity("Adeeb.Modules.Students.Domain.Students.StudentDailyActivity", b =>
+                {
+                    b.HasOne("Adeeb.Modules.Students.Domain.Students.Student", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Adeeb.Modules.Students.Domain.Students.StudentProfile", b =>

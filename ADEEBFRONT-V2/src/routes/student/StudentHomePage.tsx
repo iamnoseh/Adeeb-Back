@@ -1,15 +1,17 @@
-import { ArrowRight, BookOpenCheck, CheckCircle2, Clock3, Mail, Route, ShieldCheck, Sparkles, Swords, UserRound } from 'lucide-react'
+import { ArrowRight, CalendarCheck2, CheckCircle2, Flame, Mail, Route, ShieldCheck, Sparkles, Swords, Trophy, UserRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/features/auth/model/auth-context'
 import { StudentCalendar } from '@/routes/student/StudentCalendar'
+import { useCurrentStudentActivity } from '@/features/student-activity/model/useStudentActivity'
 
 export function StudentHomePage() {
   const { user } = useAuth()
   const { t } = useTranslation()
   const name = user?.firstName || t('student.profile')
   const initials = `${user?.firstName?.[0] ?? 'A'}${user?.lastName?.[0] ?? ''}`.toUpperCase()
+  const activity = useCurrentStudentActivity()
   const modules = [
     { title: t('student.tests'), to: '/student/tests', icon: <ShieldCheck />, tone: 'purple' as const },
     { title: t('student.duel'), to: '/student/duels', icon: <Swords />, tone: 'blue' as const },
@@ -32,7 +34,7 @@ export function StudentHomePage() {
         </section>
 
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <OverviewCard icon={<BookOpenCheck />} label={t('student.learning')} value={t('student.comingSoon')} tone="purple" />
+          <OverviewCard icon={<Flame />} label={t('student.currentStreak')} value={activity.data ? t('student.daysCount', { count: activity.data.currentStreak }) : t('student.loading')} tone="orange" />
           <OverviewCard icon={<Route />} label={t('student.mmtReadiness')} value={t('student.notActiveYet')} tone="blue" />
           <OverviewCard icon={<UserRound />} label={t('student.account')} value={t('student.openProfile')} tone="orange" />
           <OverviewCard icon={<Sparkles />} label={t('student.achievements')} value={t('student.noValue')} tone="green" />
@@ -64,9 +66,20 @@ export function StudentHomePage() {
 
       <aside className="grid content-start gap-4">
         <StudentCalendar />
-        <section className="rounded-lg border border-[#e1e4ef] bg-white p-5 shadow-[0_10px_28px_rgb(20_31_70/0.04)]">
-          <h2 className="text-base font-black tracking-normal">{t('student.recentActivity')}</h2>
-          <div className="mt-6 flex min-h-32 flex-col items-center justify-center rounded-lg bg-[#f8f9fc] p-4 text-center"><Clock3 className="h-6 w-6 text-[#9aa1b5]" /><p className="mt-3 text-sm leading-6 text-[#68718c]">{t('student.noActivityData')}</p></div>
+        <section className="overflow-hidden rounded-lg border border-[var(--student-border)] bg-[var(--student-surface)] shadow-[0_14px_36px_rgb(20_31_70/0.06)]">
+          <div className="border-b border-[var(--student-border)] bg-gradient-to-br from-[#fbfcff] via-white to-[#f7f8ff] p-5">
+            <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#f0efff] text-[#5146f0] shadow-[0_8px_20px_rgb(81_70_240/0.12)]">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <h2 className="mt-3 text-base font-black tracking-normal text-[var(--student-text)]">{t('student.recentActivity')}</h2>
+          </div>
+          {activity.data ? (
+            <div className="grid gap-2 p-5">
+              <ActivityRow icon={<CalendarCheck2 />} label={t('student.activeThisMonth')} value={activity.data.activeDaysInMonth} tone="blue" />
+              <ActivityRow icon={<Trophy />} label={t('student.longestStreak')} value={activity.data.longestStreak} tone="orange" />
+              <ActivityRow icon={<Sparkles />} label={t('student.totalActiveDays')} value={activity.data.totalActiveDays} tone="purple" />
+            </div>
+          ) : <div className="m-5 h-40 animate-pulse rounded-lg bg-[var(--student-surface-soft)]" />}
         </section>
       </aside>
     </div>
@@ -90,4 +103,20 @@ function ModuleCard({ title, to, icon, tone, status }: { title: string; to: stri
 
 function ContinueCard({ title, to, icon, tone, status }: { title: string; to: string; icon: ReactNode; tone: keyof typeof tones; status: string }) {
   return <Link to={to} className="flex min-h-20 items-center gap-3 rounded-lg border border-[#e5e8f1] p-3 text-[#111b3d] no-underline hover:border-[#cbc7ff]"><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg [&>svg]:h-5 [&>svg]:w-5 ${tones[tone]}`}>{icon}</span><span className="min-w-0"><strong className="block truncate text-sm">{title}</strong><small className="mt-1 block truncate text-[#858da5]">{status}</small></span></Link>
+}
+
+function ActivityRow({ icon, label, value, tone }: { icon: ReactNode; label: string; value: number; tone: 'blue' | 'orange' | 'purple' }) {
+  const toneClass = {
+    blue: 'bg-[#edf5ff] text-[#2b78db]',
+    orange: 'bg-[#fff3e7] text-[#d97706]',
+    purple: 'bg-[#f0efff] text-[#5146f0]',
+  }[tone]
+
+  return (
+    <div className="flex min-h-16 items-center gap-3 rounded-lg border border-[var(--student-border)] bg-[var(--student-surface-soft)] p-3 transition hover:-translate-y-0.5 hover:bg-[var(--student-surface)] hover:shadow-[0_10px_22px_rgb(20_31_70/0.06)]">
+      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg shadow-sm [&>svg]:h-4 [&>svg]:w-4 ${toneClass}`}>{icon}</span>
+      <span className="min-w-0 flex-1 text-sm font-black leading-5 text-[var(--student-muted)]">{label}</span>
+      <strong className="text-xl font-black text-[var(--student-text)]">{value}</strong>
+    </div>
+  )
 }

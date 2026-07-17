@@ -278,16 +278,12 @@ public sealed class MmtSimulatorService(
         return choices.Select(x => new StudentAdmissionChoiceDto(
             x.Id,
             x.PriorityOrder,
-            new AdmissionProgramListItemDto(
-                x.AdmissionProgram.Id, x.AdmissionProgram.UniversityId, x.AdmissionProgram.University.FullNameFor(MmtCatalogService.CurrentLanguage),
-                x.AdmissionProgram.SpecialtyId, x.AdmissionProgram.Specialty.Code, x.AdmissionProgram.Specialty.NameFor(MmtCatalogService.CurrentLanguage),
-                x.AdmissionProgram.MmtClusterId, x.AdmissionProgram.MmtCluster.Code, x.AdmissionProgram.MmtCluster.NameFor(MmtCatalogService.CurrentLanguage),
-                (int)x.AdmissionProgram.AdmissionType, (int)x.AdmissionProgram.StudyForm, (int)x.AdmissionProgram.StudyLanguage,
-                x.AdmissionProgram.AdmissionYear, x.AdmissionProgram.SeatsCount, x.AdmissionProgram.IsPublished,
-                x.AdmissionProgram.IsActive, x.AdmissionProgram.PassingScores.Where(s => s.DistributionRound == DistributionRound.Main).OrderByDescending(s => s.Year)
-                    .Select(s => (decimal?)s.PassingScore).FirstOrDefault()),
+            AdmissionProgramService.ToListDto(x.AdmissionProgram, MmtCatalogService.CurrentLanguage),
             x.CreatedAtUtc,
-            x.UpdatedAtUtc)).ToList();
+            x.UpdatedAtUtc,
+            x.AdmissionProgram.PassingScores.OrderByDescending(s => s.Year).ThenBy(s => s.DistributionRound).Take(3)
+                .Select(s => new PassingScoreHistoryDto(s.Id, s.AdmissionProgramId, s.Year, s.PassingScore,
+                    s.SeatsCount, s.Source, s.Note, s.CreatedAtUtc, s.UpdatedAtUtc, (int)s.DistributionRound)).ToList())).ToList();
     }
 
     private async Task<bool> ProgramMatchesProfileAsync(Guid programId, Guid clusterId, int year, CancellationToken ct) =>

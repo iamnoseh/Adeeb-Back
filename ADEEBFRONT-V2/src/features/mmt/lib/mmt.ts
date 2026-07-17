@@ -1,9 +1,20 @@
 import { ApiError } from "@/shared/api/problem-details";
+import type {
+  CatalogDto,
+  CatalogKind,
+  MmtClusterDto,
+} from "@/features/mmt/model/mmt.types";
 
 export const controlLink =
   "inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-bold text-[var(--text)] no-underline shadow-sm transition hover:bg-[var(--surface-muted)]";
 
 export const mmtDefaultPageSize = 10;
+
+export function catalogSubjectIds(kind: CatalogKind, item: CatalogDto | null) {
+  if (kind !== "clusters" || !item) return [];
+  const subjects = (item as MmtClusterDto).subjects;
+  return Array.isArray(subjects) ? subjects.map((subject) => subject.id) : [];
+}
 
 export function mmtPage(value: string | null) {
   const parsed = Number(value);

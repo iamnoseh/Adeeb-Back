@@ -23,9 +23,9 @@ internal static class MmtValidation
         ("code", code, 60, true), ("name", name, 240, true), ("description", description, 2000, false)]);
 
     public static Result ValidateProgram(CreateAdmissionProgramDto r) => ValidateProgramValues(r.UniversityId, r.SpecialtyId, r.MmtClusterId,
-        r.AdmissionType, r.StudyForm, r.StudyLanguage, r.AdmissionYear, r.SeatsCount);
+        r.AdmissionType, r.StudyForm, r.StudyLanguage, r.AdmissionYear, r.SeatsCount, r.StudyLocationTg, r.StudyLocationRu, r.TuitionFeeTjs);
     public static Result ValidateProgram(UpdateAdmissionProgramDto r) => ValidateProgramValues(r.UniversityId, r.SpecialtyId, r.MmtClusterId,
-        r.AdmissionType, r.StudyForm, r.StudyLanguage, r.AdmissionYear, r.SeatsCount);
+        r.AdmissionType, r.StudyForm, r.StudyLanguage, r.AdmissionYear, r.SeatsCount, r.StudyLocationTg, r.StudyLocationRu, r.TuitionFeeTjs);
 
     public static Result ValidateScore(int year, decimal score, int? seats, string? source, string? note, int distributionRound)
     {
@@ -40,9 +40,10 @@ internal static class MmtValidation
     public static bool IsYear(int year) => year is >= 2000 and <= 2100;
     public static int Scale(decimal value) => (decimal.GetBits(value)[3] >> 16) & 0xFF;
 
-    private static Result ValidateProgramValues(Guid university, Guid specialty, Guid cluster, int admissionType, int form, int language, int year, int? seats)
+    private static Result ValidateProgramValues(Guid university, Guid specialty, Guid cluster, int admissionType, int form, int language, int year, int? seats,
+        string? studyLocationTg, string? studyLocationRu, decimal? tuitionFeeTjs)
     {
-        var errors = new Dictionary<string, IReadOnlyList<Error>>();
+        var errors = TextErrors([("studyLocationTg", studyLocationTg, 160, false), ("studyLocationRu", studyLocationRu, 160, false)]);
         if (university == Guid.Empty) Add(errors, "universityId", "mmt.university.required", "Validation.Required");
         if (specialty == Guid.Empty) Add(errors, "specialtyId", "mmt.specialty.required", "Validation.Required");
         if (cluster == Guid.Empty) Add(errors, "mmtClusterId", "mmt.cluster.required", "Validation.Required");
@@ -51,6 +52,8 @@ internal static class MmtValidation
         AddEnum<StudyLanguage>(errors, "studyLanguage", language);
         if (!IsYear(year)) Add(errors, "admissionYear", "mmt.year.invalid", "MMT.YearInvalid");
         if (seats < 0) Add(errors, "seatsCount", "mmt.seats.invalid", "MMT.SeatsInvalid");
+        if (tuitionFeeTjs < 0 || tuitionFeeTjs.HasValue && Scale(tuitionFeeTjs.Value) > 2) Add(errors, "tuitionFeeTjs", "mmt.tuition.invalid", "MMT.TuitionInvalid");
+        if (admissionType == (int)AdmissionType.Budget && tuitionFeeTjs.HasValue) Add(errors, "tuitionFeeTjs", "mmt.budget_tuition.invalid", "MMT.BudgetTuitionInvalid");
         return Finish(errors);
     }
 

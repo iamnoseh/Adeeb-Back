@@ -5,6 +5,7 @@ using Adeeb.Modules.Commerce.Endpoints;
 using Adeeb.Modules.QuestionBank.Domain;
 using Adeeb.Modules.Students.Domain.Students;
 using Adeeb.Modules.Mmt.Domain;
+using Adeeb.Modules.Vocabulary.Domain;
 using Adeeb.SharedKernel.Results;
 using NetArchTest.Rules;
 
@@ -12,6 +13,25 @@ namespace Adeeb.ArchitectureTests;
 
 public sealed class DependencyRulesTests
 {
+    [Fact]
+    public void Vocabulary_domain_must_not_depend_on_infrastructure_or_frameworks()
+    {
+        var result = Types.InAssembly(typeof(VocabularyWord).Assembly)
+            .That().ResideInNamespaceMatching(@"Adeeb\.Modules\.Vocabulary\.Domain.*")
+            .ShouldNot().HaveDependencyOnAny("Microsoft.EntityFrameworkCore", "Microsoft.AspNetCore", "Npgsql", "Adeeb.Modules.Vocabulary.Infrastructure")
+            .GetResult();
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Vocabulary_module_must_not_depend_on_other_module_infrastructure()
+    {
+        var result = Types.InAssembly(typeof(VocabularyWord).Assembly)
+            .ShouldNot().HaveDependencyOnAny("Adeeb.Modules.Students.Infrastructure", "Adeeb.Modules.Identity.Infrastructure", "Adeeb.Modules.QuestionBank.Infrastructure")
+            .GetResult();
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
     [Fact]
     public void Mmt_domain_must_not_depend_on_infrastructure_or_frameworks()
     {

@@ -15,6 +15,7 @@ export function useMmtLabels() {
       t("mmt.enum.russian"),
       t("mmt.enum.english"),
       t("mmt.enum.other"),
+      t("mmt.enum.bilingual"),
     ],
     distributionRounds: [
       t("mmt.enum.mainDistribution"),

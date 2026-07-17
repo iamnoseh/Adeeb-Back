@@ -17,6 +17,7 @@ public sealed class StudentDomainTests
         Assert.Equal(StudentStatus.Active, student.Status);
         Assert.Equal(OnboardingState.NotStarted, student.OnboardingState);
         Assert.NotNull(student.Profile);
+        Assert.Equal(StudentProfile.DefaultTimeZoneId, student.Profile.TimeZoneId);
     }
 
     [Fact]

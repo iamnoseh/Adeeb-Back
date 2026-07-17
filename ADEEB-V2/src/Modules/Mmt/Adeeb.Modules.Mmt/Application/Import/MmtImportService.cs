@@ -58,9 +58,16 @@ public sealed class MmtImportService(MmtDbContext db, IDateTimeProvider clock, M
             var clusterIds = clusters.Values.Select(x => x.Id).ToArray();
             var universityIds = universities.Values.Select(x => x.Id).ToArray();
             var specialtyIds = specialties.Values.Select(x => x.Id).ToArray();
-            var programs = (await db.AdmissionPrograms
+            var loadedPrograms = await db.AdmissionPrograms
                 .Where(x => clusterIds.Contains(x.MmtClusterId) && universityIds.Contains(x.UniversityId) && specialtyIds.Contains(x.SpecialtyId) && years.Contains(x.AdmissionYear))
-                .ToListAsync(ct)).ToDictionary(ProgramKey);
+                .ToListAsync(ct);
+            var programGroups = loadedPrograms.GroupBy(ProgramKey).ToList();
+            if (programGroups.Any(x => x.Count() > 1))
+            {
+                if (transaction is not null) await transaction.RollbackAsync(ct);
+                return Result<MmtImportResultDto>.Failure(MmtErrors.ImportConflict);
+            }
+            var programs = programGroups.ToDictionary(x => x.Key, x => x.Single());
             var programIds = programs.Values.Select(x => x.Id).ToArray();
             var scores = (await db.PassingScores.Where(x => programIds.Contains(x.AdmissionProgramId) && years.Contains(x.Year)).ToListAsync(ct))
                 .ToDictionary(x => ScoreKey(x.AdmissionProgramId, x.Year, x.DistributionRound));
@@ -74,7 +81,10 @@ public sealed class MmtImportService(MmtDbContext db, IDateTimeProvider clock, M
                 var key = ProgramKey(university.Id, specialty.Id, cluster.Id, row.AdmissionType, row.StudyForm, row.StudyLanguage, row.Year);
                 if (!programs.TryGetValue(key, out var program))
                 {
-                    program = new AdmissionProgram(Guid.NewGuid(), university.Id, specialty.Id, cluster.Id, (AdmissionType)row.AdmissionType, (StudyForm)row.StudyForm, (StudyLanguage)row.StudyLanguage, row.Year, row.SeatsCount, request.PublishAdmissionPrograms, clock.UtcNow);
+                    program = new AdmissionProgram(Guid.NewGuid(), university.Id, specialty.Id, cluster.Id,
+                        (AdmissionType)row.AdmissionType, (StudyForm)row.StudyForm, (StudyLanguage)row.StudyLanguage,
+                        row.Year, row.SeatsCount, row.UniversityCity, row.UniversityCity, null,
+                        request.PublishAdmissionPrograms, clock.UtcNow);
                     programs.Add(key, program); db.AdmissionPrograms.Add(program); importedPrograms++;
                 }
                 else if (request.PublishAdmissionPrograms && !program.IsPublished) program.SetPublished(true, clock.UtcNow);
@@ -155,7 +165,8 @@ public sealed class MmtImportService(MmtDbContext db, IDateTimeProvider clock, M
         var programs = await db.AdmissionPrograms.AsNoTracking()
             .Where(x => clusterIds.Contains(x.MmtClusterId) && universityIds.Contains(x.UniversityId) && specialtyIds.Contains(x.SpecialtyId) && years.Contains(x.AdmissionYear))
             .ToListAsync(ct);
-        var programMap = programs.ToDictionary(ProgramKey, StringComparer.Ordinal);
+        var programGroups = programs.GroupBy(ProgramKey, StringComparer.Ordinal).ToDictionary(x => x.Key, StringComparer.Ordinal);
+        var programMap = programGroups.Where(x => x.Value.Count() == 1).ToDictionary(x => x.Key, x => x.Value.Single(), StringComparer.Ordinal);
         var programIds = programs.Select(x => x.Id).ToArray();
         HashSet<string> existingScores = mode == ExistingScoreMode.FailOnExisting
             ? (await db.PassingScores.AsNoTracking().Where(x => programIds.Contains(x.AdmissionProgramId) && years.Contains(x.Year)).Select(x => new { x.AdmissionProgramId, x.Year, x.DistributionRound }).ToListAsync(ct)).Select(x => ScoreKey(x.AdmissionProgramId, x.Year, x.DistributionRound)).ToHashSet(StringComparer.Ordinal)
@@ -173,7 +184,10 @@ public sealed class MmtImportService(MmtDbContext db, IDateTimeProvider clock, M
             if (cluster is { IsActive: false }) errors.Add("Cluster is inactive."); if (university is { IsActive: false }) errors.Add("University is inactive."); if (specialty is { IsActive: false }) errors.Add("Specialty is inactive.");
             if (cluster is not null && university is not null && specialty is not null)
             {
-                programMap.TryGetValue(ProgramKey(university.Id, specialty.Id, cluster.Id, r.AdmissionType, r.StudyForm, r.StudyLanguage, r.Year), out var program);
+                var programKey = ProgramKey(university.Id, specialty.Id, cluster.Id, r.AdmissionType, r.StudyForm, r.StudyLanguage, r.Year);
+                programMap.TryGetValue(programKey, out var program);
+                if (programGroups.TryGetValue(programKey, out var candidates) && candidates.Count() > 1)
+                    errors.Add("Admission program identity is ambiguous across study locations.");
                 if (program is not null && mode == ExistingScoreMode.FailOnExisting && existingScores.Contains(ScoreKey(program.Id, r.Year, (DistributionRound)r.DistributionRound))) errors.Add("Passing score already exists.");
             }
             rows.Add(item with { IsValid = errors.Count == 0, ValidationErrors = errors });

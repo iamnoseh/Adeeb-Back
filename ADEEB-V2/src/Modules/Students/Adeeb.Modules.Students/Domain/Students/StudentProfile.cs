@@ -7,6 +7,8 @@ public sealed class StudentProfile
     public const int RegionMaxLength = 80;
     public const int CityMaxLength = 80;
     public const int SchoolNameMaxLength = 160;
+    public const int TimeZoneIdMaxLength = 100;
+    public const string DefaultTimeZoneId = "Asia/Dushanbe";
     public const short MinGrade = 1;
     public const short MaxGrade = 11;
     public static readonly DateOnly MinimumDateOfBirth = new(1900, 1, 1);
@@ -16,6 +18,7 @@ public sealed class StudentProfile
     public StudentProfile(Guid studentId, DateTimeOffset now)
     {
         StudentId = studentId;
+        TimeZoneId = DefaultTimeZoneId;
         UpdatedAtUtc = now;
     }
 
@@ -27,7 +30,19 @@ public sealed class StudentProfile
     public string? City { get; private set; }
     public string? SchoolName { get; private set; }
     public short? Grade { get; private set; }
+    public string TimeZoneId { get; private set; } = DefaultTimeZoneId;
     public DateTimeOffset UpdatedAtUtc { get; private set; }
+
+    public void ChangeTimeZone(string timeZoneId, DateTimeOffset now)
+    {
+        if (string.Equals(TimeZoneId, timeZoneId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        TimeZoneId = timeZoneId;
+        UpdatedAtUtc = now;
+    }
 
     public void Update(
         string? displayName,

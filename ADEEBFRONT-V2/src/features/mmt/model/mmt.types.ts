@@ -58,6 +58,7 @@ export type UniversityDto = {
   isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc: string;
+  needsTranslation: boolean;
 };
 export type SpecialtyDto = {
   id: string;
@@ -71,6 +72,7 @@ export type SpecialtyDto = {
   isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc: string;
+  needsTranslation: boolean;
 };
 
 export type AdmissionProgramListItemDto = {
@@ -91,6 +93,11 @@ export type AdmissionProgramListItemDto = {
   isPublished: boolean;
   isActive: boolean;
   latestPassingScore: number | null;
+  studyLocation: string;
+  studyLocationTg: string;
+  studyLocationRu: string;
+  tuitionFeeTjs: number | null;
+  needsTranslation: boolean;
 };
 export type AdmissionProgramDto = {
   id: string;
@@ -109,6 +116,11 @@ export type AdmissionProgramDto = {
   conservativeThreshold: number | null;
   createdAtUtc: string;
   updatedAtUtc: string;
+  studyLocation: string;
+  studyLocationTg: string;
+  studyLocationRu: string;
+  tuitionFeeTjs: number | null;
+  needsTranslation: boolean;
 };
 export type AdmissionProgramInput = {
   universityId: string;
@@ -121,6 +133,9 @@ export type AdmissionProgramInput = {
   seatsCount: number | null;
   isPublished: boolean;
   isActive?: boolean;
+  studyLocationTg?: string | null;
+  studyLocationRu?: string | null;
+  tuitionFeeTjs?: number | null;
 };
 export type AdmissionProgramQuery = ListQuery & {
   clusterId?: string | undefined;
@@ -137,7 +152,7 @@ export type StudentSpecialtyLookupQuery = ListQuery & {
 };
 export type StudentUniversityLookupQuery = ListQuery & {
   clusterId: string;
-  specialtyId: string;
+  specialtyId?: string;
 };
 
 export type PassingScoreHistoryDto = {
@@ -215,6 +230,52 @@ export type ImportOptions = {
   admissionYear?: number | undefined;
   publishAdmissionPrograms?: boolean | undefined;
 };
+export type MmtCatalogImportOptions = {
+  file: File;
+  mmtClusterId: string;
+  admissionYear: number;
+  defaultUniversityType: number;
+  universityTypeOverrides: { universityNameRu: string; universityType: number }[];
+};
+export type MmtCatalogImportNormalizedRowDto = {
+  sourceId: string;
+  specialtyCode: string;
+  specialtyNameRu: string;
+  universityNameRu: string;
+  studyLocationRu: string;
+  studyForm: number;
+  admissionType: number;
+  studyLanguage: number;
+  seatsCount: number;
+  tuitionFeeTjs: number | null;
+};
+export type MmtCatalogImportRowPreviewDto = {
+  rowNumber: number;
+  values: MmtCatalogImportNormalizedRowDto | null;
+  isValid: boolean;
+  isExisting: boolean;
+  needsTranslation: boolean;
+  validationErrors: string[];
+  warnings: string[];
+};
+export type MmtCatalogImportPreviewResultDto = {
+  totalRows: number;
+  validRowsCount: number;
+  invalidRowsCount: number;
+  newRowsCount: number;
+  skippedRowsCount: number;
+  needsTranslationCount: number;
+  universities: { universityNameRu: string; universityType: number; exists: boolean }[];
+  rows: MmtCatalogImportRowPreviewDto[];
+};
+export type MmtCatalogImportResultDto = {
+  processedRows: number;
+  importedPrograms: number;
+  skippedPrograms: number;
+  createdUniversities: number;
+  createdSpecialties: number;
+  invalidRows: number;
+};
 
 export type StudentMmtProfileDto = {
   id: string;
@@ -245,6 +306,7 @@ export type StudentAdmissionChoiceDto = {
   admissionProgram: AdmissionProgramListItemDto;
   createdAtUtc: string;
   updatedAtUtc: string;
+  recentPassingScores: PassingScoreHistoryDto[];
 };
 export type AdmissionChoiceInput = {
   admissionProgramId: string;
@@ -309,6 +371,7 @@ export const StudyForm = {
   PartTime: 1,
   Distance: 2,
   Other: 3,
+  Bilingual: 4,
 } as const;
 export const StudyLanguage = {
   Tajik: 0,

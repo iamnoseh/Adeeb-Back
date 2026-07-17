@@ -76,6 +76,7 @@ internal sealed class UniversityConfiguration : IEntityTypeConfiguration<Univers
         b.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(300).IsRequired();
         b.Property(x => x.FullNameRu).HasColumnName("full_name_ru").HasMaxLength(300).IsRequired();
         b.Property(x => x.NormalizedFullName).HasColumnName("normalized_full_name").HasMaxLength(300).IsRequired();
+        b.Property(x => x.NormalizedFullNameRu).HasColumnName("normalized_full_name_ru").HasMaxLength(300).IsRequired();
         b.Property(x => x.ShortName).HasColumnName("short_name").HasMaxLength(120);
         b.Property(x => x.ShortNameRu).HasColumnName("short_name_ru").HasMaxLength(120);
         b.Property(x => x.City).HasColumnName("city").HasMaxLength(120).IsRequired();
@@ -86,6 +87,7 @@ internal sealed class UniversityConfiguration : IEntityTypeConfiguration<Univers
         b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
         b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
         b.HasIndex(x => x.NormalizedFullName).IsUnique().HasDatabaseName("ux_mmt_universities_normalized_name");
+        b.HasIndex(x => x.NormalizedFullNameRu).IsUnique().HasDatabaseName("ux_mmt_universities_normalized_name_ru");
         b.HasIndex(x => new { x.IsActive, x.FullName }).HasDatabaseName("ix_mmt_universities_active_name");
     }
 }
@@ -118,6 +120,8 @@ internal sealed class AdmissionProgramConfiguration : IEntityTypeConfiguration<A
         {
             t.HasCheckConstraint("ck_mmt_program_year", "admission_year >= 2000 AND admission_year <= 2100");
             t.HasCheckConstraint("ck_mmt_program_seats", "seats_count IS NULL OR seats_count >= 0");
+            t.HasCheckConstraint("ck_mmt_program_tuition", "tuition_fee_tjs IS NULL OR tuition_fee_tjs >= 0");
+            t.HasCheckConstraint("ck_mmt_program_budget_tuition", "admission_type <> 'Budget' OR tuition_fee_tjs IS NULL");
         });
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasColumnName("id");
@@ -129,11 +133,15 @@ internal sealed class AdmissionProgramConfiguration : IEntityTypeConfiguration<A
         b.Property(x => x.StudyLanguage).HasColumnName("study_language").HasConversion<string>().HasMaxLength(24);
         b.Property(x => x.AdmissionYear).HasColumnName("admission_year");
         b.Property(x => x.SeatsCount).HasColumnName("seats_count");
+        b.Property(x => x.StudyLocationTg).HasColumnName("study_location_tg").HasMaxLength(160).IsRequired();
+        b.Property(x => x.StudyLocationRu).HasColumnName("study_location_ru").HasMaxLength(160).IsRequired();
+        b.Property(x => x.NormalizedStudyLocation).HasColumnName("normalized_study_location").HasMaxLength(160).IsRequired();
+        b.Property(x => x.TuitionFeeTjs).HasColumnName("tuition_fee_tjs").HasColumnType("numeric(12,2)");
         b.Property(x => x.IsPublished).HasColumnName("is_published");
         b.Property(x => x.IsActive).HasColumnName("is_active");
         b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
         b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
-        b.HasIndex(x => new { x.UniversityId, x.SpecialtyId, x.MmtClusterId, x.AdmissionType, x.StudyForm, x.StudyLanguage, x.AdmissionYear })
+        b.HasIndex(x => new { x.UniversityId, x.SpecialtyId, x.MmtClusterId, x.AdmissionType, x.StudyForm, x.StudyLanguage, x.AdmissionYear, x.NormalizedStudyLocation })
             .IsUnique().HasDatabaseName("ux_mmt_admission_program_identity");
         b.HasIndex(x => new { x.MmtClusterId, x.AdmissionYear, x.IsPublished, x.IsActive }).HasDatabaseName("ix_mmt_program_student_lookup");
         b.HasOne(x => x.University).WithMany().HasForeignKey(x => x.UniversityId).OnDelete(DeleteBehavior.Restrict);

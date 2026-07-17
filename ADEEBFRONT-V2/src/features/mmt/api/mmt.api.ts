@@ -32,6 +32,9 @@ import type {
   UniversityDto,
   StudentSpecialtyLookupQuery,
   StudentUniversityLookupQuery,
+  MmtCatalogImportOptions,
+  MmtCatalogImportPreviewResultDto,
+  MmtCatalogImportResultDto,
 } from "@/features/mmt/model/mmt.types";
 
 const root = "/api/v2/admin/mmt";
@@ -74,6 +77,7 @@ export const mmtStudentKeys = {
   universities: (query: StudentUniversityLookupQuery) => ["mmt", "student", "universities", query, getStoredUiLanguage()] as const,
   evaluations: (query: EvaluationQuery = {}) => ["mmt", "student", "evaluations", query, getStoredUiLanguage()] as const,
   evaluation: (id: string) => ["mmt", "student", "evaluation", id, getStoredUiLanguage()] as const,
+  scores: (id: string) => ["mmt", "student", "scores", id, getStoredUiLanguage()] as const,
 };
 
 export const mmtStudentApi = {
@@ -105,6 +109,10 @@ export const mmtStudentApi = {
     const response = await httpClient.get<AdmissionProgramDto>(
       `${studentRoot}/admission-programs/${id}`,
     );
+    return response.data;
+  },
+  async scores(id: string) {
+    const response = await httpClient.get<PassingScoreHistoryDto[]>(`${studentRoot}/admission-programs/${id}/passing-scores`);
     return response.data;
   },
   async profile() {
@@ -263,6 +271,18 @@ export const mmtApi = {
     );
     return response.data;
   },
+  async downloadCatalogTemplate() {
+    const response = await httpClient.get<Blob>(`${root}/import/catalog/template`, { responseType: "blob" });
+    return response.data;
+  },
+  async previewCatalogImport(options: MmtCatalogImportOptions) {
+    const response = await httpClient.post<MmtCatalogImportPreviewResultDto>(`${root}/import/catalog/preview`, catalogImportForm(options));
+    return response.data;
+  },
+  async confirmCatalogImport(options: MmtCatalogImportOptions) {
+    const response = await httpClient.post<MmtCatalogImportResultDto>(`${root}/import/catalog/confirm`, catalogImportForm(options));
+    return response.data;
+  },
   async profiles(query: StudentProfileQuery = {}) {
     const response = await httpClient.get<PagedResponse<StudentMmtProfileDto>>(
       `${root}/student-profiles${queryString(query)}`,
@@ -310,5 +330,15 @@ function importForm(options: ImportOptions) {
       "PublishAdmissionPrograms",
       String(options.publishAdmissionPrograms),
     );
+  return form;
+}
+
+function catalogImportForm(options: MmtCatalogImportOptions) {
+  const form = new FormData();
+  form.append("File", options.file);
+  form.append("MmtClusterId", options.mmtClusterId);
+  form.append("AdmissionYear", String(options.admissionYear));
+  form.append("DefaultUniversityType", String(options.defaultUniversityType));
+  form.append("UniversityTypeOverridesJson", JSON.stringify(options.universityTypeOverrides));
   return form;
 }

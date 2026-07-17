@@ -24,6 +24,8 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Common.NotFound"] = "Ёфт нашуд",
             ["Common.Forbidden"] = "Дастрасӣ манъ аст",
             ["Common.UnexpectedError"] = "Хатои ғайричашмдошт рух дод",
+            ["Student.Activity.InvalidTimeZone"] = "Минтақаи вақт нодуруст аст",
+            ["Student.Activity.InvalidPeriod"] = "Сол ё моҳи интихобшуда нодуруст аст",
             ["RateLimit.TooManyRequests"] = "Дархостҳо аз ҳад зиёданд"
         },
         ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
@@ -43,6 +45,8 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Common.NotFound"] = "Не найдено",
             ["Common.Forbidden"] = "Доступ запрещен",
             ["Common.UnexpectedError"] = "Произошла непредвиденная ошибка",
+            ["Student.Activity.InvalidTimeZone"] = "Указан некорректный часовой пояс",
+            ["Student.Activity.InvalidPeriod"] = "Указан некорректный год или месяц",
             ["RateLimit.TooManyRequests"] = "Слишком много запросов"
         },
         ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
@@ -62,6 +66,8 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             ["Common.NotFound"] = "Not found",
             ["Common.Forbidden"] = "Access is forbidden",
             ["Common.UnexpectedError"] = "An unexpected error occurred",
+            ["Student.Activity.InvalidTimeZone"] = "The time zone is invalid",
+            ["Student.Activity.InvalidPeriod"] = "The selected year or month is invalid",
             ["RateLimit.TooManyRequests"] = "Too many requests"
         }
     };
@@ -448,6 +454,67 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
         ["MMT.ChoiceUpdateConflict"] = "Admission choices changed concurrently; reload and try again"
     };
 
+    private static readonly Dictionary<string, Dictionary<string, string>> VocabularyMessages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["tg-TJ"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Vocabulary.NotFound"] = "Маълумоти луғат ёфт нашуд",
+            ["Vocabulary.LanguageNotFound"] = "Забони омӯзишӣ ёфт нашуд",
+            ["Vocabulary.TopicNotFound"] = "Мавзӯи луғат ёфт нашуд",
+            ["Vocabulary.WordNotFound"] = "Калима ёфт нашуд",
+            ["Vocabulary.QuestionNotFound"] = "Саволи луғат ёфт нашуд",
+            ["Vocabulary.SessionNotFound"] = "Машқи луғат ёфт нашуд",
+            ["Vocabulary.CourseRequired"] = "Аввал забони омӯзиширо интихоб кунед",
+            ["Vocabulary.StudentRequired"] = "Профили донишҷӯ лозим аст",
+            ["Vocabulary.StudentUnavailable"] = "Профили донишҷӯ дастрас нест",
+            ["Vocabulary.Duplicate"] = "Чунин маълумот аллакай вуҷуд дорад",
+            ["Vocabulary.PublishInvalid"] = "Маълумоти луғат дар ҳолати ҷорӣ нашр шуда наметавонад",
+            ["Vocabulary.NotEnoughQuestions"] = "Барои ин машқ саволҳои нашршуда кофӣ нестанд",
+            ["Vocabulary.SessionCompleted"] = "Ин машқ аллакай анҷом ёфтааст",
+            ["Vocabulary.AnswerLocked"] = "Ҷавоби қабулшуда дигар тағйир дода намешавад",
+            ["Vocabulary.AnswersIncomplete"] = "Ба ҳамаи саволҳо ҷавоб диҳед",
+            ["Vocabulary.Invalid"] = "Маълумоти воридшудаи луғат нодуруст аст"
+        },
+        ["ru-RU"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Vocabulary.NotFound"] = "Данные словаря не найдены",
+            ["Vocabulary.LanguageNotFound"] = "Язык обучения не найден",
+            ["Vocabulary.TopicNotFound"] = "Тема словаря не найдена",
+            ["Vocabulary.WordNotFound"] = "Слово не найдено",
+            ["Vocabulary.QuestionNotFound"] = "Вопрос словаря не найден",
+            ["Vocabulary.SessionNotFound"] = "Сессия словаря не найдена",
+            ["Vocabulary.CourseRequired"] = "Сначала выберите язык обучения",
+            ["Vocabulary.StudentRequired"] = "Требуется профиль студента",
+            ["Vocabulary.StudentUnavailable"] = "Профиль студента недоступен",
+            ["Vocabulary.Duplicate"] = "Такая запись уже существует",
+            ["Vocabulary.PublishInvalid"] = "Запись словаря нельзя опубликовать в текущем состоянии",
+            ["Vocabulary.NotEnoughQuestions"] = "Для этого упражнения недостаточно опубликованных вопросов",
+            ["Vocabulary.SessionCompleted"] = "Эта сессия уже завершена",
+            ["Vocabulary.AnswerLocked"] = "Принятый ответ нельзя изменить",
+            ["Vocabulary.AnswersIncomplete"] = "Ответьте на все вопросы",
+            ["Vocabulary.Invalid"] = "Данные словаря некорректны"
+        },
+        ["en-US"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Vocabulary.NotFound"] = "Vocabulary data was not found",
+            ["Vocabulary.LanguageNotFound"] = "Learning language was not found",
+            ["Vocabulary.TopicNotFound"] = "Vocabulary topic was not found",
+            ["Vocabulary.WordNotFound"] = "Word was not found",
+            ["Vocabulary.QuestionNotFound"] = "Vocabulary question was not found",
+            ["Vocabulary.SessionNotFound"] = "Vocabulary session was not found",
+            ["Vocabulary.CourseRequired"] = "Select a learning language first",
+            ["Vocabulary.StudentRequired"] = "A student profile is required",
+            ["Vocabulary.StudentUnavailable"] = "The student profile is unavailable",
+            ["Vocabulary.Duplicate"] = "This record already exists",
+            ["Vocabulary.PublishInvalid"] = "Vocabulary content cannot be published in its current state",
+            ["Vocabulary.NotEnoughQuestions"] = "There are not enough published questions for this exercise",
+            ["Vocabulary.SessionCompleted"] = "This session is already completed",
+            ["Vocabulary.AnswerLocked"] = "An accepted answer cannot be changed",
+            ["Vocabulary.AnswersIncomplete"] = "Answer every question",
+            ["Vocabulary.Invalid"] = "Vocabulary data is invalid"
+        }
+    };
+
     public string this[string key]
     {
         get
@@ -476,6 +543,12 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
                 return testingMessage;
             }
 
+            if (VocabularyMessages.TryGetValue(culture, out var vocabularyLocalized)
+                && vocabularyLocalized.TryGetValue(key, out var vocabularyMessage))
+            {
+                return vocabularyMessage;
+            }
+
             if (Messages["tg-TJ"].TryGetValue(key, out var fallback))
             {
                 return fallback;
@@ -489,6 +562,11 @@ public sealed class StaticMessageLocalizer : IMessageLocalizer
             if (TestingMessages["tg-TJ"].TryGetValue(key, out var testingFallback))
             {
                 return testingFallback;
+            }
+
+            if (VocabularyMessages["tg-TJ"].TryGetValue(key, out var vocabularyFallback))
+            {
+                return vocabularyFallback;
             }
 
             return MmtMessages.GetValueOrDefault(key, key);

@@ -17,7 +17,23 @@ public sealed record StudentProfileResponse(
     string? City,
     string? SchoolName,
     short? Grade,
+    string TimeZoneId,
     DateTimeOffset UpdatedAtUtc);
+
+public sealed record StudentActivityVisitRequest(string? TimeZoneId);
+
+public sealed record StudentActivityDayResponse(DateOnly Date);
+
+public sealed record StudentActivityCalendarResponse(
+    int Year,
+    int Month,
+    string TimeZoneId,
+    DateOnly TodayLocalDate,
+    int CurrentStreak,
+    int LongestStreak,
+    int ActiveDaysInMonth,
+    int TotalActiveDays,
+    IReadOnlyList<StudentActivityDayResponse> Days);
 
 public sealed record UpdateStudentProfileRequest(
     string? DisplayName,
@@ -30,7 +46,7 @@ public sealed record UpdateStudentProfileRequest(
 
 public sealed record ChangeStudentStatusRequest(int Status, string? Reason);
 
-public sealed record StudentReference(Guid StudentId, Guid IdentityUserId, string Status);
+public sealed record StudentReference(Guid StudentId, Guid IdentityUserId, string Status, string TimeZoneId = "Asia/Dushanbe");
 
 public interface IStudentLookup
 {

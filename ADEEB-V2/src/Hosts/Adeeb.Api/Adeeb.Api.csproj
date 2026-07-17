@@ -25,5 +25,6 @@
     <ProjectReference Include="..\..\Modules\Mmt\Adeeb.Modules.Mmt\Adeeb.Modules.Mmt.csproj" />
     <ProjectReference Include="..\..\Modules\QuestionBank\Adeeb.Modules.QuestionBank\Adeeb.Modules.QuestionBank.csproj" />
     <ProjectReference Include="..\..\Modules\Students\Adeeb.Modules.Students\Adeeb.Modules.Students.csproj" />
+    <ProjectReference Include="..\..\Modules\Vocabulary\Adeeb.Modules.Vocabulary\Adeeb.Modules.Vocabulary.csproj" />
   </ItemGroup>
 </Project>

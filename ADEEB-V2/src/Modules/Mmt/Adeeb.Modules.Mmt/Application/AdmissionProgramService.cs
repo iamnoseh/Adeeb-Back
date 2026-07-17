@@ -59,19 +59,21 @@ public sealed class AdmissionProgramService(
 
     public async Task<Result<PagedResponse<UniversityDto>>> GetStudentUniversitiesAsync(StudentUniversityLookupQuery query, SupportedLanguage language, CancellationToken ct)
     {
-        var source = StudentPrograms()
-            .Where(x => x.MmtClusterId == query.ClusterId && x.SpecialtyId == query.SpecialtyId)
+        var source = StudentPrograms().Where(x => x.MmtClusterId == query.ClusterId);
+        if (query.SpecialtyId.HasValue)
+            source = source.Where(x => x.SpecialtyId == query.SpecialtyId.Value);
+        var universities = source
             .Select(x => x.University).Distinct();
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var search = query.Search.Trim().ToLower();
-            source = source.Where(x => x.FullName.ToLower().Contains(search) || x.FullNameRu.ToLower().Contains(search)
+            universities = universities.Where(x => x.FullName.ToLower().Contains(search) || x.FullNameRu.ToLower().Contains(search)
                 || (x.ShortName != null && x.ShortName.ToLower().Contains(search)) || (x.ShortNameRu != null && x.ShortNameRu.ToLower().Contains(search)));
         }
 
         var page = MmtPaging.Page(query.Page); var size = MmtPaging.PageSize(query.PageSize);
-        var total = await source.CountAsync(ct);
-        var rows = await source.OrderBy(x => x.FullName).Skip((page - 1) * size).Take(size).ToListAsync(ct);
+        var total = await universities.CountAsync(ct);
+        var rows = await universities.OrderBy(x => x.FullName).Skip((page - 1) * size).Take(size).ToListAsync(ct);
         return Result<PagedResponse<UniversityDto>>.Success(new(rows.Select(x => MmtCatalogService.ToDto(x, language)).ToList(), page, size, total));
     }
 
@@ -87,10 +89,12 @@ public sealed class AdmissionProgramService(
     {
         var validation = MmtValidation.ValidateProgram(request); if (validation.IsFailure) return Invalid<AdmissionProgramDto>(validation);
         var refs = await ReferencesActiveAsync(request.UniversityId, request.SpecialtyId, request.MmtClusterId, ct); if (!refs) return Result<AdmissionProgramDto>.Failure(MmtErrors.InactiveReference);
-        if (await DuplicateAsync(null, request.UniversityId, request.SpecialtyId, request.MmtClusterId, request.AdmissionType, request.StudyForm, request.StudyLanguage, request.AdmissionYear, ct)) return Result<AdmissionProgramDto>.Failure(MmtErrors.DuplicateProgram);
+        if (request.IsPublished && !await CanPublishAsync(request.UniversityId, request.SpecialtyId, request.StudyLocationTg, ct)) return Result<AdmissionProgramDto>.Failure(MmtErrors.PublishInvalid);
+        if (await DuplicateAsync(null, request.UniversityId, request.SpecialtyId, request.MmtClusterId, request.AdmissionType, request.StudyForm, request.StudyLanguage, request.AdmissionYear, request.StudyLocationTg, request.StudyLocationRu, ct)) return Result<AdmissionProgramDto>.Failure(MmtErrors.DuplicateProgram);
         var entity = new AdmissionProgram(Guid.NewGuid(), request.UniversityId, request.SpecialtyId, request.MmtClusterId,
             (AdmissionType)request.AdmissionType, (StudyForm)request.StudyForm, (StudyLanguage)request.StudyLanguage,
-            request.AdmissionYear, request.SeatsCount, request.IsPublished, clock.UtcNow);
+            request.AdmissionYear, request.SeatsCount, request.StudyLocationTg, request.StudyLocationRu,
+            request.TuitionFeeTjs, request.IsPublished, clock.UtcNow);
         db.AdmissionPrograms.Add(entity);
         try { await db.SaveChangesAsync(ct); } catch (DbUpdateException ex) when (MmtDatabaseConstraints.IsUniqueViolation(ex, MmtDatabaseConstraints.ProgramIdentity)) { db.ChangeTracker.Clear(); return Result<AdmissionProgramDto>.Failure(MmtErrors.DuplicateProgram); }
         return await GetProgramAsync(entity.Id, true, MmtCatalogService.CurrentLanguage, ct);
@@ -101,9 +105,11 @@ public sealed class AdmissionProgramService(
         var validation = MmtValidation.ValidateProgram(request); if (validation.IsFailure) return Invalid<AdmissionProgramDto>(validation);
         var entity = await db.AdmissionPrograms.SingleOrDefaultAsync(x => x.Id == id, ct); if (entity is null) return Result<AdmissionProgramDto>.Failure(MmtErrors.ProgramNotFound);
         if (!await ReferencesActiveAsync(request.UniversityId, request.SpecialtyId, request.MmtClusterId, ct)) return Result<AdmissionProgramDto>.Failure(MmtErrors.InactiveReference);
-        if (await DuplicateAsync(id, request.UniversityId, request.SpecialtyId, request.MmtClusterId, request.AdmissionType, request.StudyForm, request.StudyLanguage, request.AdmissionYear, ct)) return Result<AdmissionProgramDto>.Failure(MmtErrors.DuplicateProgram);
+        if (request.IsPublished && !await CanPublishAsync(request.UniversityId, request.SpecialtyId, request.StudyLocationTg, ct)) return Result<AdmissionProgramDto>.Failure(MmtErrors.PublishInvalid);
+        if (await DuplicateAsync(id, request.UniversityId, request.SpecialtyId, request.MmtClusterId, request.AdmissionType, request.StudyForm, request.StudyLanguage, request.AdmissionYear, request.StudyLocationTg, request.StudyLocationRu, ct)) return Result<AdmissionProgramDto>.Failure(MmtErrors.DuplicateProgram);
         entity.Update(request.UniversityId, request.SpecialtyId, request.MmtClusterId, (AdmissionType)request.AdmissionType,
             (StudyForm)request.StudyForm, (StudyLanguage)request.StudyLanguage, request.AdmissionYear, request.SeatsCount,
+            request.StudyLocationTg, request.StudyLocationRu, request.TuitionFeeTjs,
             request.IsPublished, request.IsActive, clock.UtcNow);
         try { await db.SaveChangesAsync(ct); } catch (DbUpdateException ex) when (MmtDatabaseConstraints.IsUniqueViolation(ex, MmtDatabaseConstraints.ProgramIdentity)) { db.ChangeTracker.Clear(); return Result<AdmissionProgramDto>.Failure(MmtErrors.DuplicateProgram); }
         return await GetProgramAsync(id, true, MmtCatalogService.CurrentLanguage, ct);
@@ -117,14 +123,22 @@ public sealed class AdmissionProgramService(
 
     public async Task<Result> SetPublishedAsync(Guid id, bool published, CancellationToken ct)
     {
-        var entity = await db.AdmissionPrograms.SingleOrDefaultAsync(x => x.Id == id, ct); if (entity is null) return Result.Failure(MmtErrors.ProgramNotFound);
-        if (published && (!entity.IsActive || !MmtValidation.IsYear(entity.AdmissionYear) || !await ReferencesActiveAsync(entity.UniversityId, entity.SpecialtyId, entity.MmtClusterId, ct))) return Result.Failure(MmtErrors.PublishInvalid);
+        var entity = await db.AdmissionPrograms.Include(x => x.University).Include(x => x.Specialty).SingleOrDefaultAsync(x => x.Id == id, ct); if (entity is null) return Result.Failure(MmtErrors.ProgramNotFound);
+        if (published && (!entity.IsActive || entity.NeedsTranslation || !MmtValidation.IsYear(entity.AdmissionYear) || !await ReferencesActiveAsync(entity.UniversityId, entity.SpecialtyId, entity.MmtClusterId, ct))) return Result.Failure(MmtErrors.PublishInvalid);
         entity.SetPublished(published, clock.UtcNow); await db.SaveChangesAsync(ct); return Result.Success();
     }
 
     public async Task<Result<IReadOnlyList<PassingScoreHistoryDto>>> GetScoresAsync(Guid programId, CancellationToken ct)
     {
         if (!await db.AdmissionPrograms.AnyAsync(x => x.Id == programId, ct)) return Result<IReadOnlyList<PassingScoreHistoryDto>>.Failure(MmtErrors.ProgramNotFound);
+        var scores = await db.PassingScores.AsNoTracking().Where(x => x.AdmissionProgramId == programId)
+            .OrderByDescending(x => x.Year).ThenBy(x => x.DistributionRound).ToListAsync(ct);
+        return Result<IReadOnlyList<PassingScoreHistoryDto>>.Success(scores.Select(ToDto).ToList());
+    }
+
+    public async Task<Result<IReadOnlyList<PassingScoreHistoryDto>>> GetStudentScoresAsync(Guid programId, CancellationToken ct)
+    {
+        if (!await StudentPrograms().AnyAsync(x => x.Id == programId, ct)) return Result<IReadOnlyList<PassingScoreHistoryDto>>.Failure(MmtErrors.ProgramNotFound);
         var scores = await db.PassingScores.AsNoTracking().Where(x => x.AdmissionProgramId == programId)
             .OrderByDescending(x => x.Year).ThenBy(x => x.DistributionRound).ToListAsync(ct);
         return Result<IReadOnlyList<PassingScoreHistoryDto>>.Success(scores.Select(ToDto).ToList());
@@ -189,7 +203,7 @@ public sealed class AdmissionProgramService(
         if (f.StudyLanguage.HasValue) { var value = (StudyLanguage)f.StudyLanguage.Value; q = q.Where(x => x.StudyLanguage == value); }
         if (admin && f.IsPublished.HasValue) q = q.Where(x => x.IsPublished == f.IsPublished);
         if (admin && f.IsActive.HasValue) q = q.Where(x => x.IsActive == f.IsActive);
-        if (!string.IsNullOrWhiteSpace(f.Search)) { var s = f.Search.Trim().ToLower(); q = q.Where(x => x.University.FullName.ToLower().Contains(s) || x.University.FullNameRu.ToLower().Contains(s) || x.Specialty.Name.ToLower().Contains(s) || x.Specialty.NameRu.ToLower().Contains(s) || x.Specialty.Code.ToLower().Contains(s)); }
+        if (!string.IsNullOrWhiteSpace(f.Search)) { var s = f.Search.Trim().ToLower(); q = q.Where(x => x.University.FullName.ToLower().Contains(s) || x.University.FullNameRu.ToLower().Contains(s) || x.Specialty.Name.ToLower().Contains(s) || x.Specialty.NameRu.ToLower().Contains(s) || x.Specialty.Code.ToLower().Contains(s) || x.StudyLocationTg.ToLower().Contains(s) || x.StudyLocationRu.ToLower().Contains(s)); }
         return q;
     }
     private static IReadOnlyDictionary<string, IReadOnlyList<Adeeb.SharedKernel.Errors.Error>>? ValidateFilter(AdmissionProgramFilter f)
@@ -203,22 +217,29 @@ public sealed class AdmissionProgramService(
     }
     private async Task<bool> ReferencesActiveAsync(Guid university, Guid specialty, Guid cluster, CancellationToken ct) =>
         await db.Universities.AnyAsync(x => x.Id == university && x.IsActive, ct) && await db.Specialties.AnyAsync(x => x.Id == specialty && x.IsActive, ct) && await db.Clusters.AnyAsync(x => x.Id == cluster && x.IsActive, ct);
-    private Task<bool> DuplicateAsync(Guid? id, Guid university, Guid specialty, Guid cluster, int type, int form, int language, int year, CancellationToken ct)
+    private async Task<bool> CanPublishAsync(Guid universityId, Guid specialtyId, string? studyLocationTg, CancellationToken ct) =>
+        !string.IsNullOrWhiteSpace(studyLocationTg)
+        && await db.Universities.AnyAsync(x => x.Id == universityId && x.IsActive && x.FullName != "" && x.City != "", ct)
+        && await db.Specialties.AnyAsync(x => x.Id == specialtyId && x.IsActive && x.Name != "", ct);
+    private Task<bool> DuplicateAsync(Guid? id, Guid university, Guid specialty, Guid cluster, int type, int form, int language, int year,
+        string? studyLocationTg, string? studyLocationRu, CancellationToken ct)
     {
         var admissionType = (AdmissionType)type;
         var studyForm = (StudyForm)form;
         var studyLanguage = (StudyLanguage)language;
+        var normalizedLocation = MmtNormalization.NameKey(!string.IsNullOrWhiteSpace(studyLocationTg) ? studyLocationTg : studyLocationRu ?? string.Empty);
         return db.AdmissionPrograms.AnyAsync(x => (!id.HasValue || x.Id != id) && x.UniversityId == university
             && x.SpecialtyId == specialty && x.MmtClusterId == cluster && x.AdmissionType == admissionType
-            && x.StudyForm == studyForm && x.StudyLanguage == studyLanguage && x.AdmissionYear == year, ct);
+            && x.StudyForm == studyForm && x.StudyLanguage == studyLanguage && x.AdmissionYear == year
+            && x.NormalizedStudyLocation == normalizedLocation, ct);
     }
     private int CurrentAdmissionYear => options.CurrentAdmissionYear ?? clock.UtcNow.Year;
     private static Result<T> Invalid<T>(Result validation) => Result<T>.ValidationFailure(validation.ValidationErrors!);
     private static PassingScoreHistoryDto ToDto(PassingScoreHistory x) => new(x.Id, x.AdmissionProgramId, x.Year, x.PassingScore, x.SeatsCount, x.Source, x.Note, x.CreatedAtUtc, x.UpdatedAtUtc, (int)x.DistributionRound);
-    private static AdmissionProgramListItemDto ToListDto(AdmissionProgram x, SupportedLanguage language) => new(x.Id, x.UniversityId, x.University.FullNameFor(language), x.SpecialtyId, x.Specialty.Code, x.Specialty.NameFor(language), x.MmtClusterId, x.MmtCluster.Code, x.MmtCluster.NameFor(language), (int)x.AdmissionType, (int)x.StudyForm, (int)x.StudyLanguage, x.AdmissionYear, x.SeatsCount, x.IsPublished, x.IsActive, x.PassingScores.Where(s => s.DistributionRound == DistributionRound.Main).OrderByDescending(s => s.Year).Select(s => (decimal?)s.PassingScore).FirstOrDefault());
+    internal static AdmissionProgramListItemDto ToListDto(AdmissionProgram x, SupportedLanguage language) => new(x.Id, x.UniversityId, x.University.FullNameFor(language), x.SpecialtyId, x.Specialty.Code, x.Specialty.NameFor(language), x.MmtClusterId, x.MmtCluster.Code, x.MmtCluster.NameFor(language), (int)x.AdmissionType, (int)x.StudyForm, (int)x.StudyLanguage, x.AdmissionYear, x.SeatsCount, x.IsPublished, x.IsActive, x.PassingScores.Where(s => s.DistributionRound == DistributionRound.Main).OrderByDescending(s => s.Year).Select(s => (decimal?)s.PassingScore).FirstOrDefault(), x.StudyLocationFor(language), x.StudyLocationTg, x.StudyLocationRu, x.TuitionFeeTjs, x.NeedsTranslation);
     private static AdmissionProgramDto ToDetailsDto(AdmissionProgram x, SupportedLanguage language)
     {
         var analytics = Analytics(x.PassingScores.Where(s => s.DistributionRound == DistributionRound.Main).OrderByDescending(s => s.Year).Select(s => s.PassingScore).Take(3).ToList());
-        return new(x.Id, MmtCatalogService.ToDto(x.University, language), MmtCatalogService.ToDto(x.Specialty, language), MmtCatalogService.ToDto(x.MmtCluster, language), (int)x.AdmissionType, (int)x.StudyForm, (int)x.StudyLanguage, x.AdmissionYear, x.SeatsCount, x.IsPublished, x.IsActive, analytics.LatestPassingScore, analytics.AverageLast3Years, analytics.ConservativeThreshold, x.CreatedAtUtc, x.UpdatedAtUtc);
+        return new(x.Id, MmtCatalogService.ToDto(x.University, language), MmtCatalogService.ToDto(x.Specialty, language), MmtCatalogService.ToDto(x.MmtCluster, language), (int)x.AdmissionType, (int)x.StudyForm, (int)x.StudyLanguage, x.AdmissionYear, x.SeatsCount, x.IsPublished, x.IsActive, analytics.LatestPassingScore, analytics.AverageLast3Years, analytics.ConservativeThreshold, x.CreatedAtUtc, x.UpdatedAtUtc, x.StudyLocationFor(language), x.StudyLocationTg, x.StudyLocationRu, x.TuitionFeeTjs, x.NeedsTranslation);
     }
 }

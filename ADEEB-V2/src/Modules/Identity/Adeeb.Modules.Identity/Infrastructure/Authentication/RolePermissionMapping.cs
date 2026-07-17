@@ -17,6 +17,7 @@ public static class RolePermissionMapping
             Permissions.QuestionBank.View,
             Permissions.QuestionBank.Manage,
             Permissions.QuestionBank.Import,
+            .. Permissions.Vocabulary.All,
             .. Permissions.Mmt.All
         ],
         UserRole.ContentAdmin =>
@@ -25,7 +26,8 @@ public static class RolePermissionMapping
             Permissions.AcademicCatalog.Manage,
             Permissions.QuestionBank.View,
             Permissions.QuestionBank.Manage,
-            Permissions.QuestionBank.Import
+            Permissions.QuestionBank.Import,
+            .. Permissions.Vocabulary.All
         ],
         UserRole.FinanceAdmin => Permissions.Commerce.All,
         UserRole.SupportAdmin => [Permissions.Commerce.ViewPaymentReceipts],

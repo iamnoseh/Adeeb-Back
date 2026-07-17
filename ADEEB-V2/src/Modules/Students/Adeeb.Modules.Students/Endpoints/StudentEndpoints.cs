@@ -32,6 +32,14 @@ public static class StudentEndpoints
             .RequireAuthorization()
             .RequireRateLimiting("student-provision");
 
+        group.MapPost("/me/activity/visit", async (StudentActivityVisitRequest request, StudentActivityService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
+            (await service.RecordVisitAsync(context.User, request, ct)).ToHttpResult(context, localizer))
+            .RequireAuthorization();
+
+        group.MapGet("/me/activity/calendar", async (int? year, int? month, StudentActivityService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
+            (await service.GetCalendarAsync(context.User, year, month, ct)).ToHttpResult(context, localizer))
+            .RequireAuthorization();
+
         var admin = app.MapGroup("/api/v2/admin/students").WithTags("Students Admin").RequireAuthorization(Permissions.Students.Manage);
         admin.MapGet("/{studentId:guid}", async (Guid studentId, StudentsService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetByIdAsync(studentId, ct)).ToHttpResult(context, localizer));

@@ -83,7 +83,8 @@ public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock, 
         validation = MmtValidation.ValidateUniversity(r.FullNameRu ?? r.FullName, r.ShortNameRu ?? r.ShortName, r.CityRu ?? r.City, r.Type, r.LogoUrl); if (validation.IsFailure) return Invalid<UniversityDto>(validation);
         var fullNameTg = r.FullNameTg ?? r.FullName; var fullNameRu = r.FullNameRu ?? r.FullName;
         var explicitTranslations = r.FullNameTg is not null || r.FullNameRu is not null;
-        var key = MmtNormalization.NameKey(fullNameTg); if (await db.Universities.AnyAsync(x => x.NormalizedFullName == key, ct)) return Result<UniversityDto>.Failure(MmtErrors.DuplicateUniversity);
+        var key = MmtNormalization.NameKey(fullNameTg); var keyRu = MmtNormalization.NameKey(fullNameRu);
+        if (await db.Universities.AnyAsync(x => x.NormalizedFullName == key || x.NormalizedFullNameRu == keyRu, ct)) return Result<UniversityDto>.Failure(MmtErrors.DuplicateUniversity);
         var entity = new University(Guid.NewGuid(), fullNameTg, explicitTranslations ? r.ShortNameTg : r.ShortName, r.CityTg ?? r.City, (UniversityType)r.Type, r.LogoUrl, clock.UtcNow);
         entity.UpdateTranslation(SupportedLanguage.Russian, fullNameRu, explicitTranslations ? r.ShortNameRu : r.ShortName, r.CityRu ?? r.City, (UniversityType)r.Type, r.LogoUrl, true, clock.UtcNow);
         db.Universities.Add(entity);
@@ -95,7 +96,9 @@ public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock, 
         var validation = MmtValidation.ValidateUniversity(r.FullNameTg ?? r.FullName, r.ShortNameTg ?? r.ShortName, r.CityTg ?? r.City, r.Type, r.LogoUrl); if (validation.IsFailure) return Invalid<UniversityDto>(validation);
         validation = MmtValidation.ValidateUniversity(r.FullNameRu ?? r.FullName, r.ShortNameRu ?? r.ShortName, r.CityRu ?? r.City, r.Type, r.LogoUrl); if (validation.IsFailure) return Invalid<UniversityDto>(validation);
         var entity = await db.Universities.SingleOrDefaultAsync(x => x.Id == id, ct); if (entity is null) return Result<UniversityDto>.Failure(MmtErrors.UniversityNotFound);
-        var key = MmtNormalization.NameKey(r.FullNameTg ?? r.FullName); if (await db.Universities.AnyAsync(x => x.Id != id && x.NormalizedFullName == key, ct)) return Result<UniversityDto>.Failure(MmtErrors.DuplicateUniversity);
+        var key = MmtNormalization.NameKey(r.FullNameTg ?? r.FullName);
+        var keyRu = MmtNormalization.NameKey(r.FullNameRu ?? r.FullName);
+        if (await db.Universities.AnyAsync(x => x.Id != id && (x.NormalizedFullName == key || x.NormalizedFullNameRu == keyRu), ct)) return Result<UniversityDto>.Failure(MmtErrors.DuplicateUniversity);
         if (r.FullNameTg is not null || r.FullNameRu is not null)
         {
             entity.UpdateTranslation(SupportedLanguage.Tajik, r.FullNameTg ?? r.FullName, r.ShortNameTg, r.CityTg ?? r.City, (UniversityType)r.Type, r.LogoUrl, r.IsActive, clock.UtcNow);
@@ -147,7 +150,7 @@ public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock, 
     public Task<Result> SetSpecialtyStatusAsync(Guid id, bool active, CancellationToken ct) => SetStatusAsync(db.Specialties, id, active, (x, a) => x.SetActive(a, clock.UtcNow), MmtErrors.SpecialtyNotFound, ct);
 
     private async Task<bool> SaveAsync(string uniqueConstraint, CancellationToken ct)
-    { try { await db.SaveChangesAsync(ct); return true; } catch (DbUpdateException ex) when (MmtDatabaseConstraints.IsUniqueViolation(ex, uniqueConstraint)) { db.ChangeTracker.Clear(); return false; } }
+    { try { await db.SaveChangesAsync(ct); return true; } catch (DbUpdateException ex) when (MmtDatabaseConstraints.IsUniqueViolation(ex, uniqueConstraint) || MmtDatabaseConstraints.IsUniqueViolation(ex, MmtDatabaseConstraints.UniversityNameRu)) { db.ChangeTracker.Clear(); return false; } }
     private async Task<Result> SetStatusAsync<T>(DbSet<T> set, Guid id, bool active, Action<T, bool> update, Adeeb.SharedKernel.Errors.Error notFound, CancellationToken ct) where T : class
     { var entity = await set.FindAsync([id], ct); if (entity is null) return Result.Failure(notFound); update(entity, active); await db.SaveChangesAsync(ct); return Result.Success(); }
     private static Result<T> Invalid<T>(Result validation) => Result<T>.ValidationFailure(validation.ValidationErrors!);
@@ -168,8 +171,8 @@ public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock, 
     internal static MmtClusterDto ToDto(MmtCluster x, SupportedLanguage language, IReadOnlyDictionary<Guid, AcademicSubjectLookupItem>? subjects = null) =>
         new(x.Id, x.NameFor(language), x.Code, x.DescriptionFor(language), x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.Name, x.NameRu, x.Description, x.DescriptionRu,
             x.Subjects.Where(s => subjects?.ContainsKey(s.SubjectId) == true).Select(s => subjects![s.SubjectId]).Select(s => new MmtClusterSubjectDto(s.Id, s.Code, s.Name)).ToList());
-    internal static UniversityDto ToDto(University x, SupportedLanguage language) => new(x.Id, x.FullNameFor(language), x.ShortNameFor(language), x.CityFor(language), (int)x.Type, x.LogoUrl, x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.FullName, x.FullNameRu, x.ShortName, x.ShortNameRu, x.City, x.CityRu);
-    internal static SpecialtyDto ToDto(Specialty x, SupportedLanguage language) => new(x.Id, x.Code, x.NameFor(language), x.DescriptionFor(language), x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.Name, x.NameRu, x.Description, x.DescriptionRu);
+    internal static UniversityDto ToDto(University x, SupportedLanguage language) => new(x.Id, x.FullNameFor(language), x.ShortNameFor(language), x.CityFor(language), (int)x.Type, x.LogoUrl, x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.FullName, x.FullNameRu, x.ShortName, x.ShortNameRu, x.City, x.CityRu, !x.HasTajikTranslation);
+    internal static SpecialtyDto ToDto(Specialty x, SupportedLanguage language) => new(x.Id, x.Code, x.NameFor(language), x.DescriptionFor(language), x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.Name, x.NameRu, x.Description, x.DescriptionRu, !x.HasTajikTranslation);
     internal static MmtClusterDto ToDto(MmtCluster x) => ToDto(x, CurrentLanguage);
     internal static UniversityDto ToDto(University x) => ToDto(x, CurrentLanguage);
     internal static SpecialtyDto ToDto(Specialty x) => ToDto(x, CurrentLanguage);

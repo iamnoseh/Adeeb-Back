@@ -22,6 +22,7 @@ public static class DependencyInjection
 
         services.AddDbContext<StudentsDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<StudentsService>();
+        services.AddScoped<StudentActivityService>();
         services.AddScoped<IStudentLookup>(sp => sp.GetRequiredService<StudentsService>());
         services.AddScoped<IStudentRegistrationProvisioner>(sp => sp.GetRequiredService<StudentsService>());
         return services;
