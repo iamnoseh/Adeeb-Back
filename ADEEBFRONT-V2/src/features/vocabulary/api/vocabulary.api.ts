@@ -2,12 +2,16 @@ import { httpClient } from '@/shared/api/http-client'
 import { getStoredUiLanguage } from '@/shared/i18n/language'
 import type {
   DailyWordDto,
+  DailyWordUpsertRequest,
+  DraftGenerationResult,
+  LanguageUpsertRequest,
   LearningLanguageDto,
   StartVocabularySessionRequest,
   StudentVocabularyCourseDto,
   StudentVocabularyCourseRequest,
   StudentVocabularyDashboardDto,
   SubmitVocabularyAnswerRequest,
+  TopicUpsertRequest,
   VocabularyAnswerResponse,
   VocabularyHistoryItemDto,
   VocabularyListQuery,
@@ -18,6 +22,7 @@ import type {
   VocabularySessionResultDto,
   VocabularyTopicDto,
   VocabularyWordDto,
+  WordUpsertRequest,
 } from '@/features/vocabulary/model/vocabulary.types'
 
 const studentBase = '/api/v2/students/me/vocabulary'
@@ -106,6 +111,38 @@ export const adminVocabularyApi = {
   },
   async dailyWords(query: VocabularyListQuery = {}) {
     const response = await httpClient.get<VocabularyPage<DailyWordDto>>(`${adminBase}/daily-words${queryString(query)}`)
+    return response.data
+  },
+  async createLanguage(input: LanguageUpsertRequest) {
+    const response = await httpClient.post<LearningLanguageDto>(`${adminBase}/languages`, input)
+    return response.data
+  },
+  async createTopic(input: TopicUpsertRequest) {
+    const response = await httpClient.post<VocabularyTopicDto>(`${adminBase}/topics`, input)
+    return response.data
+  },
+  async createWord(input: WordUpsertRequest) {
+    const response = await httpClient.post<VocabularyWordDto>(`${adminBase}/words`, input)
+    return response.data
+  },
+  async upsertDailyWord(input: DailyWordUpsertRequest) {
+    const response = await httpClient.post<DailyWordDto>(`${adminBase}/daily-words`, input)
+    return response.data
+  },
+  async generateQuestionDrafts(wordId: string) {
+    const response = await httpClient.post<DraftGenerationResult>(`${adminBase}/words/${wordId}/question-drafts/generate`)
+    return response.data
+  },
+  async publishQuestion(questionId: string) {
+    const response = await httpClient.post<VocabularyQuestionDto>(`${adminBase}/questions/${questionId}/publish`)
+    return response.data
+  },
+  async archiveQuestion(questionId: string) {
+    const response = await httpClient.post<VocabularyQuestionDto>(`${adminBase}/questions/${questionId}/archive`)
+    return response.data
+  },
+  async archiveWord(wordId: string) {
+    const response = await httpClient.post<VocabularyWordDto>(`${adminBase}/words/${wordId}/archive`)
     return response.data
   },
 }

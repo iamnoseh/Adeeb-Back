@@ -93,6 +93,9 @@ const TestAttemptPage = lazy(() => import("@/routes/student/testing/TestAttemptP
 const TestResultPage = lazy(() => import("@/routes/student/testing/StudentTestingResultsPages").then((module) => ({ default: module.TestResultPage })));
 const TestHistoryPage = lazy(() => import("@/routes/student/testing/StudentTestingResultsPages").then((module) => ({ default: module.TestHistoryPage })));
 const StudentRedListPage = lazy(() => import("@/routes/student/testing/StudentTestingResultsPages").then((module) => ({ default: module.StudentRedListPage })));
+const StudentVocabularyPage = lazy(() => import("@/routes/student/vocabulary/StudentVocabularyPage").then((module) => ({ default: module.StudentVocabularyPage })));
+const StudentVocabularySessionPage = lazy(() => import("@/routes/student/vocabulary/StudentVocabularySessionPage").then((module) => ({ default: module.StudentVocabularySessionPage })));
+const AdminVocabularyPage = lazy(() => import("@/routes/admin/vocabulary/AdminVocabularyPage").then((module) => ({ default: module.AdminVocabularyPage })));
 
 function MmtRouteFallback() {
   const { t } = useTranslation();
@@ -153,6 +156,7 @@ const router = createBrowserRouter(
             path="questions/:questionId/edit"
             element={<QuestionFormRoute />}
           />
+          <Route path="vocabulary" element={<Suspense fallback={<MmtRouteFallback />}><AdminVocabularyPage /></Suspense>} />
           <Route
             path="mmt"
             element={
@@ -211,6 +215,8 @@ const router = createBrowserRouter(
           <Route path="mmt" element={<StudentMmtPage />} />
           <Route path="mmt/setup" element={<StudentMmtPage />} />
           <Route path="learning" element={<StudentLearningPage />} />
+          <Route path="vocabulary" element={<StudentTestingRoute><StudentVocabularyPage /></StudentTestingRoute>} />
+          <Route path="vocabulary/sessions/:sessionId" element={<StudentTestingRoute><StudentVocabularySessionPage /></StudentTestingRoute>} />
           <Route path="tests" element={<StudentTestingRoute><StudentTestsHubPage /></StudentTestingRoute>} />
           <Route path="tests/subject" element={<StudentTestingRoute><SubjectTestStartPage /></StudentTestingRoute>} />
           <Route path="tests/mmt-practice" element={<StudentTestingRoute><MmtPracticeStartPage /></StudentTestingRoute>} />

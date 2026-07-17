@@ -16,46 +16,24 @@ export type VocabularyListQuery = {
   pageSize?: number
 }
 
-export enum VocabularyLevel {
-  A1 = 0,
-  A2 = 1,
-  B1 = 2,
-  B2 = 3,
-  C1 = 4,
-  C2 = 5,
-}
-
-export enum VocabularyQuestionType {
-  Translation = 0,
-  FillBlank = 1,
-  OddWordReplacement = 2,
-  Synonym = 3,
-  Antonym = 4,
-  WordOrder = 5,
-}
-
-export enum VocabularySessionMode {
-  DailyPractice = 0,
-  MistakeReview = 1,
-  FreePractice = 2,
-  Test = 3,
-}
-
-export enum VocabularySessionStatus {
-  InProgress = 0,
-  Completed = 1,
-}
-
-export enum VocabularyContentStatus {
-  Draft = 0,
-  Published = 1,
-  Archived = 2,
-}
+export const VocabularyLevel = { A1: 0, A2: 1, B1: 2, B2: 3, C1: 4, C2: 5 } as const
+export const VocabularyQuestionType = { Translation: 0, FillBlank: 1, OddWordReplacement: 2, Synonym: 3, Antonym: 4, WordOrder: 5 } as const
+export const VocabularySessionMode = { DailyPractice: 0, MistakeReview: 1, FreePractice: 2, Test: 3 } as const
+export const VocabularySessionStatus = { InProgress: 0, Completed: 1 } as const
+export const VocabularyContentStatus = { Draft: 0, Published: 1, Archived: 2 } as const
 
 export type LearningLanguageDto = {
   id: string
   code: string
   name: string
+  nameTg: string
+  nameRu: string
+  displayOrder: number
+  isActive: boolean
+}
+
+export type LanguageUpsertRequest = {
+  code: string
   nameTg: string
   nameRu: string
   displayOrder: number
@@ -70,6 +48,16 @@ export type VocabularyTopicDto = {
   nameTg: string
   nameRu: string
   description?: string | null
+  descriptionTg?: string | null
+  descriptionRu?: string | null
+  status: number
+}
+
+export type TopicUpsertRequest = {
+  languageId: string
+  level: number
+  nameTg: string
+  nameRu: string
   descriptionTg?: string | null
   descriptionRu?: string | null
   status: number
@@ -102,6 +90,22 @@ export type VocabularyWordDto = {
   relations: VocabularyRelationDto[]
 }
 
+export type WordUpsertRequest = {
+  languageId: string
+  topicId: string
+  level: number
+  targetText: string
+  translationTg: string
+  translationRu: string
+  explanationTg?: string | null
+  explanationRu?: string | null
+  exampleTarget: string
+  exampleTg: string
+  exampleRu: string
+  status: number
+  relations?: { relatedWordId: string; type: number }[] | null
+}
+
 export type VocabularyQuestionOptionDto = {
   id: string
   wordId?: string | null
@@ -129,11 +133,27 @@ export type VocabularyQuestionDto = {
   options: VocabularyQuestionOptionDto[]
 }
 
+export type DraftGenerationWarning = {
+  type: number
+  code: string
+}
+
+export type DraftGenerationResult = {
+  created: VocabularyQuestionDto[]
+  warnings: DraftGenerationWarning[]
+}
+
 export type DailyWordDto = {
   languageId: string
   localDate: string
   isAutomatic: boolean
   word: VocabularyWordDto
+}
+
+export type DailyWordUpsertRequest = {
+  languageId: string
+  localDate: string
+  wordId: string
 }
 
 export type StudentVocabularyCourseDto = {
