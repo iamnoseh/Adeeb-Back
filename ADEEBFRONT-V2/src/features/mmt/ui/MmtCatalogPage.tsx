@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { mmtApi, mmtKeys } from "@/features/mmt/api/mmt.api";
 import { subjectKeys, subjectsApi } from "@/features/academic/api/subjects.api";
-import { errorMessage, enumLabel, mmtDefaultPageSize, mmtPage } from "@/features/mmt/lib/mmt";
+import { catalogSubjectIds, errorMessage, enumLabel, mmtDefaultPageSize, mmtPage } from "@/features/mmt/lib/mmt";
 import { useMmtLabels } from "@/features/mmt/lib/useMmtLabels";
 import type {
   CatalogDto,
@@ -33,6 +33,7 @@ import { PageHeader } from "@/shared/ui/PageHeader";
 import { EmptyState, ErrorState } from "@/shared/ui/StateBlock";
 import { Table, TableShell } from "@/shared/ui/Table";
 import { TableActionButton } from "@/shared/ui/TableActionButton";
+import { OverflowMarquee } from "@/shared/ui/OverflowMarquee";
 
 export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
   const { t } = useTranslation();
@@ -64,6 +65,7 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
   const activeValue = params.get("active") ?? "";
   const isActive = activeValue === "" ? undefined : activeValue === "true";
   const [editing, setEditing] = useState<CatalogDto | "new" | null>(null);
+  const editId = params.get("edit") ?? "";
   const toast = useMmtToast();
   const queryClient = useQueryClient();
   const columns: AdminListColumn[] = kind === "clusters"
@@ -82,6 +84,14 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
     queryKey: mmtKeys.catalog(kind, queryParams),
     queryFn: () => mmtApi.catalogList(kind, queryParams),
   });
+  const directEdit = useQuery({
+    queryKey: mmtKeys.catalogDetail(kind, editId),
+    queryFn: () => mmtApi.catalogDetail<CatalogDto>(kind, editId),
+    enabled: Boolean(editId) && kind !== "clusters",
+  });
+  useEffect(() => {
+    if (directEdit.data && editing === null) setEditing(directEdit.data);
+  }, [directEdit.data, editing]);
   const status = useMutation({
     mutationFn: ({ id, next }: { id: string; next: boolean }) =>
       mmtApi.setCatalogStatus(kind, id, next),
@@ -121,6 +131,13 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
     if (search) next.set("search", search);
     next.set("page", "1");
     setParams(next);
+  }
+  function closeEditor() {
+    setEditing(null);
+    if (!editId) return;
+    const next = new URLSearchParams(params);
+    next.delete("edit");
+    setParams(next, { replace: true });
   }
 
   return (
@@ -205,9 +222,9 @@ export function MmtCatalogPage({ kind }: { kind: CatalogKind }) {
           item={editing === "new" ? null : editing}
           universityTypes={labels.universityTypes}
           title={meta[kind].title}
-          onClose={() => setEditing(null)}
+          onClose={closeEditor}
           onSaved={async () => {
-            setEditing(null);
+            closeEditor();
             await Promise.all([
               queryClient.invalidateQueries({ queryKey: ["mmt", kind] }),
               queryClient.invalidateQueries({ queryKey: mmtKeys.dashboard() }),
@@ -285,7 +302,8 @@ function CatalogRow({
       : kind === "universities"
         ? [
             <span key="name">
-              <strong>{(item as UniversityDto).fullName}</strong>
+              <OverflowMarquee text={(item as UniversityDto).fullName} className="max-w-72 font-bold" />
+              {(item as UniversityDto).needsTranslation ? <small className="block font-bold text-[var(--warning)]">{t("mmt.needsTranslation")}</small> : null}
               <small className="mt-0.5 block text-[var(--muted)]">
                 {(item as UniversityDto).shortName}
               </small>
@@ -301,7 +319,7 @@ function CatalogRow({
             <span className="font-mono font-bold" key="code">
               {(item as SpecialtyDto).code}
             </span>,
-            <strong key="name">{(item as SpecialtyDto).name}</strong>,
+            <span key="name"><OverflowMarquee text={(item as SpecialtyDto).name} className="max-w-72 font-bold" />{(item as SpecialtyDto).needsTranslation ? <small className="block font-bold text-[var(--warning)]">{t("mmt.needsTranslation")}</small> : null}</span>,
           ];
   return (
     <tr className="border-t border-[var(--border)]">
@@ -351,8 +369,8 @@ function CatalogForm({
     String((item as UniversityDto | null)?.type ?? 0),
   );
   const cluster = item as MmtClusterDto | null;
-  const [subjectIds, setSubjectIds] = useState(
-    cluster?.subjects.map((subject) => subject.id) ?? [],
+  const [subjectIds, setSubjectIds] = useState(() =>
+    catalogSubjectIds(kind, item),
   );
   const subjectsQuery = useQuery({
     queryKey: subjectKeys.list({ pageSize: 100 }),

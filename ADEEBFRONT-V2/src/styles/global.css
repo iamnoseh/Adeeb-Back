@@ -142,3 +142,36 @@ textarea:focus-visible {
 .student-theme-dark [class*="border-[#d"] {
   border-color: var(--student-border) !important;
 }
+@keyframes overflow-marquee-slide {
+  0%, 18% { transform: translateX(0); }
+  82%, 100% { transform: translateX(calc(-1 * var(--overflow-distance))); }
+}
+
+.overflow-marquee {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.overflow-marquee > span {
+  display: inline-block;
+  min-width: max-content;
+}
+
+.overflow-marquee--active > span {
+  animation: overflow-marquee-slide 7s ease-in-out infinite alternate;
+}
+
+.overflow-marquee--active:hover > span,
+.overflow-marquee--active:focus > span {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overflow-marquee--active {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .overflow-marquee--active > span { animation: none; min-width: 0; }
+}

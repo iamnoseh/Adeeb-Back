@@ -48,26 +48,32 @@ export type QuestionResponse = {
 export type QuestionListResponse = PagedResponse<QuestionResponse>
 
 export type SingleChoiceOptionForm = {
-  text: string
+  textTg: string
+  textRu: string
   isCorrect: boolean
 }
 
 export type MatchingPairForm = {
-  text: string
-  matchPair: string
+  textTg: string
+  textRu: string
+  matchPairTg: string
+  matchPairRu: string
 }
 
 export type QuestionFormValues = {
   subjectId: string
   topicId: string
-  content: string
-  explanation: string
+  contentTg: string
+  contentRu: string
+  explanationTg: string
+  explanationRu: string
   type: number
   difficulty: number
   status: number
   answers: SingleChoiceOptionForm[]
   matchingPairs: MatchingPairForm[]
-  correctAnswer: string
+  correctAnswerTg: string
+  correctAnswerRu: string
   image?: FileList
 }
 
@@ -117,6 +123,7 @@ export type QuestionImportParseRequest = {
   subjectId: string
   topicId?: string | null
   difficulty: number
+  language: number
   file: File
 }
 
@@ -124,6 +131,7 @@ export type QuestionImportConfirmRequest = {
   subjectId: string
   topicId?: string | null
   difficulty: number
+  language: number
   questions: {
     questionType: number
     questionText: string

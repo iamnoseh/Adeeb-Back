@@ -142,6 +142,7 @@ export function QuestionImportPage() {
   const [subjectId, setSubjectId] = useState('')
   const [topicId, setTopicId] = useState('')
   const [difficulty, setDifficulty] = useState('1')
+  const [sourceLanguage, setSourceLanguage] = useState(i18n.language === 'ru-RU' ? '1' : '0')
   const [file, setFile] = useState<File | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
@@ -194,6 +195,10 @@ export function QuestionImportPage() {
     { value: '2', label: t('difficultyMedium') },
     { value: '3', label: t('difficultyHard') },
   ]
+  const languageOptions = [
+    { value: '0', label: t('tajikLanguage') },
+    { value: '1', label: t('russianLanguage') },
+  ]
 
   const activeQuestions = questions.filter((question) => !question.removed)
   const validationByKey = new Map(activeQuestions.map((question) => [question.key, validateImportedQuestion(question)]))
@@ -228,7 +233,7 @@ export function QuestionImportPage() {
 
   function parse() {
     if (!file || !canParse) return
-    parseMutation.mutate({ subjectId, topicId: topicId || null, difficulty: Number(difficulty), file })
+    parseMutation.mutate({ subjectId, topicId: topicId || null, difficulty: Number(difficulty), language: Number(sourceLanguage), file })
   }
 
   function confirm() {
@@ -236,7 +241,7 @@ export function QuestionImportPage() {
     const subject = subjectOptions.find((item) => item.value === subjectId)?.label ?? ''
     const proceed = window.confirm(`${labels.confirm}: ${summary.total}\n${labels.subject}: ${subject}`)
     if (!proceed) return
-    confirmMutation.mutate(buildConfirmImportRequest(subjectId, topicId || null, Number(difficulty), activeQuestions))
+    confirmMutation.mutate(buildConfirmImportRequest(subjectId, topicId || null, Number(difficulty), Number(sourceLanguage), activeQuestions))
   }
 
   function updateQuestion(key: string, update: (question: EditableImportedQuestion) => EditableImportedQuestion) {
@@ -260,7 +265,7 @@ export function QuestionImportPage() {
 
         {formError ? <IssuePanel tone="danger" message={formError} /> : null}
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <FormField label={labels.subject}>
             <SelectField
               value={subjectId}
@@ -278,7 +283,12 @@ export function QuestionImportPage() {
           <FormField label={labels.difficulty}>
             <SelectField value={difficulty} options={difficultyOptions} placeholder={labels.chooseDifficulty} onValueChange={setDifficulty} />
           </FormField>
+          <FormField label={t('sourceFileLanguage')}>
+            <SelectField value={sourceLanguage} options={languageOptions} onValueChange={setSourceLanguage} />
+          </FormField>
         </div>
+
+        <p className="rounded-xl bg-[var(--surface-soft)] px-4 py-3 text-sm font-semibold text-[var(--muted)]">{t('importedQuestionsDraftNotice')}</p>
 
         <div className="grid gap-3">
           <span className="px-1 text-sm font-semibold">{labels.file}</span>

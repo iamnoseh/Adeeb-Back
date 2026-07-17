@@ -67,6 +67,20 @@ public sealed class StudentsIntegrationScenarios(AdeebApiFactory factory) : ICla
     }
 
     [Fact]
+    public async Task Anonymous_activity_access_returns_unauthorized()
+    {
+        var client = factory.CreateClient();
+
+        var calendar = await client.GetAsync("/api/v2/students/me/activity/calendar");
+        var visit = await client.PostAsJsonAsync(
+            "/api/v2/students/me/activity/visit",
+            new StudentActivityVisitRequest("Asia/Dushanbe"));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, calendar.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, visit.StatusCode);
+    }
+
+    [Fact]
     public async Task User_cannot_modify_another_student_profile_through_self_endpoint()
     {
         var client = factory.CreateClient();
@@ -99,6 +113,30 @@ public sealed class StudentsIntegrationScenarios(AdeebApiFactory factory) : ICla
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<StudentsDbContext>();
         Assert.Equal(1, db.Students.Count(x => x.IdentityUserId == identityUserId));
+    }
+
+    [Fact]
+    public async Task Concurrent_activity_visits_are_idempotent_and_calendar_is_owned_by_student()
+    {
+        var client = factory.CreateClient();
+        var auth = await RegisterAsync(client, "student-activity@adeeb.tj");
+        var student = await GetMeAsync(client, auth.Tokens.AccessToken);
+
+        var responses = await Task.WhenAll(
+            VisitAsync(client, auth.Tokens.AccessToken, "Asia/Dushanbe"),
+            VisitAsync(client, auth.Tokens.AccessToken, "Asia/Dushanbe"));
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+
+        using var calendarRequest = Authenticated(HttpMethod.Get, "/api/v2/students/me/activity/calendar", auth.Tokens.AccessToken);
+        var calendarResponse = await client.SendAsync(calendarRequest);
+        var calendar = await ReadJsonAsync<StudentActivityCalendarResponse>(calendarResponse);
+
+        Assert.Equal(1, calendar.ActiveDaysInMonth);
+        Assert.Equal(1, calendar.CurrentStreak);
+        Assert.Single(calendar.Days);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<StudentsDbContext>();
+        Assert.Equal(1, db.DailyActivities.Count(x => x.StudentId == student.StudentId));
     }
 
     [Fact]
@@ -136,6 +174,13 @@ public sealed class StudentsIntegrationScenarios(AdeebApiFactory factory) : ICla
     private static async Task<HttpResponseMessage> ProvisionAsync(HttpClient client, string token)
     {
         using var request = Authenticated(HttpMethod.Post, "/api/v2/students/me/provision", token);
+        return await client.SendAsync(request);
+    }
+
+    private static async Task<HttpResponseMessage> VisitAsync(HttpClient client, string token, string timeZoneId)
+    {
+        using var request = Authenticated(HttpMethod.Post, "/api/v2/students/me/activity/visit", token);
+        request.Content = JsonContent.Create(new StudentActivityVisitRequest(timeZoneId));
         return await client.SendAsync(request);
     }
 

@@ -21,6 +21,7 @@ import { SelectField } from "@/shared/ui/SelectField";
 import { EmptyState, ErrorState } from "@/shared/ui/StateBlock";
 import { Table, TableShell } from "@/shared/ui/Table";
 import { TableActionButton } from "@/shared/ui/TableActionButton";
+import { OverflowMarquee } from "@/shared/ui/OverflowMarquee";
 
 export function MmtProgramsPage() {
   const { t } = useTranslation();
@@ -242,7 +243,8 @@ export function MmtProgramsPage() {
                   className="border-t border-[var(--border)]"
                 >
                   <td className="px-3 py-3">
-                    <strong>{program.universityName}</strong>
+                    <OverflowMarquee text={program.universityName} className="max-w-72 font-bold" />
+                    {program.needsTranslation ? <small className="mt-1 block font-bold text-[var(--warning)]">{t("mmt.needsTranslation")}</small> : null}
                     <small className="mt-0.5 block text-[var(--muted)]">
                       {program.specialtyCode} · {program.specialtyName}
                     </small>

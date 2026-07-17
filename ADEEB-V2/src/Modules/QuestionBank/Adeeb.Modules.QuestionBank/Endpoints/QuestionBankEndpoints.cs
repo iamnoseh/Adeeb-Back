@@ -34,7 +34,7 @@ public static class QuestionBankEndpoints
             .RequireAuthorization(Permissions.QuestionBank.Import);
         group.MapPost("/", async ([FromForm] QuestionFormRequest form, QuestionImageStorage images, QuestionBankService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
         {
-            var parsed = ToUpsertRequest(form, imageUrl: null);
+            var parsed = QuestionFormMapper.ToUpsertRequest(form, imageUrl: null);
             if (parsed.IsFailure)
             {
                 return parsed.ToHttpResult(context, localizer);
@@ -54,7 +54,7 @@ public static class QuestionBankEndpoints
 
         group.MapPut("/{id:guid}", async (Guid id, [FromForm] QuestionFormRequest form, QuestionImageStorage images, QuestionBankService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
         {
-            var parsed = ToUpsertRequest(form, imageUrl: null);
+            var parsed = QuestionFormMapper.ToUpsertRequest(form, imageUrl: null);
             if (parsed.IsFailure)
             {
                 return parsed.ToHttpResult(context, localizer);
@@ -83,7 +83,11 @@ public static class QuestionBankEndpoints
             ? language
             : SupportedLanguage.Tajik;
 
-    private static Result<QuestionUpsertRequest> ToUpsertRequest(QuestionFormRequest form, string? imageUrl)
+}
+
+internal static class QuestionFormMapper
+{
+    internal static Result<QuestionUpsertRequest> ToUpsertRequest(QuestionFormRequest form, string? imageUrl)
     {
         try
         {
@@ -91,9 +95,8 @@ public static class QuestionBankEndpoints
             var answerOptions = ToAnswerOptions(form, options);
             var translations = new List<QuestionTranslationRequest>
             {
-                new((int)SupportedLanguage.Tajik, form.Content, form.Explanation),
-                new((int)SupportedLanguage.Russian, form.Content, form.Explanation),
-                new((int)SupportedLanguage.English, form.Content, form.Explanation)
+                new((int)SupportedLanguage.Tajik, Localized(form.ContentTg, form.Content), LocalizedOptional(form.ExplanationTg, form.Explanation)),
+                new((int)SupportedLanguage.Russian, Localized(form.ContentRu, form.Content), LocalizedOptional(form.ExplanationRu, form.Explanation))
             };
             return Result<QuestionUpsertRequest>.Success(new(
                 form.SubjectId,
@@ -125,28 +128,35 @@ public static class QuestionBankEndpoints
                     1,
                     true,
                     [
-                        new AnswerOptionTranslationRequest((int)SupportedLanguage.Tajik, form.CorrectAnswer ?? string.Empty, null),
-                        new AnswerOptionTranslationRequest((int)SupportedLanguage.Russian, form.CorrectAnswer ?? string.Empty, null),
-                        new AnswerOptionTranslationRequest((int)SupportedLanguage.English, form.CorrectAnswer ?? string.Empty, null)
+                        new AnswerOptionTranslationRequest((int)SupportedLanguage.Tajik, Localized(form.CorrectAnswerTg, form.CorrectAnswer), null),
+                        new AnswerOptionTranslationRequest((int)SupportedLanguage.Russian, Localized(form.CorrectAnswerRu, form.CorrectAnswer), null)
                     ])
             ];
         }
 
-        var legacyAnswers = string.IsNullOrWhiteSpace(form.AnswersJson)
+        var answers = string.IsNullOrWhiteSpace(form.AnswersJson)
             ? []
-            : JsonSerializer.Deserialize<IReadOnlyList<LegacyAnswerFormRequest>>(form.AnswersJson, options) ?? [];
+            : JsonSerializer.Deserialize<IReadOnlyList<QuestionAnswerFormRequest>>(form.AnswersJson, options) ?? [];
 
-        return legacyAnswers.Select((answer, index) =>
+        return answers.Select((answer, index) =>
         {
-            var text = answer.Text ?? answer.Answer ?? string.Empty;
+            var legacyText = answer.Text ?? answer.Answer;
             return new AnswerOptionRequest(
                 index + 1,
                 answer.IsCorrect,
                 [
-                    new AnswerOptionTranslationRequest((int)SupportedLanguage.Tajik, text, answer.MatchPair),
-                    new AnswerOptionTranslationRequest((int)SupportedLanguage.Russian, text, answer.MatchPair),
-                    new AnswerOptionTranslationRequest((int)SupportedLanguage.English, text, answer.MatchPair)
+                    new AnswerOptionTranslationRequest((int)SupportedLanguage.Tajik, Localized(answer.TextTg, legacyText), LocalizedOptional(answer.MatchPairTg, answer.MatchPair)),
+                    new AnswerOptionTranslationRequest((int)SupportedLanguage.Russian, Localized(answer.TextRu, legacyText), LocalizedOptional(answer.MatchPairRu, answer.MatchPair))
                 ]);
         }).ToList();
+    }
+
+    private static string Localized(string? value, string? legacyValue) =>
+        !string.IsNullOrWhiteSpace(value) ? value.Trim() : legacyValue?.Trim() ?? string.Empty;
+
+    private static string? LocalizedOptional(string? value, string? legacyValue)
+    {
+        var result = !string.IsNullOrWhiteSpace(value) ? value.Trim() : legacyValue?.Trim();
+        return string.IsNullOrWhiteSpace(result) ? null : result;
     }
 }

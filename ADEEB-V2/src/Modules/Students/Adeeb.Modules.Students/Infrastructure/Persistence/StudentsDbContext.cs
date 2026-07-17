@@ -7,12 +7,14 @@ namespace Adeeb.Modules.Students.Infrastructure.Persistence;
 public sealed class StudentsDbContext(DbContextOptions<StudentsDbContext> options) : DbContext(options)
 {
     public DbSet<Student> Students => Set<Student>();
+    public DbSet<StudentDailyActivity> DailyActivities => Set<StudentDailyActivity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("students");
         modelBuilder.ApplyConfiguration(new StudentConfiguration());
         modelBuilder.ApplyConfiguration(new StudentProfileConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentDailyActivityConfiguration());
     }
 }
 
@@ -51,6 +53,25 @@ internal sealed class StudentProfileConfiguration : IEntityTypeConfiguration<Stu
         builder.Property(x => x.City).HasColumnName("city").HasMaxLength(StudentProfile.CityMaxLength);
         builder.Property(x => x.SchoolName).HasColumnName("school_name").HasMaxLength(StudentProfile.SchoolNameMaxLength);
         builder.Property(x => x.Grade).HasColumnName("grade");
+        builder.Property(x => x.TimeZoneId).HasColumnName("time_zone_id").HasMaxLength(StudentProfile.TimeZoneIdMaxLength).IsRequired();
         builder.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc").IsRequired();
+    }
+}
+
+internal sealed class StudentDailyActivityConfiguration : IEntityTypeConfiguration<StudentDailyActivity>
+{
+    public void Configure(EntityTypeBuilder<StudentDailyActivity> builder)
+    {
+        builder.ToTable("student_daily_activities");
+        builder.HasKey(x => new { x.StudentId, x.LocalDate }).HasName(StudentDatabaseConstraints.DailyActivityPrimaryKey);
+        builder.Property(x => x.StudentId).HasColumnName("student_id");
+        builder.Property(x => x.LocalDate).HasColumnName("local_date");
+        builder.Property(x => x.TimeZoneId).HasColumnName("time_zone_id").HasMaxLength(StudentProfile.TimeZoneIdMaxLength).IsRequired();
+        builder.Property(x => x.FirstSeenAtUtc).HasColumnName("first_seen_at_utc").IsRequired();
+        builder.Property(x => x.LastSeenAtUtc).HasColumnName("last_seen_at_utc").IsRequired();
+        builder.HasOne<Student>()
+            .WithMany()
+            .HasForeignKey(x => x.StudentId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

@@ -11,20 +11,19 @@ public partial class AddLegacyTopicTextToQuestions : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.AddColumn<string>(
-            name: "topic",
-            schema: "question_bank",
-            table: "questions",
-            type: "character varying(200)",
-            maxLength: 200,
-            nullable: true);
+        migrationBuilder.Sql(
+            """
+            ALTER TABLE question_bank.questions
+            ADD COLUMN IF NOT EXISTS topic character varying(200);
+            """);
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.DropColumn(
-            name: "topic",
-            schema: "question_bank",
-            table: "questions");
+        migrationBuilder.Sql(
+            """
+            ALTER TABLE question_bank.questions
+            DROP COLUMN IF EXISTS topic;
+            """);
     }
 }

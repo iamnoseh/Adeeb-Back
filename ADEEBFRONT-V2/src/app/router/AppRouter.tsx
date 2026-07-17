@@ -1,10 +1,11 @@
 import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  createBrowserRouter,
+  createRoutesFromElements,
   Outlet,
   Route,
-  BrowserRouter as Router,
-  Routes,
+  RouterProvider,
 } from "react-router-dom";
 import { LoginRoute } from "@/routes/login/LoginRoute";
 import { RegisterRoute } from "@/routes/register/RegisterRoute";
@@ -107,10 +108,9 @@ function StudentTestingRoute({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<StudentTestingFallback />}>{children}</Suspense>;
 }
 
-export function AppRouter() {
-  return (
-    <Router>
-      <Routes>
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <>
         <Route path="/" element={<AuthenticatedHomeRedirect />} />
         <Route
           path="/login"
@@ -230,7 +230,10 @@ export function AppRouter() {
           <Route path="support" element={<StudentSectionPage titleKey="student.support" icon={HelpCircle} />} />
         </Route>
         <Route path="*" element={<AuthenticatedHomeRedirect />} />
-      </Routes>
-    </Router>
-  );
+    </>,
+  ),
+);
+
+export function AppRouter() {
+  return <RouterProvider router={router} />;
 }

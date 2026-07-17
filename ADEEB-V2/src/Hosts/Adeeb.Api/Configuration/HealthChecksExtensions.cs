@@ -12,6 +12,7 @@ public static class HealthChecksExtensions
             .AddNpgSql(RequiredConnectionString(configuration, "AcademicCatalog"), name: "academic-db", tags: ["db", "ready"])
             .AddNpgSql(RequiredConnectionString(configuration, "QuestionBank"), name: "question-db", tags: ["db", "ready"])
             .AddNpgSql(RequiredConnectionString(configuration, "Students"), name: "students-db", tags: ["db", "ready"])
+            .AddNpgSql(RequiredConnectionString(configuration, "Vocabulary"), name: "vocabulary-db", tags: ["db", "ready"])
             .AddNpgSql(RequiredConnectionString(configuration, "Commerce"), name: "commerce-db", tags: ["db", "ready"])
             .AddNpgSql(RequiredConnectionString(configuration, "Mmt"), name: "mmt-db", tags: ["db", "ready"]);
 
@@ -21,7 +22,8 @@ public static class HealthChecksExtensions
     private static string RequiredConnectionString(IConfiguration configuration, string name)
     {
         var value = configuration.GetConnectionString(name)
-            ?? configuration.GetConnectionString("Default");
+            ?? configuration.GetConnectionString("Default")
+            ?? configuration.GetConnectionString("Identity");
 
         if (string.IsNullOrWhiteSpace(value))
         {

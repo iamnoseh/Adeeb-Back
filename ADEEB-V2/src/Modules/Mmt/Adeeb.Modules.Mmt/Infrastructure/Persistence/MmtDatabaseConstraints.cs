@@ -7,6 +7,7 @@ internal static class MmtDatabaseConstraints
 {
     public const string ClusterCode = "ux_mmt_clusters_code";
     public const string UniversityName = "ux_mmt_universities_normalized_name";
+    public const string UniversityNameRu = "ux_mmt_universities_normalized_name_ru";
     public const string SpecialtyCode = "ux_mmt_specialties_code";
     public const string ProgramIdentity = "ux_mmt_admission_program_identity";
     public const string ProgramYearRoundScore = "ux_mmt_score_program_year_round";

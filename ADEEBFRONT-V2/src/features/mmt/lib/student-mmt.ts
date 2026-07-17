@@ -27,8 +27,8 @@ export function normalizeAdmissionChoices(choices: string[]): AdmissionChoiceInp
 
 export function buildStudentProgramQuery(input: {
   clusterId: string
-  specialtyId: string
-  universityId: string
+  specialtyId?: string
+  universityId?: string
   admissionType?: number | undefined
   studyForm?: number | undefined
   studyLanguage?: number | undefined
@@ -37,8 +37,8 @@ export function buildStudentProgramQuery(input: {
 }): AdmissionProgramQuery {
   return {
     clusterId: input.clusterId,
-    specialtyId: input.specialtyId,
-    universityId: input.universityId,
+    specialtyId: input.specialtyId || undefined,
+    universityId: input.universityId || undefined,
     admissionType: input.admissionType,
     studyForm: input.studyForm,
     studyLanguage: input.studyLanguage,

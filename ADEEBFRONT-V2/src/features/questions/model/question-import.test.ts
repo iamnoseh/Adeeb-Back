@@ -75,7 +75,7 @@ describe('question import model', () => {
   })
 
   it('builds confirm request without parser metadata', () => {
-    const request = buildConfirmImportRequest('subject', null, 2, [
+    const request = buildConfirmImportRequest('subject', null, 2, 0, [
       editableQuestion({
         serverErrors: [{ code: 'server.old', message: 'old' }],
         serverWarnings: [{ code: 'server.warning', message: 'warning' }],
@@ -86,6 +86,7 @@ describe('question import model', () => {
       subjectId: 'subject',
       topicId: null,
       difficulty: 2,
+      language: 0,
       questions: [
         {
           questionType: QuestionTypeValue.SingleChoice,
@@ -101,7 +102,7 @@ describe('question import model', () => {
   })
 
   it('builds closed answer confirm request without fake options', () => {
-    const request = buildConfirmImportRequest('subject', null, 1, [
+    const request = buildConfirmImportRequest('subject', null, 1, 0, [
       editableQuestion({
         questionType: QuestionTypeValue.ClosedAnswer,
         questionTypeName: 'ClosedAnswer',
@@ -121,7 +122,7 @@ describe('question import model', () => {
   })
 
   it('builds mixed confirm request with single choice and closed answer', () => {
-    const request = buildConfirmImportRequest('subject', 'topic', 2, [
+    const request = buildConfirmImportRequest('subject', 'topic', 2, 0, [
       editableQuestion(),
       editableQuestion({
         key: 'q-2',
@@ -162,7 +163,7 @@ describe('question import model', () => {
   })
 
   it('does not include removed questions in confirm request', () => {
-    const request = buildConfirmImportRequest('subject', 'topic', 1, [
+    const request = buildConfirmImportRequest('subject', 'topic', 1, 0, [
       editableQuestion({ removed: true }),
       editableQuestion({ key: 'q-2', questionText: 'Second?' }),
     ])

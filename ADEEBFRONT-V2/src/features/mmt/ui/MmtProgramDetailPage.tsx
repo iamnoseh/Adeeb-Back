@@ -148,6 +148,9 @@ export function MmtProgramDetailPage() {
             labels.unknown,
           )}
         />
+        <Info label={t("mmt.studyLocation")} value={item.studyLocation || "-"} />
+        <Info label={t("mmt.tuitionFee")} value={item.tuitionFeeTjs == null ? "-" : `${item.tuitionFeeTjs} TJS`} />
+        {item.needsTranslation ? <strong className="text-sm text-[var(--warning)]">{t("mmt.needsTranslation")}</strong> : null}
         <div className="flex items-center gap-2">
           <BooleanBadge
             value={item.isPublished}

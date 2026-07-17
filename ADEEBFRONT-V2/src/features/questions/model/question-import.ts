@@ -110,12 +110,14 @@ export function buildConfirmImportRequest(
   subjectId: string,
   topicId: string | null,
   difficulty: number,
+  language: number,
   questions: EditableImportedQuestion[],
 ): QuestionImportConfirmRequest {
   return {
     subjectId,
     topicId,
     difficulty,
+    language,
     questions: questions
       .filter((question) => !question.removed)
       .map((question) => question.questionType === QuestionTypeValue.ClosedAnswer

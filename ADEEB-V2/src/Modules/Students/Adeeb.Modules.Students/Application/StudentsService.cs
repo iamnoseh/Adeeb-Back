@@ -161,13 +161,13 @@ public sealed class StudentsService(
     public async Task<StudentReference?> FindByIdentityUserIdAsync(Guid identityUserId, CancellationToken cancellationToken) =>
         await db.Students.AsNoTracking()
             .Where(x => x.IdentityUserId == identityUserId)
-            .Select(x => new StudentReference(x.Id, x.IdentityUserId, x.Status.ToString()))
+            .Select(x => new StudentReference(x.Id, x.IdentityUserId, x.Status.ToString(), x.Profile.TimeZoneId))
             .SingleOrDefaultAsync(cancellationToken);
 
     public async Task<StudentReference?> FindByStudentIdAsync(Guid studentId, CancellationToken cancellationToken) =>
         await db.Students.AsNoTracking()
             .Where(x => x.Id == studentId)
-            .Select(x => new StudentReference(x.Id, x.IdentityUserId, x.Status.ToString()))
+            .Select(x => new StudentReference(x.Id, x.IdentityUserId, x.Status.ToString(), x.Profile.TimeZoneId))
             .SingleOrDefaultAsync(cancellationToken);
 
     private IQueryable<StudentResponse> ProjectStudents() =>
@@ -185,6 +185,7 @@ public sealed class StudentsService(
                     x.Profile.City,
                     x.Profile.SchoolName,
                     x.Profile.Grade,
+                    x.Profile.TimeZoneId,
                     x.Profile.UpdatedAtUtc),
                 x.CreatedAtUtc,
                 x.UpdatedAtUtc));
@@ -203,6 +204,7 @@ public sealed class StudentsService(
                 student.Profile.City,
                 student.Profile.SchoolName,
                 student.Profile.Grade,
+                student.Profile.TimeZoneId,
                 student.Profile.UpdatedAtUtc),
             student.CreatedAtUtc,
             student.UpdatedAtUtc);

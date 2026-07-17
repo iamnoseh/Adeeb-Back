@@ -8,7 +8,7 @@ namespace Adeeb.Modules.Mmt.Domain;
 public enum UniversityType { Public = 0, Private = 1, Other = 2 }
 public enum AdmissionType { Budget = 0, Contract = 1 }
 public enum StudyForm { FullTime = 0, PartTime = 1, Distance = 2, Other = 3 }
-public enum StudyLanguage { Tajik = 0, Russian = 1, English = 2, Other = 3 }
+public enum StudyLanguage { Tajik = 0, Russian = 1, English = 2, Other = 3, Bilingual = 4 }
 public enum DistributionRound { Main = 0, Repeat = 1, Additional = 2, Other = 3 }
 public enum ExistingScoreMode { SkipExisting = 0, UpdateExisting = 1, FailOnExisting = 2 }
 
@@ -93,6 +93,7 @@ public sealed class University : Entity
     public string FullName { get; private set; } = string.Empty;
     public string FullNameRu { get; private set; } = string.Empty;
     public string NormalizedFullName { get; private set; } = string.Empty;
+    public string NormalizedFullNameRu { get; private set; } = string.Empty;
     public string? ShortName { get; private set; }
     public string? ShortNameRu { get; private set; }
     public string City { get; private set; } = string.Empty;
@@ -110,17 +111,29 @@ public sealed class University : Entity
         var normalizedFullName = MmtNormalization.Name(fullName);
         var normalizedShortName = string.IsNullOrWhiteSpace(shortName) ? null : MmtNormalization.Name(shortName);
         var normalizedCity = MmtNormalization.Name(city);
-        if (language == SupportedLanguage.Russian) { FullNameRu = normalizedFullName; ShortNameRu = normalizedShortName; CityRu = normalizedCity; }
+        if (language == SupportedLanguage.Russian) { FullNameRu = normalizedFullName; NormalizedFullNameRu = MmtNormalization.NameKey(fullName); ShortNameRu = normalizedShortName; CityRu = normalizedCity; }
         else { FullName = normalizedFullName; ShortName = normalizedShortName; City = normalizedCity; NormalizedFullName = MmtNormalization.NameKey(fullName); }
-        if (initializeMissing || string.IsNullOrWhiteSpace(FullNameRu)) { FullNameRu = normalizedFullName; ShortNameRu = normalizedShortName; CityRu = normalizedCity; }
+        if (initializeMissing || string.IsNullOrWhiteSpace(FullNameRu)) { FullNameRu = normalizedFullName; NormalizedFullNameRu = MmtNormalization.NameKey(fullName); ShortNameRu = normalizedShortName; CityRu = normalizedCity; }
         Type = type;
         LogoUrl = string.IsNullOrWhiteSpace(logoUrl) ? null : logoUrl.Trim();
         IsActive = isActive;
         UpdatedAtUtc = now;
     }
-    public string FullNameFor(SupportedLanguage language) => language == SupportedLanguage.Russian && !string.IsNullOrWhiteSpace(FullNameRu) ? FullNameRu : FullName;
-    public string? ShortNameFor(SupportedLanguage language) => language == SupportedLanguage.Russian ? ShortNameRu ?? ShortName : ShortName;
-    public string CityFor(SupportedLanguage language) => language == SupportedLanguage.Russian && !string.IsNullOrWhiteSpace(CityRu) ? CityRu : City;
+    public static University CreateRussianOnly(Guid id, string fullNameRu, string cityRu, UniversityType type, DateTimeOffset now)
+    {
+        var entity = new University { Id = id, CreatedAtUtc = now };
+        entity.UpdateTranslation(SupportedLanguage.Russian, fullNameRu, null, cityRu, type, null, true, now);
+        entity.NormalizedFullName = entity.NormalizedFullNameRu;
+        return entity;
+    }
+    public string FullNameFor(SupportedLanguage language) => language == SupportedLanguage.Russian
+        ? (!string.IsNullOrWhiteSpace(FullNameRu) ? FullNameRu : FullName)
+        : (!string.IsNullOrWhiteSpace(FullName) ? FullName : FullNameRu);
+    public string? ShortNameFor(SupportedLanguage language) => language == SupportedLanguage.Russian ? ShortNameRu ?? ShortName : ShortName ?? ShortNameRu;
+    public string CityFor(SupportedLanguage language) => language == SupportedLanguage.Russian
+        ? (!string.IsNullOrWhiteSpace(CityRu) ? CityRu : City)
+        : (!string.IsNullOrWhiteSpace(City) ? City : CityRu);
+    public bool HasTajikTranslation => !string.IsNullOrWhiteSpace(FullName) && !string.IsNullOrWhiteSpace(City);
     public void SetActive(bool active, DateTimeOffset now) { IsActive = active; UpdatedAtUtc = now; }
 }
 
@@ -156,8 +169,17 @@ public sealed class Specialty : Entity
         IsActive = isActive;
         UpdatedAtUtc = now;
     }
-    public string NameFor(SupportedLanguage language) => language == SupportedLanguage.Russian && !string.IsNullOrWhiteSpace(NameRu) ? NameRu : Name;
-    public string? DescriptionFor(SupportedLanguage language) => language == SupportedLanguage.Russian ? DescriptionRu ?? Description : Description;
+    public static Specialty CreateRussianOnly(Guid id, string code, string nameRu, DateTimeOffset now)
+    {
+        var entity = new Specialty { Id = id, CreatedAtUtc = now };
+        entity.UpdateTranslation(SupportedLanguage.Russian, code, nameRu, null, true, now);
+        return entity;
+    }
+    public string NameFor(SupportedLanguage language) => language == SupportedLanguage.Russian
+        ? (!string.IsNullOrWhiteSpace(NameRu) ? NameRu : Name)
+        : (!string.IsNullOrWhiteSpace(Name) ? Name : NameRu);
+    public string? DescriptionFor(SupportedLanguage language) => language == SupportedLanguage.Russian ? DescriptionRu ?? Description : Description ?? DescriptionRu;
+    public bool HasTajikTranslation => !string.IsNullOrWhiteSpace(Name);
     public void SetActive(bool active, DateTimeOffset now) { IsActive = active; UpdatedAtUtc = now; }
 }
 
@@ -166,10 +188,19 @@ public sealed class AdmissionProgram : Entity
     private AdmissionProgram() { }
     public AdmissionProgram(Guid id, Guid universityId, Guid specialtyId, Guid clusterId, AdmissionType admissionType,
         StudyForm studyForm, StudyLanguage studyLanguage, int admissionYear, int? seatsCount, bool publish, DateTimeOffset now)
+        : this(id, universityId, specialtyId, clusterId, admissionType, studyForm, studyLanguage, admissionYear,
+            seatsCount, null, null, null, publish, now)
+    {
+    }
+
+    public AdmissionProgram(Guid id, Guid universityId, Guid specialtyId, Guid clusterId, AdmissionType admissionType,
+        StudyForm studyForm, StudyLanguage studyLanguage, int admissionYear, int? seatsCount,
+        string? studyLocationTg, string? studyLocationRu, decimal? tuitionFeeTjs, bool publish, DateTimeOffset now)
     {
         Id = id;
         CreatedAtUtc = now;
-        Update(universityId, specialtyId, clusterId, admissionType, studyForm, studyLanguage, admissionYear, seatsCount, publish, true, now);
+        Update(universityId, specialtyId, clusterId, admissionType, studyForm, studyLanguage, admissionYear, seatsCount,
+            studyLocationTg, studyLocationRu, tuitionFeeTjs, publish, true, now);
     }
 
     public Guid UniversityId { get; private set; }
@@ -180,6 +211,10 @@ public sealed class AdmissionProgram : Entity
     public StudyLanguage StudyLanguage { get; private set; }
     public int AdmissionYear { get; private set; }
     public int? SeatsCount { get; private set; }
+    public string StudyLocationTg { get; private set; } = string.Empty;
+    public string StudyLocationRu { get; private set; } = string.Empty;
+    public string NormalizedStudyLocation { get; private set; } = string.Empty;
+    public decimal? TuitionFeeTjs { get; private set; }
     public bool IsPublished { get; private set; }
     public bool IsActive { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
@@ -192,6 +227,12 @@ public sealed class AdmissionProgram : Entity
 
     public void Update(Guid universityId, Guid specialtyId, Guid clusterId, AdmissionType admissionType,
         StudyForm studyForm, StudyLanguage studyLanguage, int admissionYear, int? seatsCount, bool publish, bool active, DateTimeOffset now)
+        => Update(universityId, specialtyId, clusterId, admissionType, studyForm, studyLanguage, admissionYear, seatsCount,
+            StudyLocationTg, StudyLocationRu, TuitionFeeTjs, publish, active, now);
+
+    public void Update(Guid universityId, Guid specialtyId, Guid clusterId, AdmissionType admissionType,
+        StudyForm studyForm, StudyLanguage studyLanguage, int admissionYear, int? seatsCount,
+        string? studyLocationTg, string? studyLocationRu, decimal? tuitionFeeTjs, bool publish, bool active, DateTimeOffset now)
     {
         UniversityId = universityId;
         SpecialtyId = specialtyId;
@@ -201,10 +242,18 @@ public sealed class AdmissionProgram : Entity
         StudyLanguage = studyLanguage;
         AdmissionYear = admissionYear;
         SeatsCount = seatsCount;
+        StudyLocationTg = string.IsNullOrWhiteSpace(studyLocationTg) ? string.Empty : MmtNormalization.Name(studyLocationTg);
+        StudyLocationRu = string.IsNullOrWhiteSpace(studyLocationRu) ? string.Empty : MmtNormalization.Name(studyLocationRu);
+        NormalizedStudyLocation = MmtNormalization.NameKey(!string.IsNullOrWhiteSpace(StudyLocationTg) ? StudyLocationTg : StudyLocationRu);
+        TuitionFeeTjs = admissionType == AdmissionType.Budget ? null : tuitionFeeTjs;
         IsPublished = publish;
         IsActive = active;
         UpdatedAtUtc = now;
     }
+    public string StudyLocationFor(SupportedLanguage language) => language == SupportedLanguage.Russian
+        ? (!string.IsNullOrWhiteSpace(StudyLocationRu) ? StudyLocationRu : StudyLocationTg)
+        : (!string.IsNullOrWhiteSpace(StudyLocationTg) ? StudyLocationTg : StudyLocationRu);
+    public bool NeedsTranslation => !University.HasTajikTranslation || !Specialty.HasTajikTranslation || string.IsNullOrWhiteSpace(StudyLocationTg);
     public void SetActive(bool active, DateTimeOffset now) { IsActive = active; if (!active) IsPublished = false; UpdatedAtUtc = now; }
     public void SetPublished(bool published, DateTimeOffset now) { IsPublished = published; UpdatedAtUtc = now; }
 }

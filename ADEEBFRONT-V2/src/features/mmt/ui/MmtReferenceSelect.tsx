@@ -6,6 +6,7 @@ import { mmtApi, mmtKeys } from "@/features/mmt/api/mmt.api";
 import type { CatalogDto, CatalogKind } from "@/features/mmt/model/mmt.types";
 import { Button } from "@/shared/ui/Button";
 import { Input } from "@/shared/ui/Input";
+import { OverflowMarquee } from "@/shared/ui/OverflowMarquee";
 
 type Props = {
   kind: CatalogKind;
@@ -98,9 +99,7 @@ export function MmtReferenceSelect({
           className="flex min-w-0 flex-1 items-center gap-3 px-4 text-left text-sm font-semibold focus:outline-none disabled:cursor-not-allowed"
         >
           <Search className="h-4 w-4 shrink-0 text-[var(--muted)]" />
-          <span className={`min-w-0 flex-1 truncate ${selectedItem ? "text-[var(--text)]" : "text-[var(--muted)]"}`}>
-            {selectedItem ? referenceLabel(selectedItem) : allLabel ?? placeholder}
-          </span>
+          <OverflowMarquee className={`min-w-0 flex-1 ${selectedItem ? "text-[var(--text)]" : "text-[var(--muted)]"}`} text={selectedItem ? referenceLabel(selectedItem) : allLabel ?? placeholder} />
           <ChevronDown className={`h-4 w-4 shrink-0 text-[var(--muted)] transition ${open ? "rotate-180" : ""}`} />
         </button>
         {value && !disabled ? (
@@ -140,7 +139,7 @@ export function MmtReferenceSelect({
 }
 
 function Option({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-  return <button type="button" role="option" aria-selected={selected} onClick={onClick} className={`flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold transition ${selected ? "bg-[var(--surface-muted)] text-[var(--primary-strong)]" : "hover:bg-[var(--surface-soft)]"}`}><span className="min-w-0 flex-1 truncate">{label}</span>{selected ? <Check className="h-4 w-4 shrink-0 text-[var(--primary)]" /> : null}</button>;
+  return <button type="button" role="option" aria-selected={selected} onClick={onClick} className={`flex min-h-10 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold transition ${selected ? "bg-[var(--surface-muted)] text-[var(--primary-strong)]" : "hover:bg-[var(--surface-soft)]"}`}><OverflowMarquee text={label} className="min-w-0 flex-1" />{selected ? <Check className="h-4 w-4 shrink-0 text-[var(--primary)]" /> : null}</button>;
 }
 
 function referenceLabel(item: CatalogDto) {

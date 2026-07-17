@@ -27,6 +27,8 @@ public static class DependencyInjection
         services.AddScoped<IStudentMmtTestingContext, StudentMmtTestingContextProvider>();
         services.AddScoped<MmtImportService>();
         services.AddSingleton<MmtSpreadsheet>();
+        services.AddScoped<MmtCatalogImportService>();
+        services.AddSingleton<MmtCatalogSpreadsheet>();
         return services;
     }
 }

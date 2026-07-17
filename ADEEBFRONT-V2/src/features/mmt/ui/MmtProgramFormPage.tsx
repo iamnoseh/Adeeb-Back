@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Save } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ExternalLink, Save } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -39,6 +39,8 @@ export function MmtProgramFormPage() {
   const [studyForm, setStudyForm] = useState("0");
   const [studyLanguage, setStudyLanguage] = useState("0");
   const [admissionYear, setAdmissionYear] = useState("");
+  const [studyLocationTg, setStudyLocationTg] = useState("");
+  const [isPublished, setIsPublished] = useState(false);
   const detail = useQuery({
     queryKey: mmtKeys.program(programId ?? ""),
     queryFn: () => mmtApi.program(programId!),
@@ -57,6 +59,8 @@ export function MmtProgramFormPage() {
     setStudyForm(String(detail.data.studyForm));
     setStudyLanguage(String(detail.data.studyLanguage));
     setAdmissionYear(String(detail.data.admissionYear));
+    setStudyLocationTg(detail.data.studyLocationTg ?? "");
+    setIsPublished(detail.data.isPublished);
   }, [detail.data]);
   useEffect(() => {
     if (!editing && !admissionYear && dashboard.data)
@@ -92,8 +96,29 @@ export function MmtProgramFormPage() {
       />
     );
   const program = detail.data;
+  const publicationBlockers = program
+    ? [
+        !program.university.isActive ? t("mmt.inactiveUniversityBlocker") : null,
+        program.university.needsTranslation
+          ? t("mmt.missingUniversityTranslation")
+          : null,
+        !program.specialty.isActive ? t("mmt.inactiveSpecialtyBlocker") : null,
+        program.specialty.needsTranslation
+          ? t("mmt.missingSpecialtyTranslation")
+          : null,
+        !program.cluster.isActive ? t("mmt.inactiveClusterBlocker") : null,
+        !studyLocationTg.trim()
+          ? t("mmt.missingStudyLocationTranslation")
+          : null,
+      ].filter((message): message is string => Boolean(message))
+    : [];
+  const publicationBlocked = editing && publicationBlockers.length > 0;
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isPublished && publicationBlocked) {
+      toast.error(t("mmt.publishTranslationRequired"));
+      return;
+    }
     const data = new FormData(event.currentTarget);
     mutation.mutate({
       universityId,
@@ -104,7 +129,10 @@ export function MmtProgramFormPage() {
       studyLanguage: Number(studyLanguage),
       admissionYear: Number(admissionYear),
       seatsCount: numberOrNull(data.get("seatsCount")),
-      isPublished: data.get("isPublished") === "on",
+      studyLocationTg: studyLocationTg.trim() || null,
+      studyLocationRu: String(data.get("studyLocationRu") ?? "").trim() || null,
+      tuitionFeeTjs: Number(admissionType) === 0 ? null : numberOrNull(data.get("tuitionFeeTjs")),
+      isPublished,
     });
   }
   return (
@@ -122,6 +150,32 @@ export function MmtProgramFormPage() {
         className="app-surface grid gap-5 rounded-[1.5rem] p-5"
         onSubmit={submit}
       >
+        {publicationBlocked ? (
+          <section className="rounded-lg border border-[var(--warning)] bg-[color-mix(in_srgb,var(--warning)_10%,var(--surface))] p-4" role="alert">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--warning)]" />
+              <div className="min-w-0 flex-1">
+                <strong className="block text-sm">{t("mmt.publishBlockedTitle")}</strong>
+                <p className="mt-1 text-sm text-[var(--muted)]">{t("mmt.publishBlockedDescription")}</p>
+                <ul className="mt-3 list-inside list-disc space-y-1 text-sm">
+                  {publicationBlockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
+                </ul>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {program?.university.needsTranslation ? (
+                    <Link className={controlLink} to={`/admin/mmt/universities?edit=${program.university.id}`}>
+                      {t("mmt.editUniversityTranslation")} <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  ) : null}
+                  {program?.specialty.needsTranslation ? (
+                    <Link className={controlLink} to={`/admin/mmt/specialties?edit=${program.specialty.id}`}>
+                      {t("mmt.editSpecialtyTranslation")} <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
         <div className="grid gap-4 md:grid-cols-3">
           <FormField label={t("mmt.university")}>
             <MmtReferenceSelect
@@ -148,6 +202,17 @@ export function MmtProgramFormPage() {
               placeholder={t("mmt.selectCluster")}
               onValueChange={setClusterId}
             />
+          </FormField>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <FormField label={`${t("mmt.studyLocation")} (${t("mmt.enum.tajik")})`}>
+            <Input name="studyLocationTg" value={studyLocationTg} onChange={(event) => setStudyLocationTg(event.target.value)} maxLength={160} />
+          </FormField>
+          <FormField label={`${t("mmt.studyLocation")} (${t("mmt.enum.russian")})`}>
+            <Input name="studyLocationRu" defaultValue={program?.studyLocationRu ?? ""} maxLength={160} required />
+          </FormField>
+          <FormField label={t("mmt.tuitionFee") }>
+            <Input name="tuitionFeeTjs" type="number" min="0" step="0.01" defaultValue={program?.tuitionFeeTjs ?? ""} disabled={Number(admissionType) === 0} />
           </FormField>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
@@ -206,7 +271,9 @@ export function MmtProgramFormPage() {
             <input
               name="isPublished"
               type="checkbox"
-              defaultChecked={program?.isPublished ?? false}
+              checked={isPublished}
+              disabled={publicationBlocked && !program?.isPublished}
+              onChange={(event) => setIsPublished(event.target.checked)}
               className="h-4 w-4 accent-[var(--primary)]"
             />{" "}
             {t("mmt.publishForStudents")}

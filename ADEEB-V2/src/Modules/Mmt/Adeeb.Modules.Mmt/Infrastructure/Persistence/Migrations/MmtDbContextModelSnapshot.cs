@@ -56,6 +56,12 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("cluster_id");
 
+                    b.Property<string>("NormalizedStudyLocation")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("normalized_study_location");
+
                     b.Property<int?>("SeatsCount")
                         .HasColumnType("integer")
                         .HasColumnName("seats_count");
@@ -76,6 +82,22 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(24)")
                         .HasColumnName("study_language");
 
+                    b.Property<string>("StudyLocationRu")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("study_location_ru");
+
+                    b.Property<string>("StudyLocationTg")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("study_location_tg");
+
+                    b.Property<decimal?>("TuitionFeeTjs")
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("tuition_fee_tjs");
+
                     b.Property<Guid>("UniversityId")
                         .HasColumnType("uuid")
                         .HasColumnName("university_id");
@@ -91,13 +113,17 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                     b.HasIndex("MmtClusterId", "AdmissionYear", "IsPublished", "IsActive")
                         .HasDatabaseName("ix_mmt_program_student_lookup");
 
-                    b.HasIndex("UniversityId", "SpecialtyId", "MmtClusterId", "AdmissionType", "StudyForm", "StudyLanguage", "AdmissionYear")
+                    b.HasIndex("UniversityId", "SpecialtyId", "MmtClusterId", "AdmissionType", "StudyForm", "StudyLanguage", "AdmissionYear", "NormalizedStudyLocation")
                         .IsUnique()
                         .HasDatabaseName("ux_mmt_admission_program_identity");
 
                     b.ToTable("admission_programs", "mmt", t =>
                         {
+                            t.HasCheckConstraint("ck_mmt_program_budget_tuition", "admission_type <> 'Budget' OR tuition_fee_tjs IS NULL");
+
                             t.HasCheckConstraint("ck_mmt_program_seats", "seats_count IS NULL OR seats_count >= 0");
+
+                            t.HasCheckConstraint("ck_mmt_program_tuition", "tuition_fee_tjs IS NULL OR tuition_fee_tjs >= 0");
 
                             t.HasCheckConstraint("ck_mmt_program_year", "admission_year >= 2000 AND admission_year <= 2100");
                         });
@@ -656,6 +682,12 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(300)")
                         .HasColumnName("normalized_full_name");
 
+                    b.Property<string>("NormalizedFullNameRu")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("normalized_full_name_ru");
+
                     b.Property<string>("ShortName")
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)")
@@ -681,6 +713,10 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                     b.HasIndex("NormalizedFullName")
                         .IsUnique()
                         .HasDatabaseName("ux_mmt_universities_normalized_name");
+
+                    b.HasIndex("NormalizedFullNameRu")
+                        .IsUnique()
+                        .HasDatabaseName("ux_mmt_universities_normalized_name_ru");
 
                     b.HasIndex("IsActive", "FullName")
                         .HasDatabaseName("ix_mmt_universities_active_name");

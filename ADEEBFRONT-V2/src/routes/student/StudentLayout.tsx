@@ -7,6 +7,7 @@ import { cn } from '@/shared/lib/cn'
 import { AdeebBrand } from '@/shared/ui/AdeebBrand'
 import { StudentPreferencesProvider } from '@/routes/student/StudentPreferences'
 import { useStudentPreferences } from '@/routes/student/student-preferences-context'
+import { useStudentActivityVisit } from '@/features/student-activity/model/useStudentActivity'
 
 type StudentNavItem = { to: string; label: string; icon: LucideIcon; end?: boolean }
 type StudentNavGroup = { id: string; label: string; icon: LucideIcon; items: StudentNavItem[] }
@@ -16,6 +17,7 @@ export function StudentLayout() {
 }
 
 function StudentLayoutContent() {
+  useStudentActivityVisit()
   const { user, logout } = useAuth()
   const { t } = useTranslation()
   const { theme } = useStudentPreferences()

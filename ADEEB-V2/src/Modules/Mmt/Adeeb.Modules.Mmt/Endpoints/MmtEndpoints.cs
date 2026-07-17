@@ -21,6 +21,7 @@ public static class MmtEndpoints
         var student = app.MapGroup("/api/v2/mmt/admission-programs").WithTags("MMT Admissions").RequireAuthorization();
         student.MapGet("/", async ([AsParameters] AdmissionProgramFilter filter, AdmissionProgramService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await service.GetProgramsAsync(filter, false, CurrentLanguage(c), ct)).ToHttpResult(c, l));
         student.MapGet("/{id:guid}", async (Guid id, AdmissionProgramService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await service.GetProgramAsync(id, false, CurrentLanguage(c), ct)).ToHttpResult(c, l));
+        student.MapGet("/{id:guid}/passing-scores", async (Guid id, AdmissionProgramService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await service.GetStudentScoresAsync(id, ct)).ToHttpResult(c, l));
         var studentLookups = app.MapGroup("/api/v2/mmt").WithTags("MMT Student Lookups").RequireAuthorization();
         studentLookups.MapGet("/clusters", async ([AsParameters] MmtPageQuery query, AdmissionProgramService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) =>
             (await service.GetStudentClustersAsync(query, CurrentLanguage(c), ct)).ToHttpResult(c, l));
@@ -80,6 +81,9 @@ public static class MmtEndpoints
         g.MapGet("/template", (MmtImportService s) => Results.File(s.CreateTemplate(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "mmt-import-template.xlsx"));
         g.MapPost("/preview", async ([FromForm] MmtImportPreviewRequestDto r, MmtImportService s, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await s.PreviewAsync(r, ct)).ToHttpResult(c, l)).Accepts<MmtImportPreviewRequestDto>("multipart/form-data").DisableAntiforgery();
         g.MapPost("/confirm", async ([FromForm] MmtImportConfirmRequestDto r, MmtImportService s, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await s.ConfirmAsync(r, ct)).ToHttpResult(c, l)).Accepts<MmtImportConfirmRequestDto>("multipart/form-data").DisableAntiforgery();
+        g.MapGet("/catalog/template", (MmtCatalogImportService s) => Results.File(s.CreateTemplate(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "mmt-catalog-template.xlsx"));
+        g.MapPost("/catalog/preview", async ([FromForm] MmtCatalogImportRequestDto r, MmtCatalogImportService s, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await s.PreviewAsync(r, ct)).ToHttpResult(c, l)).Accepts<MmtCatalogImportRequestDto>("multipart/form-data").DisableAntiforgery();
+        g.MapPost("/catalog/confirm", async ([FromForm] MmtCatalogImportRequestDto r, MmtCatalogImportService s, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await s.ConfirmAsync(r, ct)).ToHttpResult(c, l)).Accepts<MmtCatalogImportRequestDto>("multipart/form-data").DisableAntiforgery();
     }
 
     private static void MapSimulatorStudent(IEndpointRouteBuilder app)
