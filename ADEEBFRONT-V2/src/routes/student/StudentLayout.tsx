@@ -1,4 +1,4 @@
-import { BookOpenCheck, CalendarCheck2, ChevronDown, HelpCircle, Home, ListChecks, LogOut, PanelLeftClose, PanelLeftOpen, Route, Settings, ShieldCheck, Swords, Trophy, UserRound, type LucideIcon } from 'lucide-react'
+import { BookOpenCheck, CalendarCheck2, ChevronDown, HelpCircle, Home, Languages, ListChecks, LogOut, PanelLeftClose, PanelLeftOpen, Route, Settings, ShieldCheck, Swords, Trophy, UserRound, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -28,6 +28,7 @@ function StudentLayoutContent() {
   const navGroups: StudentNavGroup[] = [
     { id: 'practice', label: t('student.practice'), icon: BookOpenCheck, items: [
       { to: '/student/tests', label: t('student.tests'), icon: ShieldCheck },
+      { to: '/student/vocabulary', label: t('vocabulary.studentNav'), icon: Languages },
       { to: '/student/red-list', label: t('student.testing.redList.shortTitle'), icon: ListChecks },
       { to: '/student/daily-tasks', label: t('student.dailyTasks'), icon: CalendarCheck2 },
     ] },

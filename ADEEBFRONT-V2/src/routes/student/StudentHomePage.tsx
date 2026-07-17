@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarCheck2, CheckCircle2, Flame, Mail, Route, ShieldCheck, Sparkles, Swords, Trophy, UserRound } from 'lucide-react'
+import { ArrowRight, CalendarCheck2, CheckCircle2, Flame, Languages, Mail, Route, ShieldCheck, Sparkles, Swords, Trophy, UserRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -14,6 +14,7 @@ export function StudentHomePage() {
   const activity = useCurrentStudentActivity()
   const modules = [
     { title: t('student.tests'), to: '/student/tests', icon: <ShieldCheck />, tone: 'purple' as const },
+    { title: t('vocabulary.studentNav'), to: '/student/vocabulary', icon: <Languages />, tone: 'green' as const },
     { title: t('student.duel'), to: '/student/duels', icon: <Swords />, tone: 'blue' as const },
     { title: t('student.mmt'), to: '/student/mmt', icon: <Route />, tone: 'orange' as const },
   ]
