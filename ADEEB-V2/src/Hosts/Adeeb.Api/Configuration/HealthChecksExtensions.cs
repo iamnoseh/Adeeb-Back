@@ -21,9 +21,12 @@ public static class HealthChecksExtensions
 
     private static string RequiredConnectionString(IConfiguration configuration, string name)
     {
-        var value = configuration.GetConnectionString(name)
-            ?? configuration.GetConnectionString("Default")
-            ?? configuration.GetConnectionString("Identity");
+        var value = new[]
+        {
+            configuration.GetConnectionString(name),
+            configuration.GetConnectionString("Default"),
+            configuration.GetConnectionString("Identity")
+        }.FirstOrDefault(candidate => !string.IsNullOrWhiteSpace(candidate));
 
         if (string.IsNullOrWhiteSpace(value))
         {
