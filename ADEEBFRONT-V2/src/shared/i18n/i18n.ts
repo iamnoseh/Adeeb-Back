@@ -4,6 +4,7 @@ import { tgTJ } from "@/shared/i18n/locales/tg-TJ";
 import { ruRU } from "@/shared/i18n/locales/ru-RU";
 import { mmtRu, mmtTg } from "@/shared/i18n/locales/mmt";
 import { studentRu, studentTg } from "@/shared/i18n/locales/student";
+import { vocabularyRu, vocabularyTg } from "@/shared/i18n/locales/vocabulary";
 import { getStoredUiLanguage } from "@/shared/i18n/language";
 
 void i18n.use(initReactI18next).init({
@@ -14,10 +15,10 @@ void i18n.use(initReactI18next).init({
   },
   resources: {
     "tg-TJ": {
-      translation: { ...tgTJ, mmt: mmtTg, student: studentTg },
+      translation: { ...tgTJ, mmt: mmtTg, student: studentTg, vocabulary: vocabularyTg },
     },
     "ru-RU": {
-      translation: { ...ruRU, mmt: mmtRu, student: studentRu },
+      translation: { ...ruRU, mmt: mmtRu, student: studentRu, vocabulary: vocabularyRu },
     },
   },
 });

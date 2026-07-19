@@ -34,7 +34,7 @@ public sealed class AdeebApiFactory : WebApplicationFactory<Program>, IAsyncLife
                 SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
                 INTO table_list
                 FROM pg_tables
-                WHERE schemaname = ANY (ARRAY['identity', 'academic', 'question_bank', 'students', 'commerce', 'mmt']);
+                WHERE schemaname = ANY (ARRAY['identity', 'academic', 'question_bank', 'students', 'commerce', 'mmt', 'vocabulary']);
 
                 IF table_list IS NOT NULL THEN
                     EXECUTE 'TRUNCATE TABLE ' || table_list || ' RESTART IDENTITY CASCADE';
@@ -60,6 +60,7 @@ public sealed class AdeebApiFactory : WebApplicationFactory<Program>, IAsyncLife
                 ["ConnectionStrings:Students"] = ConnectionString,
                 ["ConnectionStrings:Commerce"] = ConnectionString,
                 ["ConnectionStrings:Mmt"] = ConnectionString,
+                ["ConnectionStrings:Vocabulary"] = ConnectionString,
                 ["DatabaseInitialization:AutoMigrate"] = "true",
                 ["DatabaseInitialization:Seed"] = "false",
                 ["Jwt:Issuer"] = "https://tests.adeeb.tj",

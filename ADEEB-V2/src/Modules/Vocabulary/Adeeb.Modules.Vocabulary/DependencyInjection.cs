@@ -10,7 +10,12 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddVocabularyModule(this IServiceCollection services, IConfiguration configuration)
     {
-        var connection = configuration.GetConnectionString("Vocabulary") ?? configuration.GetConnectionString("Default") ?? configuration.GetConnectionString("Identity");
+        var connection = new[]
+        {
+            configuration.GetConnectionString("Vocabulary"),
+            configuration.GetConnectionString("Default"),
+            configuration.GetConnectionString("Identity")
+        }.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
         if (string.IsNullOrWhiteSpace(connection)) throw new InvalidOperationException("Vocabulary database connection string is required.");
         services.AddDbContext<VocabularyDbContext>(options => options.UseNpgsql(connection));
         services.AddScoped<VocabularyAdminService>(); services.AddScoped<VocabularyStudentService>();

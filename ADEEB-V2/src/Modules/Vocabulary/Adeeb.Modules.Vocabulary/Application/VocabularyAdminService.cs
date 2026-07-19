@@ -196,9 +196,23 @@ public sealed class VocabularyAdminService(VocabularyDbContext db, IDateTimeProv
     { var words = distractors.Prepend(correct).DistinctBy(x => x.Id).Take(5).ToList(); var opts = words.Select((x, i) => new VocabularyQuestionOption(Guid.NewGuid(), q.Id, x.Id, x.TranslationRu, x.TranslationTg, x.TranslationRu, i, x.Id == correct.Id, null)); q.Replace(q.PromptTarget, q.PromptTg, q.PromptRu, q.CorrectTokenIndex, opts, now); }
     private static void AddTargetOptions(VocabularyQuestion q, VocabularyWord correct, IEnumerable<VocabularyWord> distractors, DateTimeOffset now)
     { var words = distractors.Prepend(correct).DistinctBy(x => x.Id).Take(5).ToList(); var opts = words.Select((x, i) => new VocabularyQuestionOption(Guid.NewGuid(), q.Id, x.Id, x.TargetText, x.TargetText, x.TargetText, i, x.Id == correct.Id, null)); q.Replace(q.PromptTarget, q.PromptTg, q.PromptRu, q.CorrectTokenIndex, opts, now); }
-    private static bool QuestionIsPublishable(VocabularyQuestion q) => q.Type == VocabularyQuestionType.WordOrder
-        ? q.Options.Count is >= 2 and <= 12 && q.Options.All(x => x.CorrectOrder is not null) && q.Options.Select(x => x.CorrectOrder).Distinct().Count() == q.Options.Count
-        : q.Options.Count is >= 4 and <= 5 && q.Options.Count(x => x.IsCorrect) == 1 && (q.Type != VocabularyQuestionType.OddWordReplacement || q.CorrectTokenIndex is not null);
+    private static bool QuestionIsPublishable(VocabularyQuestion q)
+    {
+        if (q.Type == VocabularyQuestionType.WordOrder)
+        {
+            var order = q.Options.Where(x => x.CorrectOrder is not null).Select(x => x.CorrectOrder!.Value).Order().ToArray();
+            return q.Options.Count is >= 2 and <= 12 && order.SequenceEqual(Enumerable.Range(0, q.Options.Count));
+        }
+
+        if (q.Options.Count is < 4 or > 5 || q.Options.Count(x => x.IsCorrect) != 1) return false;
+        if (q.Type == VocabularyQuestionType.FillBlank && !q.PromptTarget.Contains("____", StringComparison.Ordinal)) return false;
+        if (q.Type == VocabularyQuestionType.OddWordReplacement)
+        {
+            return q.CorrectTokenIndex is >= 0 && q.CorrectTokenIndex < Tokenize(q.PromptTarget).Length;
+        }
+
+        return true;
+    }
     private static string ReplaceFirst(string input, string value, string replacement) => Regex.Replace(input, Regex.Escape(value), replacement, RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100));
     private static string[] Tokenize(string input) => input.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     private static string NormalizeToken(string value) => value.Trim(' ', '.', ',', '!', '?', ';', ':').ToUpperInvariant();
