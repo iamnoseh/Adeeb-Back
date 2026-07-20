@@ -10,6 +10,7 @@ using Adeeb.SharedKernel.Results;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Adeeb.QuestionBank.Tests;
@@ -41,6 +42,47 @@ public sealed class StudentTestingLifecycleTests
         Assert.DoesNotContain(redItems, x => x.QuestionType == QuestionType.Matching);
         Assert.Single(result.Value!.SubjectBreakdown);
         Assert.NotEmpty(result.Value.WeakTopics);
+        Assert.Equal(0m, result.Value.TotalXp);
+        Assert.False(result.Value.XpAwarded);
+        Assert.Single(await db.TestXpRewards.AsNoTracking().ToListAsync());
+        Assert.Empty(await db.StudentTestXpBalances.AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Completion_awards_snapshot_based_xp_once_and_result_replays_persisted_breakdown()
+    {
+        await using var db = CreateDb();
+        var userId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var difficulties = Enumerable.Repeat(DifficultyLevel.Easy, 4)
+            .Concat(Enumerable.Repeat(DifficultyLevel.Medium, 3))
+            .Concat(Enumerable.Repeat(DifficultyLevel.Hard, 2))
+            .Concat(Enumerable.Repeat(DifficultyLevel.Easy, 6))
+            .ToList();
+        var questions = difficulties.Select(x => CreateActiveQuestion(QuestionType.SingleChoice, subjectId, x)).ToList();
+        db.Questions.AddRange(questions);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, new MutableClock(DateTimeOffset.UtcNow));
+        var attempt = await service.StartSubjectAsync(userId, new(subjectId, 15, false), SupportedLanguage.Tajik, default);
+        var answers = questions.Take(9).Select(question =>
+            new SubmitAnswerDto(question.Id, SelectedOptionId: question.AnswerOptions.Single(x => x.IsCorrect).Id)).ToList();
+
+        var submitted = await service.SubmitAsync(userId, attempt.Value!.Id, new(answers), default);
+        var replayed = await service.GetResultAsync(userId, attempt.Value.Id, default);
+        var duplicate = await service.SubmitAsync(userId, attempt.Value.Id, new(answers), default);
+
+        Assert.True(submitted.IsSuccess);
+        Assert.Equal(4, submitted.Value!.EasyCorrect);
+        Assert.Equal(3, submitted.Value.MediumCorrect);
+        Assert.Equal(2, submitted.Value.HardCorrect);
+        Assert.Equal(17m, submitted.Value.AnswerXp);
+        Assert.Equal(5m, submitted.Value.CompletionBonusXp);
+        Assert.Equal(22m, submitted.Value.TotalXp);
+        Assert.True(submitted.Value.XpAwarded);
+        Assert.Equal(submitted.Value.TotalXp, replayed.Value!.TotalXp);
+        Assert.Equal("test.attempt_already_submitted", duplicate.Error?.Code);
+        Assert.Equal(44, (await db.TestXpRewards.AsNoTracking().SingleAsync()).TotalXpUnits);
+        Assert.Equal(44, (await db.StudentTestXpBalances.AsNoTracking().SingleAsync()).TotalXpUnits);
     }
 
     [Fact]
@@ -60,12 +102,17 @@ public sealed class StudentTestingLifecycleTests
         var originalWrong = target.AnswerOptions.First(x => !x.IsCorrect);
         originalCorrect.Update(false);
         originalWrong.Update(true);
+        target.Update(subjectId, target.TopicId, null, target.Type, DifficultyLevel.Hard,
+            QuestionStatus.Active, null, DateTimeOffset.UtcNow);
         await db.SaveChangesAsync();
 
         var result = await service.SubmitAsync(userId, attempt.Value.Id,
             new([new(targetId, SelectedOptionId: originalCorrect.Id)]), default);
 
         Assert.True(result.Value!.Answers.Single(x => x.QuestionId == targetId).IsCorrect);
+        Assert.Equal(1, result.Value.EasyCorrect);
+        Assert.Equal(0, result.Value.HardCorrect);
+        Assert.Equal(6.5m, result.Value.TotalXp);
     }
 
     [Fact]
@@ -74,7 +121,8 @@ public sealed class StudentTestingLifecycleTests
         await using var db = CreateDb();
         var ownerId = Guid.NewGuid();
         var subjectId = Guid.NewGuid();
-        db.Questions.AddRange(Enumerable.Range(0, 15).Select(_ => CreateActiveQuestion(QuestionType.SingleChoice, subjectId)));
+        var questions = Enumerable.Range(0, 15).Select(_ => CreateActiveQuestion(QuestionType.SingleChoice, subjectId)).ToList();
+        db.Questions.AddRange(questions);
         await db.SaveChangesAsync();
         var service = CreateService(db, new MutableClock(DateTimeOffset.UtcNow));
         var attempt = await service.StartSubjectAsync(ownerId, new(subjectId, 15, false), SupportedLanguage.Tajik, default);
@@ -94,17 +142,22 @@ public sealed class StudentTestingLifecycleTests
         await using var db = CreateDb();
         var userId = Guid.NewGuid();
         var subjectId = Guid.NewGuid();
-        db.Questions.AddRange(Enumerable.Range(0, 15).Select(_ => CreateActiveQuestion(QuestionType.SingleChoice, subjectId)));
+        var questions = Enumerable.Range(0, 15).Select(_ => CreateActiveQuestion(QuestionType.SingleChoice, subjectId)).ToList();
+        db.Questions.AddRange(questions);
         await db.SaveChangesAsync();
         var clock = new MutableClock(new DateTimeOffset(2026, 7, 16, 8, 0, 0, TimeSpan.Zero));
         var service = CreateService(db, clock);
         var attempt = await service.StartSubjectAsync(userId, new(subjectId, 15, false), SupportedLanguage.Tajik, default);
         clock.UtcNow = attempt.Value!.ExpiresAtUtc.AddSeconds(1);
 
-        var result = await service.SubmitAsync(userId, attempt.Value.Id, new([]), default);
+        var first = questions[0];
+        var result = await service.SubmitAsync(userId, attempt.Value.Id,
+            new([new(first.Id, SelectedOptionId: first.AnswerOptions.Single(x => x.IsCorrect).Id)]), default);
 
         Assert.True(result.IsSuccess);
         Assert.Equal((int)TestAttemptStatus.AutoSubmitted, result.Value!.Status);
+        Assert.Equal(6.5m, result.Value.TotalXp);
+        Assert.True(result.Value.XpAwarded);
     }
 
     [Fact]
@@ -117,6 +170,7 @@ public sealed class StudentTestingLifecycleTests
         services.AddLogging();
         services.AddSingleton<IDateTimeProvider>(clock);
         services.AddSingleton<IOptions<StudentTestingOptions>>(testingOptions);
+        services.AddSingleton<ITestXpPolicy>(new TestXpPolicy(Options.Create(new TestXpRewardOptions())));
         services.AddDbContext<QuestionBankDbContext>(builder => builder.UseInMemoryDatabase(databaseName));
         services.AddSingleton<ITestingRandomizer, StableRandomizer>();
         services.AddScoped<IQuestionPickerService, QuestionPickerService>();
@@ -263,15 +317,18 @@ public sealed class StudentTestingLifecycleTests
             new FakeTimingPolicy(),
             clock,
             Options.Create(new StudentTestingOptions()),
-            randomizer ?? new StableRandomizer());
+            randomizer ?? new StableRandomizer(),
+            new TestXpPolicy(Options.Create(new TestXpRewardOptions())),
+            NullLogger<StudentTestingService>.Instance);
 
     private static QuestionBankDbContext CreateDb() => new(new DbContextOptionsBuilder<QuestionBankDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 
-    private static Question CreateActiveQuestion(QuestionType type, Guid subjectId)
+    private static Question CreateActiveQuestion(QuestionType type, Guid subjectId,
+        DifficultyLevel difficulty = DifficultyLevel.Easy)
     {
         var now = DateTimeOffset.UtcNow;
-        var question = new Question(Guid.NewGuid(), subjectId, Guid.NewGuid(), null, type, DifficultyLevel.Easy, null, now);
+        var question = new Question(Guid.NewGuid(), subjectId, Guid.NewGuid(), null, type, difficulty, null, now);
         var count = type == QuestionType.Matching ? 4 : 2;
         var options = Enumerable.Range(1, count).Select(index =>
         {
@@ -281,7 +338,7 @@ public sealed class StudentTestingLifecycleTests
             return option;
         }).ToList();
         question.ReplaceContent([new QuestionTranslation(question.Id, SupportedLanguage.Tajik, "Question", "Explanation")], options);
-        question.Update(subjectId, question.TopicId, null, type, DifficultyLevel.Easy, QuestionStatus.Active, null, now);
+        question.Update(subjectId, question.TopicId, null, type, difficulty, QuestionStatus.Active, null, now);
         return question;
     }
 

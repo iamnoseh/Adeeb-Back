@@ -22,7 +22,9 @@ public sealed record TestAnswerOptionDto(Guid Id, string Text);
 public sealed record TestResultDto(Guid AttemptId, int Mode, int Status, int QuestionCount, int CorrectCount,
     int WrongCount, decimal Score, decimal Percentage, DateTimeOffset SubmittedAtUtc,
     IReadOnlyList<TopicBreakdownDto> TopicBreakdown, IReadOnlyList<SubjectBreakdownDto> SubjectBreakdown,
-    IReadOnlyList<WeakTopicDto> WeakTopics, IReadOnlyList<TestAnswerResultDto> Answers);
+    IReadOnlyList<WeakTopicDto> WeakTopics, IReadOnlyList<TestAnswerResultDto> Answers,
+    int EasyCorrect, int MediumCorrect, int HardCorrect, decimal AnswerXp,
+    decimal CompletionBonusXp, decimal TotalXp, bool XpAwarded);
 public sealed record TopicBreakdownDto(Guid? TopicId, int Total, int Correct, int Wrong);
 public sealed record SubjectBreakdownDto(Guid SubjectId, int Total, int Correct, int Wrong, decimal Percentage);
 public sealed record WeakTopicDto(Guid SubjectId, Guid? TopicId, int Total, int Correct, decimal Percentage);

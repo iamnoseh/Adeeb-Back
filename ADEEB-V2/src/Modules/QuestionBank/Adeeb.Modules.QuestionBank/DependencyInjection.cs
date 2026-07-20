@@ -45,6 +45,15 @@ public static class DependencyInjection
                 && x.ExpiredAttemptSweepBatchSize is >= 1 and <= 1000,
                 "StudentTesting expired-attempt sweep values are invalid.")
             .ValidateOnStart();
+        services.AddOptions<TestXpRewardOptions>()
+            .Bind(configuration.GetSection(TestXpRewardOptions.SectionName))
+            .Validate(x => x.EasyCorrectXpUnits is >= 0 and <= TestXpRewardOptions.MaximumConfiguredUnits
+                && x.MediumCorrectXpUnits is >= 0 and <= TestXpRewardOptions.MaximumConfiguredUnits
+                && x.HardCorrectXpUnits is >= 0 and <= TestXpRewardOptions.MaximumConfiguredUnits
+                && x.CompletionBonusXpUnits is >= 0 and <= TestXpRewardOptions.MaximumConfiguredUnits,
+                "Test XP reward units must be non-negative and within the supported limit.")
+            .ValidateOnStart();
+        services.AddSingleton<ITestXpPolicy, TestXpPolicy>();
         services.AddSingleton<ITestingRandomizer, TestingRandomizer>();
         services.AddScoped<IQuestionPickerService, QuestionPickerService>();
         services.AddScoped<RedListService>();

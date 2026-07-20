@@ -7,6 +7,8 @@
   <data name="Testing.AttemptNotFound" xml:space="preserve"><value>Test attempt was not found</value></data>
   <data name="Testing.AttemptAlreadySubmitted" xml:space="preserve"><value>This test attempt has already been submitted</value></data>
   <data name="Testing.AttemptExpired" xml:space="preserve"><value>This test attempt has expired</value></data>
+  <data name="Testing.AttemptRewardCalculationFailed" xml:space="preserve"><value>XP calculation failed; the attempt was not changed</value></data>
+  <data name="Testing.AttemptRewardConflict" xml:space="preserve"><value>The XP reward for this attempt has already been recorded</value></data>
   <data name="Testing.InvalidMode" xml:space="preserve"><value>The selected test mode is invalid</value></data>
   <data name="Testing.InvalidQuestionCount" xml:space="preserve"><value>The selected question count is invalid</value></data>
   <data name="Testing.MmtProfileRequired" xml:space="preserve"><value>Create an active MMT profile before starting this test</value></data>
