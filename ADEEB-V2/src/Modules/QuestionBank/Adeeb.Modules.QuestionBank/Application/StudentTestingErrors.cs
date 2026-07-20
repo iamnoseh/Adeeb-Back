@@ -9,6 +9,8 @@ public static class StudentTestingErrors
     public static readonly Error AttemptNotFound = Error.NotFound("test.attempt_not_found", "Testing.AttemptNotFound");
     public static readonly Error AttemptAlreadySubmitted = Error.Conflict("test.attempt_already_submitted", "Testing.AttemptAlreadySubmitted");
     public static readonly Error AttemptExpired = Error.Conflict("test.attempt_expired", "Testing.AttemptExpired");
+    public static readonly Error RewardCalculationFailed = Error.Conflict("test.attempt_reward_calculation_failed", "Testing.AttemptRewardCalculationFailed");
+    public static readonly Error RewardConflict = Error.Conflict("test.attempt_reward_conflict", "Testing.AttemptRewardConflict");
     public static readonly Error InvalidMode = Error.Validation("test.invalid_mode", "Testing.InvalidMode");
     public static readonly Error InvalidQuestionCount = Error.Validation("test.invalid_question_count", "Testing.InvalidQuestionCount");
     public static readonly Error ProfileRequired = Error.Validation("mmt.profile_required", "Testing.MmtProfileRequired");

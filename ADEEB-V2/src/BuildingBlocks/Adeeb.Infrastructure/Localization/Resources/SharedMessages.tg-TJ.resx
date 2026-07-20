@@ -7,6 +7,8 @@
   <data name="Testing.AttemptNotFound" xml:space="preserve"><value>Кӯшиши тестёбӣ ёфт нашуд</value></data>
   <data name="Testing.AttemptAlreadySubmitted" xml:space="preserve"><value>Ин кӯшиш аллакай анҷом дода шудааст</value></data>
   <data name="Testing.AttemptExpired" xml:space="preserve"><value>Вақти ин кӯшиш ба охир расидааст</value></data>
+  <data name="Testing.AttemptRewardCalculationFailed" xml:space="preserve"><value>Ҳисобкунии XP анҷом наёфт; кӯшиш тағйир дода нашуд</value></data>
+  <data name="Testing.AttemptRewardConflict" xml:space="preserve"><value>Мукофоти XP барои ин кӯшиш аллакай сабт шудааст</value></data>
   <data name="Testing.InvalidMode" xml:space="preserve"><value>Реҷаи интихобшудаи тест нодуруст аст</value></data>
   <data name="Testing.InvalidQuestionCount" xml:space="preserve"><value>Миқдори интихобшудаи саволҳо нодуруст аст</value></data>
   <data name="Testing.MmtProfileRequired" xml:space="preserve"><value>Пеш аз оғози тест профили фаъоли ММТ созед</value></data>
