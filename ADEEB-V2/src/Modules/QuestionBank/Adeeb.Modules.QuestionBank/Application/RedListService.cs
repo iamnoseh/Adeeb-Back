@@ -11,7 +11,7 @@ namespace Adeeb.Modules.QuestionBank.Application;
 public sealed class RedListService(QuestionBankDbContext db, IDateTimeProvider clock)
 {
     public enum AnswerAction { None = 0, Added = 1, Progressed = 2, Reset = 3, Mastered = 4 }
-    public sealed record AnswerOutcome(Guid? ItemId, AnswerAction Action, int CorrectStreak,
+    public sealed record AnswerOutcome(Guid QuestionId, Guid? ItemId, AnswerAction Action, int CorrectStreak,
         int RequiredCorrectStreak, int CorrectAnswersRemaining);
     public sealed record AnswerUpdate(Guid QuestionId, Guid SubjectId, Guid? TopicId,
         QuestionType Type, bool IsCorrect);
@@ -19,7 +19,7 @@ public sealed class RedListService(QuestionBankDbContext db, IDateTimeProvider c
     public async Task<AnswerOutcome> ApplyAnswerAsync(Guid userId, AnswerUpdate answer, CancellationToken ct)
     {
         if (answer.Type == QuestionType.Matching)
-            return new(null, AnswerAction.None, 0, StudentRedListItem.RequiredCorrectStreak,
+            return new(answer.QuestionId, null, AnswerAction.None, 0, StudentRedListItem.RequiredCorrectStreak,
                 StudentRedListItem.RequiredCorrectStreak);
 
         await RedListConcurrency.AcquireAsync(db, userId, answer.QuestionId, ct);
@@ -46,12 +46,12 @@ public sealed class RedListService(QuestionBankDbContext db, IDateTimeProvider c
         }
         else
         {
-            return new(item?.Id, AnswerAction.None, item?.CorrectStreak ?? 0,
+            return new(answer.QuestionId, item?.Id, AnswerAction.None, item?.CorrectStreak ?? 0,
                 StudentRedListItem.RequiredCorrectStreak,
                 Math.Max(0, StudentRedListItem.RequiredCorrectStreak - (item?.CorrectStreak ?? 0)));
         }
 
-        return new(item.Id, action, item.CorrectStreak, StudentRedListItem.RequiredCorrectStreak,
+        return new(answer.QuestionId, item.Id, action, item.CorrectStreak, StudentRedListItem.RequiredCorrectStreak,
             Math.Max(0, StudentRedListItem.RequiredCorrectStreak - item.CorrectStreak));
     }
 
@@ -90,7 +90,7 @@ public sealed class RedListService(QuestionBankDbContext db, IDateTimeProvider c
                 action = item.Status == RedListStatus.Mastered ? AnswerAction.Mastered : AnswerAction.Progressed;
             }
             else continue;
-            outcomes.Add(new(item.Id, action, item.CorrectStreak, StudentRedListItem.RequiredCorrectStreak,
+            outcomes.Add(new(answer.QuestionId, item.Id, action, item.CorrectStreak, StudentRedListItem.RequiredCorrectStreak,
                 Math.Max(0, StudentRedListItem.RequiredCorrectStreak - item.CorrectStreak)));
         }
         return outcomes;

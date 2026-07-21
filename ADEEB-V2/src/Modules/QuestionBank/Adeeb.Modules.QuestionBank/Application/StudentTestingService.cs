@@ -140,18 +140,12 @@ public sealed class StudentTestingService(
             long? totalXpUnits = null;
             if (redListOutcome.Action == RedListService.AnswerAction.Mastered && redListOutcome.ItemId.HasValue)
             {
-                bonusUnits = xpOptions.Value.RedListMasteryBonusXpUnits;
-                var itemId = redListOutcome.ItemId.Value;
-                var grant = await studentXpService.GrantAsync(new(userId, XpSourceType.RedListActivity,
-                    itemId.ToString("N"), bonusUnits, $"red-list-mastery:{itemId:N}", XpEntryType.Credit,
-                    new Dictionary<string, string>(StringComparer.Ordinal)
-                    {
-                        ["attemptId"] = attemptId.ToString("N"),
-                        ["questionId"] = questionId.ToString("N")
-                    }), ct);
-                if (grant.IsFailure) return Result<CheckedTestAnswerDto>.Failure(StudentTestingErrors.RewardConflict);
-                bonusAwarded = !grant.Value!.WasAlreadyProcessed;
-                totalXpUnits = grant.Value.NewBalanceUnits;
+                var reward = await GrantRedListMasteryAsync(userId, redListOutcome.ItemId.Value,
+                    attemptId, questionId, ct);
+                if (reward.IsFailure) return Result<CheckedTestAnswerDto>.Failure(reward.Error!);
+                bonusUnits = reward.Value!.BonusXpUnits;
+                bonusAwarded = reward.Value.WasAwarded;
+                totalXpUnits = reward.Value.TotalXpUnits;
             }
             redListFeedback = new((int)redListOutcome.Action, redListOutcome.CorrectStreak,
                 redListOutcome.RequiredCorrectStreak, redListOutcome.CorrectAnswersRemaining,
@@ -223,7 +217,17 @@ public sealed class StudentTestingService(
                 evaluation.CorrectPairsCount, evaluation.TotalPairsCount));
         }
 
-        await redList.ApplyAnswersAsync(userId, redListUpdates, ct);
+        var redListOutcomes = await redList.ApplyAnswersAsync(userId, redListUpdates, ct);
+        if (attempt.Mode is TestMode.SubjectTest or TestMode.RedListPractice)
+        {
+            foreach (var outcome in redListOutcomes.Where(x =>
+                x.Action == RedListService.AnswerAction.Mastered && x.ItemId.HasValue))
+            {
+                var reward = await GrantRedListMasteryAsync(userId, outcome.ItemId!.Value, attemptId,
+                    outcome.QuestionId, ct);
+                if (reward.IsFailure) return Result<TestResultDto>.Failure(reward.Error!);
+            }
+        }
 
         var wrong = attempt.QuestionCount - correct;
         var percentage = attempt.QuestionCount == 0 ? 0 : decimal.Round(correct * 100m / attempt.QuestionCount, 2);
@@ -471,6 +475,25 @@ public sealed class StudentTestingService(
     }
 
     private static decimal ToXp(long units) => units / (decimal)TestXpRewardOptions.UnitsPerXp;
+
+    private async Task<Result<RedListMasteryGrant>> GrantRedListMasteryAsync(Guid userId, Guid itemId,
+        Guid attemptId, Guid questionId, CancellationToken ct)
+    {
+        var bonusUnits = xpOptions.Value.RedListMasteryBonusXpUnits;
+        var grant = await studentXpService.GrantAsync(new(userId, XpSourceType.RedListActivity,
+            itemId.ToString("N"), bonusUnits, $"red-list-mastery:{itemId:N}", XpEntryType.Credit,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["attemptId"] = attemptId.ToString("N"),
+                ["questionId"] = questionId.ToString("N")
+            }), ct);
+        return grant.IsFailure
+            ? Result<RedListMasteryGrant>.Failure(StudentTestingErrors.RewardConflict)
+            : Result<RedListMasteryGrant>.Success(new(bonusUnits, !grant.Value!.WasAlreadyProcessed,
+                grant.Value.NewBalanceUnits));
+    }
+
+    private sealed record RedListMasteryGrant(int BonusXpUnits, bool WasAwarded, long TotalXpUnits);
 
     private static decimal Percentage(int correct, int total) => total == 0 ? 0 : decimal.Round(correct * 100m / total, 2);
 

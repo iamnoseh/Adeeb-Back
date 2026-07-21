@@ -19,7 +19,7 @@ export function QuestionCheckFeedback({ feedback }: { feedback: CheckedTestAnswe
 
 export function RedListMasteryToast({ xp, onClose }: { xp: number; onClose: () => void }) {
   const { t } = useTranslation()
-  return <div role="status" className="fixed right-4 top-22 z-[70] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-amber-200 bg-[var(--student-surface)] p-4 shadow-[0_18px_55px_rgb(20_31_70/0.2)]">
+  return <div role="status" className="fixed right-4 top-[5.5rem] z-[70] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-amber-200 bg-[var(--student-surface)] p-4 shadow-[0_18px_55px_rgb(20_31_70/0.2)]">
     <div className="flex items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-600"><Sparkles className="h-5 w-5" /></span><div className="min-w-0 flex-1"><p className="font-black">{t('student.testing.check.masteredTitle')}</p><p className="mt-1 text-sm text-[var(--student-muted)]">{t('student.testing.check.masteredDescription')}</p></div><strong className="shrink-0 text-lg font-black text-amber-600">+{xp} XP</strong><button type="button" className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-[var(--student-muted)] hover:bg-[var(--student-surface-soft)]" aria-label={t('student.closeNotice')} onClick={onClose}><X className="h-4 w-4" /></button></div>
   </div>
 }
