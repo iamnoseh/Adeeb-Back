@@ -32,8 +32,10 @@ public sealed record TestAnswerResultDto(Guid QuestionId, Guid SubjectId, bool I
     string? UserAnswer, string? CorrectAnswer, string? Explanation, Guid? TopicId, int Difficulty,
     int? CorrectPairsCount, int? TotalPairsCount);
 public sealed record TestHistoryItemDto(Guid AttemptId, int Mode, int Status, DateTimeOffset StartedAtUtc,
-    DateTimeOffset? SubmittedAtUtc, int QuestionCount, int CorrectCount, decimal Percentage);
+    DateTimeOffset? SubmittedAtUtc, int QuestionCount, int CorrectCount, decimal Percentage,
+    decimal TotalXp, bool XpAwarded);
 public sealed record TestHistoryQuery(int Page = 1, int PageSize = 10);
+public sealed record StudentXpSummaryDto(decimal TotalXp, DateTimeOffset? UpdatedAtUtc);
 
 public sealed record RedListItemDto(Guid Id, Guid QuestionId, Guid SubjectId, Guid? TopicId, int QuestionType,
     int WrongCount, int CorrectStreak, DateTimeOffset LastWrongAtUtc, DateTimeOffset LastPracticedAtUtc, int Status,

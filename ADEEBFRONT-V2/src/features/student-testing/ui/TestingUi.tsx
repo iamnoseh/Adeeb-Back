@@ -1,11 +1,11 @@
 import { AlertCircle, LoaderCircle } from 'lucide-react'
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/shared/lib/cn'
 import { testingErrorKey } from '@/features/student-testing/lib/student-testing'
 
-export function TestingCard({ children, className }: { children: ReactNode; className?: string }) {
-  return <section className={cn('rounded-lg border border-[var(--student-border)] bg-[var(--student-surface)] p-5 shadow-[0_10px_28px_rgb(20_31_70/0.04)] sm:p-6', className)}>{children}</section>
+export function TestingCard({ children, className, ...props }: HTMLAttributes<HTMLElement> & { children: ReactNode }) {
+  return <section className={cn('rounded-lg border border-[var(--student-border)] bg-[var(--student-surface)] p-5 shadow-[0_10px_28px_rgb(20_31_70/0.04)] sm:p-6', className)} {...props}>{children}</section>
 }
 
 export function TestingButton({ className, children, variant = 'primary', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' }) {

@@ -79,3 +79,9 @@ public sealed class TestXpCalculationException : Exception
     public TestXpCalculationException(string message) : base(message) { }
     public TestXpCalculationException(string message, Exception innerException) : base(message, innerException) { }
 }
+
+public static class TestXpSourceIdentity
+{
+    public static string SourceId(Guid attemptId) => attemptId.ToString("N");
+    public static string IdempotencyKey(Guid attemptId) => $"test-xp:{attemptId:N}";
+}

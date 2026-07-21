@@ -1,4 +1,4 @@
-import { BookOpenCheck, CalendarCheck2, ChevronDown, HelpCircle, Home, Languages, ListChecks, LogOut, PanelLeftClose, PanelLeftOpen, Route, Settings, ShieldCheck, Swords, Trophy, UserRound, type LucideIcon } from 'lucide-react'
+import { BookOpenCheck, CalendarCheck2, ChevronDown, HelpCircle, History, Home, Languages, ListChecks, LogOut, PanelLeftClose, PanelLeftOpen, Route, Settings, ShieldCheck, Swords, Trophy, UserRound, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -8,6 +8,7 @@ import { AdeebBrand } from '@/shared/ui/AdeebBrand'
 import { StudentPreferencesProvider } from '@/routes/student/StudentPreferences'
 import { useStudentPreferences } from '@/routes/student/student-preferences-context'
 import { useStudentActivityVisit } from '@/features/student-activity/model/useStudentActivity'
+import { StudentXpIndicator } from '@/features/progression/ui/StudentXpIndicator'
 
 type StudentNavItem = { to: string; label: string; icon: LucideIcon; end?: boolean }
 type StudentNavGroup = { id: string; label: string; icon: LucideIcon; items: StudentNavItem[] }
@@ -27,7 +28,8 @@ function StudentLayoutContent() {
   const mmtItem: StudentNavItem = { to: '/student/mmt', label: t('student.mmt'), icon: Route }
   const navGroups: StudentNavGroup[] = [
     { id: 'practice', label: t('student.practice'), icon: BookOpenCheck, items: [
-      { to: '/student/tests', label: t('student.tests'), icon: ShieldCheck },
+      { to: '/student/tests', label: t('student.tests'), icon: ShieldCheck, end: true },
+      { to: '/student/tests/history', label: t('student.testing.history.title'), icon: History },
       { to: '/student/vocabulary', label: t('vocabulary.studentNav'), icon: Languages },
       { to: '/student/red-list', label: t('student.testing.redList.shortTitle'), icon: ListChecks },
       { to: '/student/daily-tasks', label: t('student.dailyTasks'), icon: CalendarCheck2 },
@@ -90,6 +92,7 @@ function StudentLayoutContent() {
             <div className="lg:hidden"><AdeebBrand to="/student" compact inverse={theme === 'dark'} /></div>
             <h1 className="hidden text-2xl font-black tracking-normal lg:block">{current.label}</h1>
             <div className="ml-auto flex items-center gap-2 sm:gap-4">
+              <StudentXpIndicator />
               <Link to="/student/support" className="hidden min-h-10 items-center gap-2 rounded-lg border border-[var(--student-border)] px-4 text-sm font-bold text-[var(--student-text)] no-underline hover:bg-[var(--student-surface-soft)] sm:inline-flex"><HelpCircle className="h-4 w-4" />{t('student.support')}</Link>
               <Link to="/student/profile" className="flex min-w-0 items-center gap-3 text-[var(--student-text)] no-underline"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#e9e7ff] text-sm font-black text-[#5146f0]">{initials(user?.firstName, user?.lastName)}</span><span className="hidden max-w-40 truncate text-sm font-black xl:block">{user?.firstName} {user?.lastName}</span><ChevronDown className="hidden h-4 w-4 text-[var(--student-muted)] sm:block" /></Link>
             </div>

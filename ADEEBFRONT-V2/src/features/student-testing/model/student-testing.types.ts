@@ -107,6 +107,13 @@ export type TestResultDto = {
   subjectBreakdown: SubjectBreakdownDto[]
   weakTopics: WeakTopicDto[]
   answers: TestAnswerResultDto[]
+  easyCorrect: number
+  mediumCorrect: number
+  hardCorrect: number
+  answerXp: number
+  completionBonusXp: number
+  totalXp: number
+  xpAwarded: boolean
 }
 
 export type TestHistoryItemDto = {
@@ -118,6 +125,8 @@ export type TestHistoryItemDto = {
   questionCount: number
   correctCount: number
   percentage: number
+  totalXp: number
+  xpAwarded: boolean
 }
 export type TestingPageDto<T> = { items: T[]; page: number; pageSize: number; totalCount: number }
 export type TestingHistoryQuery = { page?: number; pageSize?: number }

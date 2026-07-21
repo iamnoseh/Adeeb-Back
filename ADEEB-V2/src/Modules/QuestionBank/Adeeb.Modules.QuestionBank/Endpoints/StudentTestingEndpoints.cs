@@ -34,6 +34,11 @@ public static class StudentTestingEndpoints
         tests.MapGet("/history", async ([AsParameters] TestHistoryQuery query, StudentTestingService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await WithUser(context, id => service.HistoryAsync(id, query, ct))).ToHttpResult(context, localizer));
 
+        var progression = app.MapGroup("/api/v2/student/xp").WithTags("Student Progression")
+            .RequireAuthorization(policy => policy.RequireRole("User"));
+        progression.MapGet("/", async (StudentTestingService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
+            (await WithUser(context, id => service.XpSummaryAsync(id, ct))).ToHttpResult(context, localizer));
+
         var redList = app.MapGroup("/api/v2/student/red-list").WithTags("Student Red List")
             .RequireAuthorization(policy => policy.RequireRole("User"));
         redList.MapGet("/", async ([AsParameters] RedListQuery query, RedListService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>

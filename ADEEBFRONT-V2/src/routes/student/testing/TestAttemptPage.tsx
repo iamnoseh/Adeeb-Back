@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, ChevronLeft, ChevronRight, Clock3, Send } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,19 +10,21 @@ import { TestingButton, TestingCard, TestingError, TestingLoading } from '@/feat
 import { AttemptExitGuard } from '@/features/student-testing/ui/AttemptExitGuard'
 import { cn } from '@/shared/lib/cn'
 import { SelectField } from '@/shared/ui/SelectField'
+import { progressionKeys } from '@/features/progression/api/progression.api'
 
 export function TestAttemptPage() {
-  const { attemptId = '' } = useParams(); const { t } = useTranslation(); const navigate = useNavigate()
+  const { attemptId = '' } = useParams(); const { t } = useTranslation(); const navigate = useNavigate(); const queryClient = useQueryClient()
   const attempt = useQuery({ queryKey: studentTestingKeys.attempt(attemptId), queryFn: () => studentTestingApi.getAttempt(attemptId), enabled: Boolean(attemptId), refetchOnWindowFocus: false })
   const [currentIndex, setCurrentIndex] = useState(0); const [answers, setAnswers] = useState<AttemptAnswers>(() => readDraft(attemptId)); const answersRef = useRef(answers); const [confirmOpen, setConfirmOpen] = useState(false); const autoSubmitted = useRef(false); const allowExit = useRef(false)
   useEffect(() => { answersRef.current = answers; if (attemptId) writeDraft(attemptId, answers) }, [answers, attemptId])
   const submit = useMutation({
     mutationFn: () => studentTestingApi.submitAttempt(attemptId, buildSubmitPayload(attempt.data?.questions ?? [], answersRef.current)),
-    onSuccess: () => { allowExit.current = true; clearDraft(attemptId); navigate(`/student/tests/attempts/${attemptId}/result`, { replace: true }) },
+    onSuccess: async () => { allowExit.current = true; clearDraft(attemptId); await Promise.all([queryClient.invalidateQueries({ queryKey: progressionKeys.xpSummary() }), queryClient.invalidateQueries({ queryKey: studentTestingKeys.all })]); navigate(`/student/tests/attempts/${attemptId}/result`, { replace: true }) },
     onError: (error) => {
       if (testingErrorKey(error) === 'alreadySubmitted') {
         allowExit.current = true
         clearDraft(attemptId)
+        void queryClient.invalidateQueries({ queryKey: progressionKeys.xpSummary() })
         navigate(`/student/tests/attempts/${attemptId}/result`, { replace: true })
       }
     },
