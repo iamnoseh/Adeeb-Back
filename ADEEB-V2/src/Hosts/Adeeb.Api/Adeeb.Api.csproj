@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\Modules\Identity\Adeeb.Modules.Identity\Adeeb.Modules.Identity.csproj" />
     <ProjectReference Include="..\..\Modules\Mmt\Adeeb.Modules.Mmt\Adeeb.Modules.Mmt.csproj" />
     <ProjectReference Include="..\..\Modules\QuestionBank\Adeeb.Modules.QuestionBank\Adeeb.Modules.QuestionBank.csproj" />
+    <ProjectReference Include="..\..\Modules\Progression\Adeeb.Modules.Progression\Adeeb.Modules.Progression.csproj" />
     <ProjectReference Include="..\..\Modules\Students\Adeeb.Modules.Students\Adeeb.Modules.Students.csproj" />
     <ProjectReference Include="..\..\Modules\Vocabulary\Adeeb.Modules.Vocabulary\Adeeb.Modules.Vocabulary.csproj" />
   </ItemGroup>

@@ -16,6 +16,7 @@ public sealed class QuestionBankDbContext(DbContextOptions<QuestionBankDbContext
     public DbSet<StudentXpBalance> StudentXpBalances => Set<StudentXpBalance>();
     public DbSet<TestXpSettlement> TestXpSettlements => Set<TestXpSettlement>();
     public DbSet<StudentRedListItem> StudentRedListItems => Set<StudentRedListItem>();
+    public DbSet<XpGrantOutboxMessage> XpGrantOutbox => Set<XpGrantOutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,6 +33,7 @@ public sealed class QuestionBankDbContext(DbContextOptions<QuestionBankDbContext
         modelBuilder.ApplyConfiguration(new StudentXpBalanceConfiguration());
         modelBuilder.ApplyConfiguration(new TestXpSettlementConfiguration());
         modelBuilder.ApplyConfiguration(new StudentRedListItemConfiguration());
+        modelBuilder.ApplyConfiguration(new XpGrantOutboxMap());
     }
 }
 

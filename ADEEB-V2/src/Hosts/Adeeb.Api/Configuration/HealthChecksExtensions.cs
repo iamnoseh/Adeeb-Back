@@ -11,6 +11,7 @@ public static class HealthChecksExtensions
             .AddNpgSql(RequiredConnectionString(configuration, "Identity"), name: "identity-db", tags: ["db", "ready"])
             .AddNpgSql(RequiredConnectionString(configuration, "AcademicCatalog"), name: "academic-db", tags: ["db", "ready"])
             .AddNpgSql(RequiredConnectionString(configuration, "QuestionBank"), name: "question-db", tags: ["db", "ready"])
+            .AddNpgSql(RequiredConnectionString(configuration, "Progression"), name: "progression-db", tags: ["db", "ready"])
             .AddNpgSql(RequiredConnectionString(configuration, "Students"), name: "students-db", tags: ["db", "ready"])
             .AddNpgSql(RequiredConnectionString(configuration, "Vocabulary"), name: "vocabulary-db", tags: ["db", "ready"])
             .AddNpgSql(RequiredConnectionString(configuration, "Commerce"), name: "commerce-db", tags: ["db", "ready"])

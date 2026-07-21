@@ -53,3 +53,12 @@ public interface IStudentLookup
     Task<StudentReference?> FindByIdentityUserIdAsync(Guid identityUserId, CancellationToken cancellationToken);
     Task<StudentReference?> FindByStudentIdAsync(Guid studentId, CancellationToken cancellationToken);
 }
+
+public sealed record StudentCompetitionReference(Guid IdentityUserId, string? DisplayName, string? AvatarUrl,
+    bool IsActive);
+
+public interface IStudentCompetitionDirectory
+{
+    Task<IReadOnlyDictionary<Guid, StudentCompetitionReference>> GetByIdentityUserIdsAsync(
+        IReadOnlyCollection<Guid> identityUserIds, CancellationToken cancellationToken);
+}

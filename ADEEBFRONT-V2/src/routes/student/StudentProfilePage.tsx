@@ -1,14 +1,18 @@
-import { LogOut, Mail, Phone, ShieldCheck, UserRound } from 'lucide-react'
+import { LogOut, Mail, Phone, ShieldCheck, Sparkles, Trophy, UserRound } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/features/auth/model/auth-context'
 import { Button } from '@/shared/ui/Button'
 import { StudentPageHeader } from '@/routes/student/StudentUi'
+import { leagueKeys, progressionStudentApi } from '@/features/progression/api/league.api'
 
 export function StudentProfilePage() {
   const { user, logout } = useAuth()
   const { i18n, t } = useTranslation()
   const language = i18n.language === 'ru-RU' ? t('languageRu') : t('languageTg')
   const initials = `${user?.firstName?.[0] ?? 'A'}${user?.lastName?.[0] ?? ''}`.toUpperCase()
+  const progression = useQuery({ queryKey: leagueKeys.overview(), queryFn: progressionStudentApi.overview, retry: false })
   return (
     <div className="grid gap-6">
       <StudentPageHeader title={t('student.profileTitle')} description={t('student.profileDescription')} />
@@ -40,8 +44,13 @@ export function StudentProfilePage() {
           </div>
         </article>
       </section>
+      {progression.data ? <section className="grid gap-3 sm:grid-cols-3"><ProgressCard icon={<Sparkles />} label={t('progression.lifetimeXp')} value={`${progression.data.lifetimeXp} XP`} /><ProgressCard icon={<Trophy />} label={t('progression.globalRank')} value={progression.data.globalRank ? `#${progression.data.globalRank}` : '—'} /><Link to="/student/league" className="no-underline"><ProgressCard icon={<Trophy />} label={t('progression.currentLeague')} value={progression.data.league?.name ?? '—'} /></Link></section> : null}
     </div>
   )
+}
+
+function ProgressCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return <article className="flex min-h-24 items-center gap-3 rounded-lg border border-[#e1e4ef] bg-white p-4 shadow-sm"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#f0efff] text-[#5146f0] [&>svg]:h-5 [&>svg]:w-5">{icon}</span><div className="min-w-0"><p className="text-xs font-bold text-[#7b8299]">{label}</p><p className="mt-1 truncate text-lg font-black text-[#111b3d]">{value}</p></div></article>
 }
 
 function ProfileSummary({ icon, value }: { icon: React.ReactNode; value: string }) {

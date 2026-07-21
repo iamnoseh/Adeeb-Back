@@ -25,6 +25,35 @@ public interface IStudentXpService
     Task<Result<XpGrantResult>> GrantAsync(XpGrantRequest request, CancellationToken cancellationToken);
 }
 
+public sealed record XpGrantedIntegrationEvent(
+    Guid LedgerEntryId,
+    Guid UserId,
+    XpSourceType SourceType,
+    XpEntryType EntryType,
+    int AmountUnits,
+    long NewBalanceUnits,
+    DateTimeOffset CreatedAtUtc);
+
+public sealed record StudentXpRankSnapshot(long TotalXpUnits, long? GlobalRank, long RankedStudentsCount,
+    DateTimeOffset? UpdatedAtUtc);
+
+public sealed record StudentXpBalanceSnapshot(Guid UserId, long TotalXpUnits, DateTimeOffset UpdatedAtUtc);
+
+public sealed record StudentSeasonXpAggregate(Guid UserId, long TotalXpUnits, DateTimeOffset? LastEarnedAtUtc);
+
+public interface IXpGrantedIntegrationHandler
+{
+    Task HandleAsync(XpGrantedIntegrationEvent message, CancellationToken cancellationToken);
+}
+
+public interface IStudentXpReadService
+{
+    Task<StudentXpRankSnapshot> GetRankAsync(Guid userId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<StudentXpBalanceSnapshot>> GetPositiveBalancesAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<StudentSeasonXpAggregate>> GetSeasonAggregatesAsync(DateTimeOffset startsAtUtc,
+        DateTimeOffset endsAtUtc, CancellationToken cancellationToken);
+}
+
 public static class XpErrors
 {
     public static readonly Error InvalidAmount = Error.Validation("xp.invalid_amount", "XP.InvalidAmount");

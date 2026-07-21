@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<StudentsService>();
         services.AddScoped<StudentActivityService>();
         services.AddScoped<IStudentLookup>(sp => sp.GetRequiredService<StudentsService>());
+        services.AddScoped<IStudentCompetitionDirectory>(sp => sp.GetRequiredService<StudentsService>());
         services.AddScoped<IStudentRegistrationProvisioner>(sp => sp.GetRequiredService<StudentsService>());
         return services;
     }

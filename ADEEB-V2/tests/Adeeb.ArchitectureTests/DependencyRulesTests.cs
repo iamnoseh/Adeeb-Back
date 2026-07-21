@@ -6,6 +6,7 @@ using Adeeb.Modules.QuestionBank.Domain;
 using Adeeb.Modules.Students.Domain.Students;
 using Adeeb.Modules.Mmt.Domain;
 using Adeeb.Modules.Vocabulary.Domain;
+using Adeeb.Modules.Progression.Domain;
 using Adeeb.SharedKernel.Results;
 using Adeeb.SharedKernel.Progression;
 using Adeeb.Application.Abstractions.Progression;
@@ -15,6 +16,34 @@ namespace Adeeb.ArchitectureTests;
 
 public sealed class DependencyRulesTests
 {
+    [Fact]
+    public void Progression_domain_must_not_depend_on_infrastructure_or_frameworks()
+    {
+        var result = Types.InAssembly(typeof(LeagueDefinition).Assembly)
+            .That().ResideInNamespaceMatching(@"Adeeb\.Modules\.Progression\.Domain.*")
+            .ShouldNot().HaveDependencyOnAny(
+                "Microsoft.EntityFrameworkCore",
+                "Microsoft.AspNetCore",
+                "Npgsql",
+                "Adeeb.Modules.Progression.Infrastructure")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Progression_module_must_not_depend_on_other_module_infrastructure()
+    {
+        var result = Types.InAssembly(typeof(LeagueDefinition).Assembly)
+            .ShouldNot().HaveDependencyOnAny(
+                "Adeeb.Modules.Students.Infrastructure",
+                "Adeeb.Modules.Identity.Infrastructure",
+                "Adeeb.Modules.QuestionBank.Infrastructure")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
     [Fact]
     public void Global_xp_foundation_must_not_depend_on_modules_or_persistence_frameworks()
     {

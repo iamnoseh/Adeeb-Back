@@ -58,6 +58,8 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddSingleton<ITestXpPolicy, TestXpPolicy>();
         services.AddScoped<IStudentXpService, StudentXpService>();
+        services.AddScoped<IStudentXpReadService, StudentXpReadService>();
+        services.AddHostedService<XpGrantOutboxDispatcher>();
         services.AddSingleton<ITestingRandomizer, TestingRandomizer>();
         services.AddScoped<IQuestionPickerService, QuestionPickerService>();
         services.AddScoped<RedListService>();

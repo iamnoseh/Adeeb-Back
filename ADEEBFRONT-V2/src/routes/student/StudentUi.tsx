@@ -3,12 +3,12 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/shared/lib/cn'
 
-export function StudentPageHeader({ title, description }: { title: string; description: string }) {
+export function StudentPageHeader({ title, description }: { title?: string; description: string }) {
   return (
     <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="text-2xl font-black tracking-normal text-[#111b3d] sm:text-3xl">{title}</h1>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-[#68718c] sm:text-base">{description}</p>
+        {title && <h1 className="text-2xl font-black tracking-normal text-[#111b3d] sm:text-3xl">{title}</h1>}
+        <p className={cn("max-w-3xl text-sm leading-6 text-[#68718c] sm:text-base", title && "mt-1")}>{description}</p>
       </div>
     </header>
   )
