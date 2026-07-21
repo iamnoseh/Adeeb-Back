@@ -30,6 +30,7 @@ public sealed class StudentTestingService(
     IOptions<StudentTestingOptions> options,
     ITestingRandomizer randomizer,
     ITestXpPolicy xpPolicy,
+    IOptions<TestXpRewardOptions> xpOptions,
     IStudentXpService studentXpService,
     ILogger<StudentTestingService> logger)
 {
@@ -98,6 +99,76 @@ public sealed class StudentTestingService(
             : Result<TestAttemptDto>.Success(ToAttemptDto(attempt));
     }
 
+    public async Task<Result<CheckedTestAnswerDto>> CheckAnswerAsync(Guid userId, Guid attemptId, Guid questionId,
+        CheckTestAnswerRequest request, CancellationToken ct)
+    {
+        await using var transaction = await BeginTransactionAsync(ct);
+        await TestAttemptFinalizationConcurrency.AcquireAttemptLockAsync(db, attemptId, ct);
+        var attempt = await db.TestAttempts.Include(x => x.Questions).Include(x => x.Answers)
+            .SingleOrDefaultAsync(x => x.Id == attemptId && x.UserId == userId, ct);
+        if (attempt is null) return Result<CheckedTestAnswerDto>.Failure(StudentTestingErrors.AttemptNotFound);
+        if (attempt.Mode is not (TestMode.SubjectTest or TestMode.RedListPractice))
+            return Result<CheckedTestAnswerDto>.Failure(StudentTestingErrors.ImmediateCheckNotAllowed);
+        if (attempt.Status != TestAttemptStatus.InProgress)
+            return Result<CheckedTestAnswerDto>.Failure(StudentTestingErrors.AttemptAlreadySubmitted);
+        if (clock.UtcNow >= attempt.ExpiresAtUtc)
+            return Result<CheckedTestAnswerDto>.Failure(StudentTestingErrors.AttemptExpired);
+
+        var attemptQuestion = attempt.Questions.SingleOrDefault(x => x.QuestionId == questionId);
+        if (attemptQuestion is null)
+            return Result<CheckedTestAnswerDto>.Failure(StudentTestingErrors.QuestionNotInAttempt);
+        var snapshot = DeserializeQuestion(attemptQuestion.QuestionSnapshotJson);
+        var existing = attempt.Answers.SingleOrDefault(x => x.TestAttemptQuestionId == attemptQuestion.Id);
+        if (existing is not null)
+            return Result<CheckedTestAnswerDto>.Success(ToCheckedAnswerDto(snapshot, existing));
+
+        var submitted = new SubmitAnswerDto(questionId, request.SelectedOptionId, request.TextResponse,
+            request.MatchingPairs);
+        var input = new AnswerEvaluationInput(request.SelectedOptionId, request.TextResponse, request.MatchingPairs);
+        var evaluation = evaluator.Evaluate(SnapshotQuestion(snapshot), input, snapshot.Language);
+        if (!evaluation.IsAnswered)
+            return Result<CheckedTestAnswerDto>.Failure(StudentTestingErrors.AnswerRequired);
+        var displayAnswer = DisplayAnswer(snapshot, submitted, evaluation);
+        var redListOutcome = await redList.ApplyAnswerAsync(userId, new(snapshot.QuestionId, snapshot.SubjectId,
+            snapshot.TopicId, (QuestionType)snapshot.Type, evaluation.IsCorrect), ct);
+
+        StoredRedListFeedback? redListFeedback = null;
+        if (redListOutcome.Action != RedListService.AnswerAction.None)
+        {
+            var bonusUnits = 0;
+            var bonusAwarded = false;
+            long? totalXpUnits = null;
+            if (redListOutcome.Action == RedListService.AnswerAction.Mastered && redListOutcome.ItemId.HasValue)
+            {
+                bonusUnits = xpOptions.Value.RedListMasteryBonusXpUnits;
+                var itemId = redListOutcome.ItemId.Value;
+                var grant = await studentXpService.GrantAsync(new(userId, XpSourceType.RedListActivity,
+                    itemId.ToString("N"), bonusUnits, $"red-list-mastery:{itemId:N}", XpEntryType.Credit,
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["attemptId"] = attemptId.ToString("N"),
+                        ["questionId"] = questionId.ToString("N")
+                    }), ct);
+                if (grant.IsFailure) return Result<CheckedTestAnswerDto>.Failure(StudentTestingErrors.RewardConflict);
+                bonusAwarded = !grant.Value!.WasAlreadyProcessed;
+                totalXpUnits = grant.Value.NewBalanceUnits;
+            }
+            redListFeedback = new((int)redListOutcome.Action, redListOutcome.CorrectStreak,
+                redListOutcome.RequiredCorrectStreak, redListOutcome.CorrectAnswersRemaining,
+                bonusUnits, bonusAwarded, totalXpUnits);
+        }
+
+        var stored = new StoredAnswerSnapshot(request.SelectedOptionId, request.TextResponse,
+            request.MatchingPairs, displayAnswer, redListFeedback);
+        var answer = new TestAttemptAnswer(Guid.NewGuid(), attempt.Id, attemptQuestion.Id, questionId,
+            JsonSerializer.Serialize(stored, Json), evaluation.IsAnswered, evaluation.IsCorrect,
+            evaluation.CorrectPairsCount, evaluation.TotalPairsCount, clock.UtcNow);
+        db.TestAttemptAnswers.Add(answer);
+        await db.SaveChangesAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
+        return Result<CheckedTestAnswerDto>.Success(ToCheckedAnswerDto(snapshot, answer));
+    }
+
     public async Task<Result<TestResultDto>> SubmitAsync(Guid userId, Guid attemptId, SubmitAttemptRequest request, CancellationToken ct)
     {
         await using var transaction = await BeginTransactionAsync(ct);
@@ -124,6 +195,17 @@ public sealed class StudentTestingService(
         foreach (var attemptQuestion in attempt.Questions.OrderBy(x => x.DisplayOrder))
         {
             var snapshot = DeserializeQuestion(attemptQuestion.QuestionSnapshotJson);
+            var checkedAnswer = attempt.Answers.SingleOrDefault(x => x.TestAttemptQuestionId == attemptQuestion.Id);
+            if (checkedAnswer is not null)
+            {
+                var checkedSnapshot = DeserializeAnswer(checkedAnswer.AnswerSnapshotJson);
+                if (checkedAnswer.IsCorrect) correct++;
+                storedResults.Add(new(snapshot.QuestionId, snapshot.SubjectId, checkedAnswer.IsAnswered,
+                    checkedAnswer.IsCorrect, snapshot.Content, checkedSnapshot.SubmittedDisplayText,
+                    CorrectAnswer(snapshot), snapshot.Explanation, snapshot.TopicId, snapshot.Difficulty,
+                    checkedAnswer.CorrectPairsCount, checkedAnswer.TotalPairsCount));
+                continue;
+            }
             submitted.TryGetValue(attemptQuestion.QuestionId, out var answer);
             var input = answer is null ? new AnswerEvaluationInput() : new(answer.SelectedOptionId, answer.TextResponse, answer.MatchingPairs);
             var question = SnapshotQuestion(snapshot);
@@ -151,7 +233,8 @@ public sealed class StudentTestingService(
         try
         {
             xp = xpPolicy.Calculate(storedResults
-                .Select(x => new TestXpQuestionOutcome((DifficultyLevel)x.Difficulty, x.IsCorrect)).ToList(), isCompleted: true);
+                .Select(x => new TestXpQuestionOutcome((DifficultyLevel)x.Difficulty, x.IsCorrect)).ToList(),
+                isCompleted: true, attempt.Mode);
         }
         catch (TestXpCalculationException exception)
         {
@@ -262,11 +345,17 @@ public sealed class StudentTestingService(
             count, now, now.AddMinutes(durationMinutes));
         db.TestAttempts.Add(attempt);
         var questions = picked.Value!.ToList(); randomizer.Shuffle(questions);
+        var questionIds = questions.Select(x => x.Id).ToArray();
+        var redListProgress = await db.StudentRedListItems.AsNoTracking()
+            .Where(x => x.UserId == userId && x.Status == RedListStatus.Active && questionIds.Contains(x.QuestionId))
+            .ToDictionaryAsync(x => x.QuestionId, x => x.CorrectStreak, ct);
         for (var index = 0; index < questions.Count; index++)
         {
             var question = questions[index];
+            var isFromRedList = redListProgress.TryGetValue(question.Id, out var correctStreak);
             db.TestAttemptQuestions.Add(new(Guid.NewGuid(), attempt.Id, question.Id, index + 1, question.SubjectId,
-                question.TopicId, question.Type, question.Difficulty, JsonSerializer.Serialize(Snapshot(question, language), Json)));
+                question.TopicId, question.Type, question.Difficulty, JsonSerializer.Serialize(
+                    Snapshot(question, language, isFromRedList ? correctStreak : null), Json)));
         }
         try
         {
@@ -281,7 +370,7 @@ public sealed class StudentTestingService(
         return await GetAttemptAsync(userId, attempt.Id, ct);
     }
 
-    private TestQuestionSnapshot Snapshot(Question question, SupportedLanguage language)
+    private TestQuestionSnapshot Snapshot(Question question, SupportedLanguage language, int? redListCorrectStreak)
     {
         var translation = question.Translations.FirstOrDefault(x => x.Language == language)
             ?? question.Translations.FirstOrDefault(x => x.Language == SupportedLanguage.Tajik)
@@ -296,7 +385,8 @@ public sealed class StudentTestingService(
         if (matchingDisplayOrder is not null) randomizer.Shuffle(matchingDisplayOrder);
         return new(TestQuestionSnapshot.CurrentVersion, question.Id, question.SubjectId, question.TopicId,
             (int)question.Type, (int)question.Difficulty, translation.Content, translation.Explanation, question.ImageUrl,
-            language, optionSnapshots, matchingDisplayOrder);
+            language, optionSnapshots, matchingDisplayOrder, redListCorrectStreak,
+            StudentRedListItem.RequiredCorrectStreak);
     }
 
     private static Question SnapshotQuestion(TestQuestionSnapshot snapshot)
@@ -313,16 +403,41 @@ public sealed class StudentTestingService(
         return question;
     }
 
-    private static TestAttemptDto ToAttemptDto(TestAttempt attempt) => new(attempt.Id, (int)attempt.Mode, (int)attempt.Status,
-        attempt.SubjectId, attempt.ClusterId, attempt.StartedAtUtc, attempt.ExpiresAtUtc, attempt.SubmittedAtUtc,
-        attempt.QuestionCount, attempt.Questions.OrderBy(x => x.DisplayOrder).Select(x =>
+    private static TestAttemptDto ToAttemptDto(TestAttempt attempt)
+    {
+        var answers = attempt.Answers.ToDictionary(x => x.TestAttemptQuestionId);
+        return new(attempt.Id, (int)attempt.Mode, (int)attempt.Status,
+            attempt.SubjectId, attempt.ClusterId, attempt.StartedAtUtc, attempt.ExpiresAtUtc, attempt.SubmittedAtUtc,
+            attempt.QuestionCount, attempt.Questions.OrderBy(x => x.DisplayOrder).Select(x =>
         {
             var snapshot = DeserializeQuestion(x.QuestionSnapshotJson);
             var options = snapshot.Options.OrderBy(option => option.DisplayOrder).Select(option => new TestAnswerOptionDto(option.Id, option.Text)).ToList();
             var matchingOptions = MatchingOptions(snapshot);
+            var redListProgress = snapshot.RedListCorrectStreak is int correctStreak
+                ? new RedListQuestionProgressDto(correctStreak, snapshot.RedListRequiredCorrectStreak,
+                    Math.Max(0, snapshot.RedListRequiredCorrectStreak - correctStreak))
+                : null;
             return new TestQuestionDto(snapshot.QuestionId, x.DisplayOrder, snapshot.SubjectId, snapshot.TopicId,
-                snapshot.Type, snapshot.Difficulty, snapshot.Content, snapshot.ImageUrl, options, matchingOptions);
+                snapshot.Type, snapshot.Difficulty, snapshot.Content, snapshot.ImageUrl, options, matchingOptions,
+                redListProgress, answers.TryGetValue(x.Id, out var answer)
+                    ? ToCheckedAnswerDto(snapshot, answer)
+                    : null);
         }).ToList());
+    }
+
+    private static CheckedTestAnswerDto ToCheckedAnswerDto(TestQuestionSnapshot question, TestAttemptAnswer answer)
+    {
+        var snapshot = DeserializeAnswer(answer.AnswerSnapshotJson);
+        var redList = snapshot.RedList is null ? null : new RedListAnswerFeedbackDto(
+            snapshot.RedList.Action, snapshot.RedList.CorrectStreak, snapshot.RedList.RequiredCorrectStreak,
+            snapshot.RedList.CorrectAnswersRemaining, ToXp(snapshot.RedList.MasteryBonusXpUnits),
+            snapshot.RedList.MasteryBonusAwarded,
+            snapshot.RedList.TotalXpUnits.HasValue ? ToXp(snapshot.RedList.TotalXpUnits.Value) : null);
+        return new(question.QuestionId, answer.IsCorrect, snapshot.SubmittedDisplayText, CorrectAnswer(question),
+            question.Options.FirstOrDefault(x => x.IsCorrect)?.Id, question.Explanation, snapshot.SelectedOptionId,
+            snapshot.TextResponse, snapshot.MatchingPairs,
+            answer.CorrectPairsCount, answer.TotalPairsCount, redList);
+    }
 
     private static IReadOnlyList<string> MatchingOptions(TestQuestionSnapshot snapshot)
     {
@@ -371,7 +486,10 @@ public sealed class StudentTestingService(
         : snapshot.Options.FirstOrDefault(x => x.IsCorrect)?.Text;
     private static TestQuestionSnapshot DeserializeQuestion(string json) =>
         JsonSerializer.Deserialize<TestQuestionSnapshot>(json, Json) ?? throw new InvalidOperationException("Invalid question snapshot.");
-    private IQueryable<TestAttempt> AttemptQuery() => db.TestAttempts.AsNoTracking().Include(x => x.Questions).AsSplitQuery();
+    private static StoredAnswerSnapshot DeserializeAnswer(string json) =>
+        JsonSerializer.Deserialize<StoredAnswerSnapshot>(json, Json) ?? throw new InvalidOperationException("Invalid answer snapshot.");
+    private IQueryable<TestAttempt> AttemptQuery() => db.TestAttempts.AsNoTracking()
+        .Include(x => x.Questions).Include(x => x.Answers).AsSplitQuery();
     private async ValueTask<IDbContextTransaction?> BeginTransactionAsync(CancellationToken ct) => db.Database.IsRelational()
         ? await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct) : null;
 }

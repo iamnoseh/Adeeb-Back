@@ -24,4 +24,13 @@ describe('student testing API', () => {
     expect(get).toHaveBeenCalledWith('/api/v2/student/tests/attempts/attempt-1/result')
     expect(result).toMatchObject(xp)
   })
+
+  it('checks one answer through the attempt-scoped endpoint', async () => {
+    post.mockResolvedValue({ data: { questionId: 'question-1', isCorrect: true } })
+    const { studentTestingApi } = await import('@/features/student-testing/api/student-testing.api')
+
+    await studentTestingApi.checkAnswer('attempt-1', 'question-1', { selectedOptionId: 'option-1' })
+
+    expect(post).toHaveBeenCalledWith('/api/v2/student/tests/attempts/attempt-1/questions/question-1/check', { selectedOptionId: 'option-1' })
+  })
 })

@@ -50,6 +50,19 @@ public sealed class TestXpPolicyTests
     }
 
     [Fact]
+    public void Red_list_practice_uses_the_reduced_reward_rate()
+    {
+        var outcomes = new[] { new TestXpQuestionOutcome(DifficultyLevel.Hard, true) };
+
+        var regular = _policy.Calculate(outcomes, isCompleted: true, TestMode.SubjectTest);
+        var redList = _policy.Calculate(outcomes, isCompleted: true, TestMode.RedListPractice);
+
+        Assert.Equal(15, regular.TotalXpUnits);
+        Assert.Equal(7, redList.TotalXpUnits);
+        Assert.True(redList.TotalXpUnits < regular.TotalXpUnits);
+    }
+
+    [Fact]
     public void Non_completed_attempt_awards_nothing()
     {
         var result = _policy.Calculate([new(DifficultyLevel.Hard, true)], isCompleted: false);

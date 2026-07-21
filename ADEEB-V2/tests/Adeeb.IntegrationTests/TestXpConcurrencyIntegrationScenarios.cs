@@ -197,6 +197,7 @@ public sealed class TestXpConcurrencyIntegrationScenarios(AdeebApiFactory factor
             new RedListService(db, clock), new EmptyMmtContext(),
             new ClosedMonthlyWindow(), new FixedTimingPolicy(), clock, options,
             new StableRandomizer(), new TestXpPolicy(Options.Create(new TestXpRewardOptions())),
+            Options.Create(new TestXpRewardOptions()),
             new StudentXpService(db, clock, NullLogger<StudentXpService>.Instance),
             NullLogger<StudentTestingService>.Instance);
     }

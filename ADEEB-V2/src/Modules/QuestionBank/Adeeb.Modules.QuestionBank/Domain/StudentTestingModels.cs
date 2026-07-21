@@ -103,6 +103,8 @@ public sealed class TestAttemptResult : Entity
 
 public sealed class StudentRedListItem : Entity
 {
+    public const int RequiredCorrectStreak = 3;
+
     private StudentRedListItem() { }
     public StudentRedListItem(Guid id, Guid userId, Guid questionId, Guid subjectId, Guid? topicId, QuestionType type, DateTimeOffset now)
     {
@@ -124,7 +126,7 @@ public sealed class StudentRedListItem : Entity
     public void RecordWrong(DateTimeOffset now)
     { WrongCount++; CorrectStreak = 0; LastWrongAtUtc = now; LastPracticedAtUtc = now; Status = RedListStatus.Active; MasteredAtUtc = null; }
     public void RecordCorrect(DateTimeOffset now)
-    { LastPracticedAtUtc = now; CorrectStreak++; if (CorrectStreak >= 3) { CorrectStreak = 3; Status = RedListStatus.Mastered; MasteredAtUtc = now; } }
+    { LastPracticedAtUtc = now; CorrectStreak++; if (CorrectStreak >= RequiredCorrectStreak) { CorrectStreak = RequiredCorrectStreak; Status = RedListStatus.Mastered; MasteredAtUtc = now; } }
     public void Archive() => Status = RedListStatus.Archived;
     public void Restore() { Status = RedListStatus.Active; CorrectStreak = 0; MasteredAtUtc = null; }
 }

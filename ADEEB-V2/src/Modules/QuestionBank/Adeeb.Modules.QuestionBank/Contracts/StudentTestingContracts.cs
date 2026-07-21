@@ -6,6 +6,8 @@ public sealed record StartRedListPracticeRequest(int? QuestionCount = null);
 public sealed record SubmitAttemptRequest(IReadOnlyList<SubmitAnswerDto> Answers);
 public sealed record SubmitAnswerDto(Guid QuestionId, Guid? SelectedOptionId = null, string? TextResponse = null,
     IReadOnlyDictionary<Guid, string>? MatchingPairs = null);
+public sealed record CheckTestAnswerRequest(Guid? SelectedOptionId = null, string? TextResponse = null,
+    IReadOnlyDictionary<Guid, string>? MatchingPairs = null);
 
 public sealed record StudentTestingConfigDto(IReadOnlyList<int> SubjectQuestionCounts, int RedListMinimumQuestions,
     int RedListDefaultQuestions, int MmtPracticeDefaultQuestions, int MonthlyExamQuestionCount,
@@ -16,8 +18,17 @@ public sealed record TestAttemptDto(Guid Id, int Mode, int Status, Guid? Subject
     int QuestionCount, IReadOnlyList<TestQuestionDto> Questions);
 public sealed record TestQuestionDto(Guid Id, int Order, Guid SubjectId, Guid? TopicId, int Type, int Difficulty,
     string Content, string? ImageUrl, IReadOnlyList<TestAnswerOptionDto> Options,
-    IReadOnlyList<string> MatchingOptions);
+    IReadOnlyList<string> MatchingOptions, RedListQuestionProgressDto? RedListProgress,
+    CheckedTestAnswerDto? CheckedAnswer);
+public sealed record RedListQuestionProgressDto(int CorrectStreak, int RequiredCorrectStreak,
+    int CorrectAnswersRemaining);
 public sealed record TestAnswerOptionDto(Guid Id, string Text);
+public sealed record CheckedTestAnswerDto(Guid QuestionId, bool IsCorrect, string? UserAnswer,
+    string? CorrectAnswer, Guid? CorrectOptionId, string? Explanation, Guid? SelectedOptionId, string? TextResponse,
+    IReadOnlyDictionary<Guid, string>? MatchingPairs, int? CorrectPairsCount, int? TotalPairsCount,
+    RedListAnswerFeedbackDto? RedList);
+public sealed record RedListAnswerFeedbackDto(int Action, int CorrectStreak, int RequiredCorrectStreak,
+    int CorrectAnswersRemaining, decimal MasteryBonusXp, bool MasteryBonusAwarded, decimal? TotalXp);
 
 public sealed record TestResultDto(Guid AttemptId, int Mode, int Status, int QuestionCount, int CorrectCount,
     int WrongCount, decimal Score, decimal Percentage, DateTimeOffset SubmittedAtUtc,
