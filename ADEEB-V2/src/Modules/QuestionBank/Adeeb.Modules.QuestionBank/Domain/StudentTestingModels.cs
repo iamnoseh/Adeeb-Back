@@ -34,7 +34,7 @@ public sealed class TestAttempt : Entity
     public IReadOnlyCollection<TestAttemptQuestion> Questions => _questions;
     public IReadOnlyCollection<TestAttemptAnswer> Answers => _answers;
     public TestAttemptResult? Result { get; private set; }
-    public TestXpReward? XpReward { get; private set; }
+    public TestXpSettlement? XpSettlement { get; private set; }
 
     private void Start(DateTimeOffset now, DateTimeOffset expiresAt)
     {

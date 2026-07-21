@@ -7,12 +7,24 @@ using Adeeb.Modules.Students.Domain.Students;
 using Adeeb.Modules.Mmt.Domain;
 using Adeeb.Modules.Vocabulary.Domain;
 using Adeeb.SharedKernel.Results;
+using Adeeb.SharedKernel.Progression;
+using Adeeb.Application.Abstractions.Progression;
 using NetArchTest.Rules;
 
 namespace Adeeb.ArchitectureTests;
 
 public sealed class DependencyRulesTests
 {
+    [Fact]
+    public void Global_xp_foundation_must_not_depend_on_modules_or_persistence_frameworks()
+    {
+        var result = Types.InAssemblies([typeof(XpLedgerEntry).Assembly, typeof(IStudentXpService).Assembly])
+            .That().ResideInNamespaceMatching(@"Adeeb\.(SharedKernel|Application\.Abstractions)\.Progression.*")
+            .ShouldNot().HaveDependencyOnAny("Adeeb.Modules", "Microsoft.EntityFrameworkCore", "Npgsql", "Microsoft.AspNetCore")
+            .GetResult();
+        Assert.True(result.IsSuccessful, string.Join(Environment.NewLine, result.FailingTypeNames ?? []));
+    }
+
     [Fact]
     public void Vocabulary_domain_must_not_depend_on_infrastructure_or_frameworks()
     {

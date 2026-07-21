@@ -1,4 +1,5 @@
 using Adeeb.Application.Abstractions.Localization;
+using Adeeb.Application.Abstractions.Progression;
 using Adeeb.Application.Abstractions.Testing;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.QuestionBank.Application;
@@ -44,8 +45,9 @@ public sealed class StudentTestingLifecycleTests
         Assert.NotEmpty(result.Value.WeakTopics);
         Assert.Equal(0m, result.Value.TotalXp);
         Assert.False(result.Value.XpAwarded);
-        Assert.Single(await db.TestXpRewards.AsNoTracking().ToListAsync());
-        Assert.Empty(await db.StudentTestXpBalances.AsNoTracking().ToListAsync());
+        Assert.Single(await db.XpLedgerEntries.AsNoTracking().ToListAsync());
+        Assert.Single(await db.TestXpSettlements.AsNoTracking().ToListAsync());
+        Assert.Empty(await db.StudentXpBalances.AsNoTracking().ToListAsync());
     }
 
     [Fact]
@@ -81,8 +83,9 @@ public sealed class StudentTestingLifecycleTests
         Assert.True(submitted.Value.XpAwarded);
         Assert.Equal(submitted.Value.TotalXp, replayed.Value!.TotalXp);
         Assert.Equal("test.attempt_already_submitted", duplicate.Error?.Code);
-        Assert.Equal(44, (await db.TestXpRewards.AsNoTracking().SingleAsync()).TotalXpUnits);
-        Assert.Equal(44, (await db.StudentTestXpBalances.AsNoTracking().SingleAsync()).TotalXpUnits);
+        Assert.Equal(44, (await db.XpLedgerEntries.AsNoTracking().SingleAsync()).AmountUnits);
+        Assert.Equal(44, (await db.TestXpSettlements.AsNoTracking().SingleAsync()).TotalXpUnits);
+        Assert.Equal(44, (await db.StudentXpBalances.AsNoTracking().SingleAsync()).TotalXpUnits);
     }
 
     [Fact]
@@ -177,6 +180,7 @@ public sealed class StudentTestingLifecycleTests
         services.AddScoped<IAnswerEvaluationService>(_ => new AnswerEvaluationService(
             [new SingleChoiceAnswerEvaluator(), new ClosedAnswerEvaluator(), new MatchingAnswerEvaluator()]));
         services.AddScoped<RedListService>();
+        services.AddScoped<IStudentXpService, StudentXpService>();
         services.AddScoped<IStudentMmtTestingContext>(_ => new FakeMmtContext(null));
         services.AddScoped<IMonthlyExamAvailabilityService, MonthlyExamAvailabilityService>();
         services.AddScoped<ISubjectTestTimingPolicy, FakeTimingPolicy>();
@@ -319,6 +323,7 @@ public sealed class StudentTestingLifecycleTests
             Options.Create(new StudentTestingOptions()),
             randomizer ?? new StableRandomizer(),
             new TestXpPolicy(Options.Create(new TestXpRewardOptions())),
+            new StudentXpService(db, clock, NullLogger<StudentXpService>.Instance),
             NullLogger<StudentTestingService>.Instance);
 
     private static QuestionBankDbContext CreateDb() => new(new DbContextOptionsBuilder<QuestionBankDbContext>()

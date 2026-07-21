@@ -4,6 +4,7 @@ using Adeeb.Modules.QuestionBank.Application.Import;
 using Adeeb.Modules.QuestionBank.Infrastructure.DocumentExtraction;
 using Adeeb.Modules.QuestionBank.Infrastructure.Files;
 using Adeeb.Modules.QuestionBank.Infrastructure.Persistence;
+using Adeeb.Application.Abstractions.Progression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +55,7 @@ public static class DependencyInjection
                 "Test XP reward units must be non-negative and within the supported limit.")
             .ValidateOnStart();
         services.AddSingleton<ITestXpPolicy, TestXpPolicy>();
+        services.AddScoped<IStudentXpService, StudentXpService>();
         services.AddSingleton<ITestingRandomizer, TestingRandomizer>();
         services.AddScoped<IQuestionPickerService, QuestionPickerService>();
         services.AddScoped<RedListService>();

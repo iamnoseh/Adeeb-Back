@@ -1,4 +1,5 @@
 using Adeeb.Modules.QuestionBank.Domain;
+using Adeeb.SharedKernel.Progression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Npgsql;
@@ -13,8 +14,17 @@ internal static class StudentTestingDatabaseNames
     public const string AttemptAnswerQuestion = "ux_question_bank_attempt_answer_question";
     public const string AttemptResult = "ux_question_bank_attempt_result";
     public const string MonthlyWindow = "ux_question_bank_monthly_window";
-    public const string XpRewardAttempt = "ux_question_bank_xp_reward_attempt";
-    public const string XpRewardIdempotency = "ux_question_bank_xp_reward_idempotency";
+    public const string XpLedgerIdempotency = "ux_question_bank_xp_ledger_idempotency";
+    public const string XpLedgerSource = "ux_question_bank_xp_ledger_source";
+    public const string XpLedgerUserHistory = "ix_question_bank_xp_ledger_user_history";
+    public const string XpLedgerUserSource = "ix_question_bank_xp_ledger_user_source";
+    public const string XpSettlementAttempt = "ux_question_bank_xp_settlement_attempt";
+    public const string XpSettlementLedger = "ux_question_bank_xp_settlement_ledger";
+    public const string XpBalanceNonNegative = "ck_question_bank_xp_balance_non_negative";
+    public const string XpLedgerAmountNonNegative = "ck_question_bank_xp_ledger_amount_non_negative";
+    public const string XpSettlementNonNegative = "ck_question_bank_xp_settlement_non_negative";
+    public const string XpSettlementTotal = "ck_question_bank_xp_settlement_total";
+    public const string XpSettlementZeroCorrect = "ck_question_bank_xp_settlement_zero_correct";
 
     public static bool IsMonthlyWindowViolation(DbUpdateException exception) =>
         exception.InnerException is PostgresException
@@ -23,20 +33,14 @@ internal static class StudentTestingDatabaseNames
             ConstraintName: MonthlyWindow
         };
 
-    public static bool IsXpRewardViolation(DbUpdateException exception) =>
-        exception.InnerException is PostgresException
-        {
-            SqlState: PostgresErrorCodes.UniqueViolation,
-            ConstraintName: XpRewardAttempt or XpRewardIdempotency
-        };
 }
 
-internal static class StudentTestingConcurrency
+internal static class TestAttemptFinalizationConcurrency
 {
-    public static async Task AcquireUserLockAsync(QuestionBankDbContext db, Guid userId, CancellationToken ct)
+    public static async Task AcquireAttemptLockAsync(QuestionBankDbContext db, Guid attemptId, CancellationToken ct)
     {
         if (!db.Database.IsNpgsql()) return;
-        var lockKey = BitConverter.ToInt64(userId.ToByteArray(), 0);
+        var lockKey = BitConverter.ToInt64(attemptId.ToByteArray(), 0);
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({lockKey})", ct);
     }
 }
@@ -64,41 +68,76 @@ internal sealed class TestAttemptConfiguration : IEntityTypeConfiguration<TestAt
         b.HasMany(x => x.Questions).WithOne(x => x.TestAttempt).HasForeignKey(x => x.TestAttemptId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Answers).WithOne().HasForeignKey(x => x.TestAttemptId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(x => x.Result).WithOne().HasForeignKey<TestAttemptResult>(x => x.TestAttemptId).OnDelete(DeleteBehavior.Cascade);
-        b.HasOne(x => x.XpReward).WithOne().HasForeignKey<TestXpReward>(x => x.AttemptId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne(x => x.XpSettlement).WithOne().HasForeignKey<TestXpSettlement>(x => x.AttemptId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
-internal sealed class TestXpRewardConfiguration : IEntityTypeConfiguration<TestXpReward>
+internal sealed class XpLedgerEntryConfiguration : IEntityTypeConfiguration<XpLedgerEntry>
 {
-    public void Configure(EntityTypeBuilder<TestXpReward> b)
+    public void Configure(EntityTypeBuilder<XpLedgerEntry> b)
     {
-        b.ToTable("test_xp_rewards"); b.HasKey(x => x.Id);
+        b.ToTable("xp_ledger_entries", table => table.HasCheckConstraint(
+            StudentTestingDatabaseNames.XpLedgerAmountNonNegative, "amount_units >= 0"));
+        b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasColumnName("id"); b.Property(x => x.UserId).HasColumnName("user_id");
+        b.Property(x => x.SourceType).HasColumnName("source_type").HasConversion<string>().HasMaxLength(32);
+        b.Property(x => x.SourceId).HasColumnName("source_id").HasMaxLength(128);
+        b.Property(x => x.EntryType).HasColumnName("entry_type").HasConversion<string>().HasMaxLength(32);
+        b.Property(x => x.AmountUnits).HasColumnName("amount_units");
+        b.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(160);
+        b.Property(x => x.BalanceBeforeUnits).HasColumnName("balance_before_units");
+        b.Property(x => x.BalanceAfterUnits).HasColumnName("balance_after_units");
+        b.Property(x => x.MetadataJson).HasColumnName("metadata_json").HasColumnType("jsonb");
+        b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+        b.HasIndex(x => x.IdempotencyKey).IsUnique().HasDatabaseName(StudentTestingDatabaseNames.XpLedgerIdempotency);
+        b.HasIndex(x => new { x.UserId, x.SourceType, x.SourceId }).IsUnique()
+            .HasDatabaseName(StudentTestingDatabaseNames.XpLedgerSource);
+        b.HasIndex(x => new { x.UserId, x.CreatedAtUtc }).HasDatabaseName(StudentTestingDatabaseNames.XpLedgerUserHistory);
+        b.HasIndex(x => new { x.UserId, x.SourceType }).HasDatabaseName(StudentTestingDatabaseNames.XpLedgerUserSource);
+    }
+}
+
+internal sealed class StudentXpBalanceConfiguration : IEntityTypeConfiguration<StudentXpBalance>
+{
+    public void Configure(EntityTypeBuilder<StudentXpBalance> b)
+    {
+        b.ToTable("student_xp_balances", table => table.HasCheckConstraint(
+            StudentTestingDatabaseNames.XpBalanceNonNegative, "total_xp_units >= 0"));
+        b.HasKey(x => x.UserId);
+        b.Property(x => x.UserId).HasColumnName("user_id");
+        b.Property(x => x.TotalXpUnits).HasColumnName("total_xp_units");
+        b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
+    }
+}
+
+internal sealed class TestXpSettlementConfiguration : IEntityTypeConfiguration<TestXpSettlement>
+{
+    public void Configure(EntityTypeBuilder<TestXpSettlement> b)
+    {
+        b.ToTable("test_xp_settlements", table =>
+        {
+            table.HasCheckConstraint(StudentTestingDatabaseNames.XpSettlementNonNegative,
+                "easy_correct_count >= 0 AND medium_correct_count >= 0 AND hard_correct_count >= 0 AND answer_xp_units >= 0 AND completion_bonus_xp_units >= 0 AND total_xp_units >= 0");
+            table.HasCheckConstraint(StudentTestingDatabaseNames.XpSettlementTotal,
+                "total_xp_units = answer_xp_units + completion_bonus_xp_units");
+            table.HasCheckConstraint(StudentTestingDatabaseNames.XpSettlementZeroCorrect,
+                "easy_correct_count + medium_correct_count + hard_correct_count > 0 OR total_xp_units = 0");
+        });
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
         b.Property(x => x.AttemptId).HasColumnName("attempt_id");
-        b.Property(x => x.TestMode).HasColumnName("test_mode").HasConversion<string>().HasMaxLength(32);
-        b.Property(x => x.RewardType).HasColumnName("reward_type").HasConversion<string>().HasMaxLength(32);
+        b.Property(x => x.LedgerEntryId).HasColumnName("ledger_entry_id");
         b.Property(x => x.EasyCorrectCount).HasColumnName("easy_correct_count");
         b.Property(x => x.MediumCorrectCount).HasColumnName("medium_correct_count");
         b.Property(x => x.HardCorrectCount).HasColumnName("hard_correct_count");
         b.Property(x => x.AnswerXpUnits).HasColumnName("answer_xp_units");
         b.Property(x => x.CompletionBonusXpUnits).HasColumnName("completion_bonus_xp_units");
         b.Property(x => x.TotalXpUnits).HasColumnName("total_xp_units");
-        b.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(64);
         b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
-        b.HasIndex(x => x.AttemptId).IsUnique().HasDatabaseName(StudentTestingDatabaseNames.XpRewardAttempt);
-        b.HasIndex(x => x.IdempotencyKey).IsUnique().HasDatabaseName(StudentTestingDatabaseNames.XpRewardIdempotency);
-        b.HasIndex(x => new { x.UserId, x.CreatedAtUtc });
-    }
-}
-
-internal sealed class StudentTestXpBalanceConfiguration : IEntityTypeConfiguration<StudentTestXpBalance>
-{
-    public void Configure(EntityTypeBuilder<StudentTestXpBalance> b)
-    {
-        b.ToTable("student_test_xp_balances"); b.HasKey(x => x.UserId);
-        b.Property(x => x.UserId).HasColumnName("user_id");
-        b.Property(x => x.TotalXpUnits).HasColumnName("total_xp_units");
-        b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
+        b.HasIndex(x => x.AttemptId).IsUnique().HasDatabaseName(StudentTestingDatabaseNames.XpSettlementAttempt);
+        b.HasIndex(x => x.LedgerEntryId).IsUnique().HasDatabaseName(StudentTestingDatabaseNames.XpSettlementLedger);
+        b.HasOne<XpLedgerEntry>().WithOne().HasForeignKey<TestXpSettlement>(x => x.LedgerEntryId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
 

@@ -2,6 +2,7 @@ using System.Data;
 using System.Security.Claims;
 using System.Text.Json;
 using Adeeb.Application.Abstractions.Localization;
+using Adeeb.Application.Abstractions.Progression;
 using Adeeb.Application.Abstractions.Testing;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.QuestionBank.Application.Assessment;
@@ -9,6 +10,7 @@ using Adeeb.Modules.QuestionBank.Contracts;
 using Adeeb.Modules.QuestionBank.Domain;
 using Adeeb.Modules.QuestionBank.Infrastructure.Persistence;
 using Adeeb.SharedKernel.Results;
+using Adeeb.SharedKernel.Progression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
@@ -28,6 +30,7 @@ public sealed class StudentTestingService(
     IOptions<StudentTestingOptions> options,
     ITestingRandomizer randomizer,
     ITestXpPolicy xpPolicy,
+    IStudentXpService studentXpService,
     ILogger<StudentTestingService> logger)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -98,7 +101,7 @@ public sealed class StudentTestingService(
     public async Task<Result<TestResultDto>> SubmitAsync(Guid userId, Guid attemptId, SubmitAttemptRequest request, CancellationToken ct)
     {
         await using var transaction = await BeginTransactionAsync(ct);
-        await StudentTestingConcurrency.AcquireUserLockAsync(db, userId, ct);
+        await TestAttemptFinalizationConcurrency.AcquireAttemptLockAsync(db, attemptId, ct);
         var attempt = await db.TestAttempts.Include(x => x.Questions).Include(x => x.Answers)
             .SingleOrDefaultAsync(x => x.Id == attemptId && x.UserId == userId, ct);
         if (attempt is null) return Result<TestResultDto>.Failure(StudentTestingErrors.AttemptNotFound);
@@ -163,20 +166,30 @@ public sealed class StudentTestingService(
             userId, attemptId, attempt.Mode, correct, xp.EasyCorrectCount, xp.MediumCorrectCount,
             xp.HardCorrectCount, xp.TotalXpUnits);
 
-        var reward = new TestXpReward(Guid.NewGuid(), userId, attempt.Id, attempt.Mode,
+        var grant = await studentXpService.GrantAsync(new(
+            userId,
+            XpSourceType.TestAttempt,
+            TestXpSourceIdentity.SourceId(attempt.Id),
+            xp.TotalXpUnits,
+            TestXpSourceIdentity.IdempotencyKey(attempt.Id),
+            xp.TotalXpUnits > 0 ? XpEntryType.Credit : XpEntryType.Settlement,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["attemptId"] = attempt.Id.ToString("N"),
+                ["testMode"] = attempt.Mode.ToString()
+            }), ct);
+        if (grant.IsFailure || grant.Value!.WasAlreadyProcessed)
+        {
+            logger.LogWarning(
+                "Test XP grant rejected. UserId={UserId} AttemptId={AttemptId} TestMode={TestMode} ErrorCode={ErrorCode} WasAlreadyProcessed={WasAlreadyProcessed}",
+                userId, attemptId, attempt.Mode, grant.Error?.Code, grant.Value?.WasAlreadyProcessed);
+            return Result<TestResultDto>.Failure(StudentTestingErrors.RewardConflict);
+        }
+
+        var settlement = new TestXpSettlement(Guid.NewGuid(), attempt.Id, grant.Value.LedgerEntryId,
             xp.EasyCorrectCount, xp.MediumCorrectCount, xp.HardCorrectCount,
             xp.AnswerXpUnits, xp.CompletionBonusXpUnits, xp.TotalXpUnits, clock.UtcNow);
-        db.TestXpRewards.Add(reward);
-        if (xp.TotalXpUnits > 0)
-        {
-            var balance = await db.StudentTestXpBalances.SingleOrDefaultAsync(x => x.UserId == userId, ct);
-            if (balance is null)
-            {
-                balance = new StudentTestXpBalance(userId, clock.UtcNow);
-                db.StudentTestXpBalances.Add(balance);
-            }
-            balance.Credit(xp.TotalXpUnits, clock.UtcNow);
-        }
+        db.TestXpSettlements.Add(settlement);
 
         attempt.Complete(correct, wrong, correct, percentage, clock.UtcNow, automatic);
         db.TestAttemptResults.Add(new(Guid.NewGuid(), attempt.Id, JsonSerializer.Serialize(breakdown, Json),
@@ -184,13 +197,6 @@ public sealed class StudentTestingService(
         try
         {
             await db.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException exception) when (StudentTestingDatabaseNames.IsXpRewardViolation(exception))
-        {
-            logger.LogWarning(exception,
-                "Duplicate test XP reward prevented. UserId={UserId} AttemptId={AttemptId} TestMode={TestMode}",
-                userId, attemptId, attempt.Mode);
-            return Result<TestResultDto>.Failure(StudentTestingErrors.RewardConflict);
         }
         catch (Exception exception)
         {
@@ -202,19 +208,19 @@ public sealed class StudentTestingService(
         if (transaction is not null) await transaction.CommitAsync(ct);
         logger.LogInformation(
             "Test XP reward committed. UserId={UserId} AttemptId={AttemptId} TestMode={TestMode} RewardId={RewardId} TotalXpUnits={TotalXpUnits}",
-            userId, attemptId, attempt.Mode, reward.Id, reward.TotalXpUnits);
-        return Result<TestResultDto>.Success(ToResultDto(attempt, breakdown, storedResults, reward));
+            userId, attemptId, attempt.Mode, settlement.LedgerEntryId, settlement.TotalXpUnits);
+        return Result<TestResultDto>.Success(ToResultDto(attempt, breakdown, storedResults, settlement));
     }
 
     public async Task<Result<TestResultDto>> GetResultAsync(Guid userId, Guid attemptId, CancellationToken ct)
     {
-        var attempt = await db.TestAttempts.AsNoTracking().Include(x => x.Result).Include(x => x.XpReward)
+        var attempt = await db.TestAttempts.AsNoTracking().Include(x => x.Result).Include(x => x.XpSettlement)
             .SingleOrDefaultAsync(x => x.Id == attemptId && x.UserId == userId, ct);
         if (attempt?.Result is null || attempt.Status == TestAttemptStatus.InProgress)
             return Result<TestResultDto>.Failure(StudentTestingErrors.AttemptNotFound);
         var breakdown = JsonSerializer.Deserialize<List<TopicBreakdownDto>>(attempt.Result.TopicBreakdownJson, Json) ?? [];
         var answers = JsonSerializer.Deserialize<List<StoredAnswerResult>>(attempt.Result.ResultSnapshotJson, Json) ?? [];
-        return Result<TestResultDto>.Success(ToResultDto(attempt, breakdown, answers, attempt.XpReward));
+        return Result<TestResultDto>.Success(ToResultDto(attempt, breakdown, answers, attempt.XpSettlement));
     }
 
     public async Task<Result<TestingPageDto<TestHistoryItemDto>>> HistoryAsync(Guid userId, TestHistoryQuery filter, CancellationToken ct)
@@ -312,7 +318,7 @@ public sealed class StudentTestingService(
     }
 
     private static TestResultDto ToResultDto(TestAttempt attempt, IReadOnlyList<TopicBreakdownDto> breakdown,
-        IReadOnlyList<StoredAnswerResult> answers, TestXpReward? reward)
+        IReadOnlyList<StoredAnswerResult> answers, TestXpSettlement? settlement)
     {
         var subjects = answers.GroupBy(x => x.SubjectId).Select(group => new SubjectBreakdownDto(
             group.Key, group.Count(), group.Count(x => x.IsCorrect), group.Count(x => !x.IsCorrect),
@@ -326,9 +332,9 @@ public sealed class StudentTestingService(
             weakTopics, answers.Select(x => new TestAnswerResultDto(x.QuestionId, x.SubjectId, x.IsAnswered,
                 x.IsCorrect, x.Content, x.UserAnswer, x.CorrectAnswer, x.Explanation, x.TopicId, x.Difficulty,
                 x.CorrectPairsCount, x.TotalPairsCount)).ToList(),
-            reward?.EasyCorrectCount ?? 0, reward?.MediumCorrectCount ?? 0, reward?.HardCorrectCount ?? 0,
-            ToXp(reward?.AnswerXpUnits ?? 0), ToXp(reward?.CompletionBonusXpUnits ?? 0),
-            ToXp(reward?.TotalXpUnits ?? 0), reward is { TotalXpUnits: > 0 });
+            settlement?.EasyCorrectCount ?? 0, settlement?.MediumCorrectCount ?? 0, settlement?.HardCorrectCount ?? 0,
+            ToXp(settlement?.AnswerXpUnits ?? 0), ToXp(settlement?.CompletionBonusXpUnits ?? 0),
+            ToXp(settlement?.TotalXpUnits ?? 0), settlement is { TotalXpUnits: > 0 });
     }
 
     private static decimal ToXp(int units) => units / (decimal)TestXpRewardOptions.UnitsPerXp;

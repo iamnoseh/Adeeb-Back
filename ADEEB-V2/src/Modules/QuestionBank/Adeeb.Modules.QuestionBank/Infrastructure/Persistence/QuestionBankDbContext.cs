@@ -1,4 +1,5 @@
 using Adeeb.Modules.QuestionBank.Domain;
+using Adeeb.SharedKernel.Progression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -11,8 +12,9 @@ public sealed class QuestionBankDbContext(DbContextOptions<QuestionBankDbContext
     public DbSet<TestAttemptQuestion> TestAttemptQuestions => Set<TestAttemptQuestion>();
     public DbSet<TestAttemptAnswer> TestAttemptAnswers => Set<TestAttemptAnswer>();
     public DbSet<TestAttemptResult> TestAttemptResults => Set<TestAttemptResult>();
-    public DbSet<TestXpReward> TestXpRewards => Set<TestXpReward>();
-    public DbSet<StudentTestXpBalance> StudentTestXpBalances => Set<StudentTestXpBalance>();
+    public DbSet<XpLedgerEntry> XpLedgerEntries => Set<XpLedgerEntry>();
+    public DbSet<StudentXpBalance> StudentXpBalances => Set<StudentXpBalance>();
+    public DbSet<TestXpSettlement> TestXpSettlements => Set<TestXpSettlement>();
     public DbSet<StudentRedListItem> StudentRedListItems => Set<StudentRedListItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -26,8 +28,9 @@ public sealed class QuestionBankDbContext(DbContextOptions<QuestionBankDbContext
         modelBuilder.ApplyConfiguration(new TestAttemptQuestionConfiguration());
         modelBuilder.ApplyConfiguration(new TestAttemptAnswerConfiguration());
         modelBuilder.ApplyConfiguration(new TestAttemptResultConfiguration());
-        modelBuilder.ApplyConfiguration(new TestXpRewardConfiguration());
-        modelBuilder.ApplyConfiguration(new StudentTestXpBalanceConfiguration());
+        modelBuilder.ApplyConfiguration(new XpLedgerEntryConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentXpBalanceConfiguration());
+        modelBuilder.ApplyConfiguration(new TestXpSettlementConfiguration());
         modelBuilder.ApplyConfiguration(new StudentRedListItemConfiguration());
     }
 }
