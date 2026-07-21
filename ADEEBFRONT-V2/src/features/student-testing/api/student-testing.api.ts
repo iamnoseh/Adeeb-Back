@@ -2,6 +2,8 @@ import { httpClient } from '@/shared/api/http-client'
 import { getStoredUiLanguage } from '@/shared/i18n/language'
 import type {
   RedListItemDto,
+  CheckTestAnswerRequest,
+  CheckedTestAnswerDto,
   RedListQuery,
   RedListSummaryDto,
   StartMmtPracticeRequest,
@@ -59,6 +61,9 @@ export const studentTestingApi = {
   },
   async submitAttempt(attemptId: string, input: SubmitAttemptRequest) {
     return (await httpClient.post<TestResultDto>(`${testsBase}/attempts/${attemptId}/submit`, input)).data
+  },
+  async checkAnswer(attemptId: string, questionId: string, input: CheckTestAnswerRequest) {
+    return (await httpClient.post<CheckedTestAnswerDto>(`${testsBase}/attempts/${attemptId}/questions/${questionId}/check`, input)).data
   },
   async getAttemptResult(attemptId: string) {
     return (await httpClient.get<TestResultDto>(`${testsBase}/attempts/${attemptId}/result`)).data

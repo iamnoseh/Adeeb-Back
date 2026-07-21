@@ -8,6 +8,7 @@ using Adeeb.Modules.QuestionBank.Contracts;
 using Adeeb.Modules.QuestionBank.Domain;
 using Adeeb.Modules.QuestionBank.Infrastructure.Persistence;
 using Adeeb.SharedKernel.Results;
+using Adeeb.SharedKernel.Progression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -313,6 +314,148 @@ public sealed class StudentTestingLifecycleTests
         Assert.True(result.Value!.Count(x => selectedQuestions.Take(4).Select(q => q.Id).Contains(x.Id)) >= 3);
     }
 
+    [Fact]
+    public async Task Attempt_snapshots_red_list_progress_for_presented_questions()
+    {
+        await using var db = CreateDb();
+        var clock = new MutableClock(new DateTimeOffset(2026, 7, 21, 8, 0, 0, TimeSpan.Zero));
+        var userId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var questions = Enumerable.Range(0, 15)
+            .Select(_ => CreateActiveQuestion(QuestionType.SingleChoice, subjectId)).ToList();
+        var redQuestion = questions[0];
+        var redItem = new StudentRedListItem(Guid.NewGuid(), userId, redQuestion.Id, subjectId,
+            redQuestion.TopicId, redQuestion.Type, clock.UtcNow);
+        redItem.RecordCorrect(clock.UtcNow);
+        db.Questions.AddRange(questions);
+        db.StudentRedListItems.Add(redItem);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, clock);
+
+        var started = await service.StartSubjectAsync(userId, new(subjectId, 15, true),
+            SupportedLanguage.Tajik, default);
+
+        Assert.True(started.IsSuccess);
+        var progress = started.Value!.Questions.Single(x => x.Id == redQuestion.Id).RedListProgress;
+        Assert.NotNull(progress);
+        Assert.Equal(1, progress.CorrectStreak);
+        Assert.Equal(StudentRedListItem.RequiredCorrectStreak, progress.RequiredCorrectStreak);
+        Assert.Equal(2, progress.CorrectAnswersRemaining);
+        Assert.All(started.Value.Questions.Where(x => x.Id != redQuestion.Id),
+            question => Assert.Null(question.RedListProgress));
+
+        redItem.RecordCorrect(clock.UtcNow);
+        redItem.RecordCorrect(clock.UtcNow);
+        await db.SaveChangesAsync();
+        var reread = await service.GetAttemptAsync(userId, started.Value.Id, default);
+
+        Assert.Equal(1, reread.Value!.Questions.Single(x => x.Id == redQuestion.Id)
+            .RedListProgress!.CorrectStreak);
+    }
+
+    [Fact]
+    public async Task Immediate_check_is_idempotent_and_awards_one_time_red_list_mastery_xp()
+    {
+        await using var db = CreateDb();
+        var clock = new MutableClock(new DateTimeOffset(2026, 7, 21, 8, 0, 0, TimeSpan.Zero));
+        var userId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var questions = Enumerable.Range(0, 15)
+            .Select(_ => CreateActiveQuestion(QuestionType.SingleChoice, subjectId)).ToList();
+        var redQuestion = questions[0];
+        var redItem = new StudentRedListItem(Guid.NewGuid(), userId, redQuestion.Id, subjectId,
+            redQuestion.TopicId, redQuestion.Type, clock.UtcNow);
+        redItem.RecordCorrect(clock.UtcNow);
+        redItem.RecordCorrect(clock.UtcNow);
+        db.Questions.AddRange(questions);
+        db.StudentRedListItems.Add(redItem);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, clock);
+        var started = await service.StartSubjectAsync(userId, new(subjectId, 15, true),
+            SupportedLanguage.Tajik, default);
+        var correctOptionId = redQuestion.AnswerOptions.Single(x => x.IsCorrect).Id;
+
+        var first = await service.CheckAnswerAsync(userId, started.Value!.Id, redQuestion.Id,
+            new(correctOptionId), default);
+        var duplicate = await service.CheckAnswerAsync(userId, started.Value.Id, redQuestion.Id,
+            new(correctOptionId), default);
+
+        Assert.True(first.IsSuccess);
+        Assert.True(first.Value!.IsCorrect);
+        Assert.Equal((int)RedListService.AnswerAction.Mastered, first.Value.RedList!.Action);
+        Assert.True(first.Value.RedList.MasteryBonusAwarded);
+        Assert.Equal(1m, first.Value.RedList.MasteryBonusXp);
+        Assert.Equal(1m, first.Value.RedList.TotalXp);
+        Assert.Equal(first.Value, duplicate.Value);
+        Assert.Equal(1, await db.TestAttemptAnswers.CountAsync());
+        Assert.Equal(1, await db.XpLedgerEntries.CountAsync(x => x.SourceType == XpSourceType.RedListActivity));
+        Assert.Equal(2, (await db.StudentXpBalances.SingleAsync()).TotalXpUnits);
+        Assert.Equal(RedListStatus.Mastered,
+            (await db.StudentRedListItems.SingleAsync(x => x.QuestionId == redQuestion.Id)).Status);
+
+        var completed = await service.SubmitAsync(userId, started.Value.Id, new([]), default);
+        var masteredAfterCompletion = await db.StudentRedListItems.SingleAsync(x => x.QuestionId == redQuestion.Id);
+        Assert.True(completed.IsSuccess);
+        Assert.Equal(StudentRedListItem.RequiredCorrectStreak, masteredAfterCompletion.CorrectStreak);
+        Assert.Equal(RedListStatus.Mastered, masteredAfterCompletion.Status);
+
+        var resumed = await service.GetAttemptAsync(userId, started.Value.Id, default);
+        Assert.True(resumed.Value!.Questions.Single(x => x.Id == redQuestion.Id).CheckedAnswer!.IsCorrect);
+    }
+
+    [Fact]
+    public async Task Final_submit_awards_red_list_mastery_xp_when_answer_was_not_checked_first()
+    {
+        await using var db = CreateDb();
+        var clock = new MutableClock(new DateTimeOffset(2026, 7, 21, 8, 0, 0, TimeSpan.Zero));
+        var userId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
+        var questions = Enumerable.Range(0, 15)
+            .Select(_ => CreateActiveQuestion(QuestionType.SingleChoice, subjectId)).ToList();
+        var redQuestion = questions[0];
+        var redItem = new StudentRedListItem(Guid.NewGuid(), userId, redQuestion.Id, subjectId,
+            redQuestion.TopicId, redQuestion.Type, clock.UtcNow);
+        redItem.RecordCorrect(clock.UtcNow);
+        redItem.RecordCorrect(clock.UtcNow);
+        db.Questions.AddRange(questions);
+        db.StudentRedListItems.Add(redItem);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, clock);
+        var started = await service.StartSubjectAsync(userId, new(subjectId, 15, true),
+            SupportedLanguage.Tajik, default);
+        var answer = new SubmitAnswerDto(redQuestion.Id,
+            redQuestion.AnswerOptions.Single(x => x.IsCorrect).Id, null, null);
+
+        var completed = await service.SubmitAsync(userId, started.Value!.Id, new([answer]), default);
+
+        Assert.True(completed.IsSuccess);
+        Assert.Equal(RedListStatus.Mastered,
+            (await db.StudentRedListItems.SingleAsync(x => x.QuestionId == redQuestion.Id)).Status);
+        Assert.Equal(1, await db.XpLedgerEntries.CountAsync(x => x.SourceType == XpSourceType.RedListActivity));
+        Assert.Equal((long)(completed.Value!.TotalXp * TestXpRewardOptions.UnitsPerXp) + 2,
+            (await db.StudentXpBalances.SingleAsync()).TotalXpUnits);
+    }
+
+    [Theory]
+    [InlineData(TestMode.MmtPractice)]
+    [InlineData(TestMode.MonthlyExam)]
+    public async Task Immediate_check_is_rejected_for_concealed_result_modes(TestMode mode)
+    {
+        await using var db = CreateDb();
+        var clock = new MutableClock(new DateTimeOffset(2026, 7, 21, 8, 0, 0, TimeSpan.Zero));
+        var userId = Guid.NewGuid();
+        var attempt = new TestAttempt(Guid.NewGuid(), userId, mode, null, Guid.NewGuid(),
+            mode == TestMode.MonthlyExam ? "2026-07-2" : null, 1, clock.UtcNow, clock.UtcNow.AddHours(1));
+        db.TestAttempts.Add(attempt);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, clock);
+
+        var result = await service.CheckAnswerAsync(userId, attempt.Id, Guid.NewGuid(), new(), default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(StudentTestingErrors.ImmediateCheckNotAllowed.Code, result.Error!.Code);
+    }
+
     private static StudentTestingService CreateService(
         QuestionBankDbContext db,
         MutableClock clock,
@@ -330,6 +473,7 @@ public sealed class StudentTestingLifecycleTests
             Options.Create(new StudentTestingOptions()),
             randomizer ?? new StableRandomizer(),
             new TestXpPolicy(Options.Create(new TestXpRewardOptions())),
+            Options.Create(new TestXpRewardOptions()),
             new StudentXpService(db, clock, NullLogger<StudentXpService>.Instance),
             NullLogger<StudentTestingService>.Instance);
 

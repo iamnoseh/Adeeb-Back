@@ -10,22 +10,68 @@ namespace Adeeb.Modules.QuestionBank.Application;
 
 public sealed class RedListService(QuestionBankDbContext db, IDateTimeProvider clock)
 {
+    public enum AnswerAction { None = 0, Added = 1, Progressed = 2, Reset = 3, Mastered = 4 }
+    public sealed record AnswerOutcome(Guid QuestionId, Guid? ItemId, AnswerAction Action, int CorrectStreak,
+        int RequiredCorrectStreak, int CorrectAnswersRemaining);
     public sealed record AnswerUpdate(Guid QuestionId, Guid SubjectId, Guid? TopicId,
         QuestionType Type, bool IsCorrect);
 
-    public async Task ApplyAnswersAsync(Guid userId, IReadOnlyCollection<AnswerUpdate> answers, CancellationToken ct)
+    public async Task<AnswerOutcome> ApplyAnswerAsync(Guid userId, AnswerUpdate answer, CancellationToken ct)
+    {
+        if (answer.Type == QuestionType.Matching)
+            return new(answer.QuestionId, null, AnswerAction.None, 0, StudentRedListItem.RequiredCorrectStreak,
+                StudentRedListItem.RequiredCorrectStreak);
+
+        await RedListConcurrency.AcquireAsync(db, userId, answer.QuestionId, ct);
+        var item = await db.StudentRedListItems.SingleOrDefaultAsync(
+            x => x.UserId == userId && x.QuestionId == answer.QuestionId, ct);
+        var wasActive = item?.Status == RedListStatus.Active;
+        AnswerAction action;
+
+        if (!answer.IsCorrect)
+        {
+            if (item is null)
+            {
+                item = new StudentRedListItem(Guid.NewGuid(), userId, answer.QuestionId, answer.SubjectId,
+                    answer.TopicId, answer.Type, clock.UtcNow);
+                db.StudentRedListItems.Add(item);
+            }
+            else item.RecordWrong(clock.UtcNow);
+            action = wasActive ? AnswerAction.Reset : AnswerAction.Added;
+        }
+        else if (item is not null && item.Status == RedListStatus.Active)
+        {
+            item.RecordCorrect(clock.UtcNow);
+            action = item.Status == RedListStatus.Mastered ? AnswerAction.Mastered : AnswerAction.Progressed;
+        }
+        else
+        {
+            return new(answer.QuestionId, item?.Id, AnswerAction.None, item?.CorrectStreak ?? 0,
+                StudentRedListItem.RequiredCorrectStreak,
+                Math.Max(0, StudentRedListItem.RequiredCorrectStreak - (item?.CorrectStreak ?? 0)));
+        }
+
+        return new(answer.QuestionId, item.Id, action, item.CorrectStreak, StudentRedListItem.RequiredCorrectStreak,
+            Math.Max(0, StudentRedListItem.RequiredCorrectStreak - item.CorrectStreak));
+    }
+
+    public async Task<IReadOnlyList<AnswerOutcome>> ApplyAnswersAsync(Guid userId,
+        IReadOnlyCollection<AnswerUpdate> answers, CancellationToken ct)
     {
         var eligible = answers.Where(x => x.Type != QuestionType.Matching).ToList();
-        if (eligible.Count == 0) return;
+        if (eligible.Count == 0) return [];
 
         var questionIds = eligible.Select(x => x.QuestionId).Distinct().ToArray();
         var existing = await db.StudentRedListItems
             .Where(x => x.UserId == userId && questionIds.Contains(x.QuestionId))
             .ToDictionaryAsync(x => x.QuestionId, ct);
 
+        var outcomes = new List<AnswerOutcome>(eligible.Count);
         foreach (var answer in eligible)
         {
             existing.TryGetValue(answer.QuestionId, out var item);
+            var wasActive = item?.Status == RedListStatus.Active;
+            AnswerAction action;
             if (!answer.IsCorrect)
             {
                 if (item is null)
@@ -36,12 +82,18 @@ public sealed class RedListService(QuestionBankDbContext db, IDateTimeProvider c
                     existing.Add(answer.QuestionId, item);
                 }
                 else item.RecordWrong(clock.UtcNow);
+                action = wasActive ? AnswerAction.Reset : AnswerAction.Added;
             }
-            else if (item is not null && item.Status != RedListStatus.Archived)
+            else if (item is not null && item.Status == RedListStatus.Active)
             {
                 item.RecordCorrect(clock.UtcNow);
+                action = item.Status == RedListStatus.Mastered ? AnswerAction.Mastered : AnswerAction.Progressed;
             }
+            else continue;
+            outcomes.Add(new(answer.QuestionId, item.Id, action, item.CorrectStreak, StudentRedListItem.RequiredCorrectStreak,
+                Math.Max(0, StudentRedListItem.RequiredCorrectStreak - item.CorrectStreak)));
         }
+        return outcomes;
     }
 
     public async Task<Result<TestingPageDto<RedListItemDto>>> GetAsync(Guid userId, RedListQuery filter,

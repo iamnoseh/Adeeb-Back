@@ -26,6 +26,8 @@ export const RedListStatus = {
   archived: 3,
 } as const
 
+export const RedListAnswerAction = { added: 1, progressed: 2, reset: 3, mastered: 4 } as const
+
 export type StudentTestingConfigDto = {
   subjectQuestionCounts: number[]
   redListMinimumQuestions: number
@@ -42,6 +44,34 @@ export type StartMmtPracticeRequest = { strictSimulation: boolean; questionCount
 export type StartRedListPracticeRequest = { questionCount?: number }
 
 export type TestAnswerOptionDto = { id: string; text: string }
+export type RedListQuestionProgressDto = {
+  correctStreak: number
+  requiredCorrectStreak: number
+  correctAnswersRemaining: number
+}
+export type RedListAnswerFeedbackDto = {
+  action: number
+  correctStreak: number
+  requiredCorrectStreak: number
+  correctAnswersRemaining: number
+  masteryBonusXp: number
+  masteryBonusAwarded: boolean
+  totalXp: number | null
+}
+export type CheckedTestAnswerDto = {
+  questionId: string
+  isCorrect: boolean
+  userAnswer: string | null
+  correctAnswer: string | null
+  correctOptionId: string | null
+  explanation: string | null
+  selectedOptionId: string | null
+  textResponse: string | null
+  matchingPairs: Record<string, string> | null
+  correctPairsCount: number | null
+  totalPairsCount: number | null
+  redList: RedListAnswerFeedbackDto | null
+}
 export type TestQuestionDto = {
   id: string
   order: number
@@ -53,6 +83,8 @@ export type TestQuestionDto = {
   imageUrl: string | null
   options: TestAnswerOptionDto[]
   matchingOptions: string[]
+  redListProgress: RedListQuestionProgressDto | null
+  checkedAnswer: CheckedTestAnswerDto | null
 }
 
 export type TestAttemptDto = {
@@ -75,6 +107,7 @@ export type SubmitAnswerDto = {
   matchingPairs?: Record<string, string>
 }
 export type SubmitAttemptRequest = { answers: SubmitAnswerDto[] }
+export type CheckTestAnswerRequest = Omit<SubmitAnswerDto, 'questionId'>
 
 export type TopicBreakdownDto = { topicId: string | null; total: number; correct: number; wrong: number }
 export type SubjectBreakdownDto = { subjectId: string; total: number; correct: number; wrong: number; percentage: number }

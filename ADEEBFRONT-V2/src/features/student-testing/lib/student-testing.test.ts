@@ -5,6 +5,8 @@ import type { TestQuestionDto } from '@/features/student-testing/model/student-t
 const question: TestQuestionDto = {
   id: 'question-1', order: 1, subjectId: 'subject-1', topicId: null, type: 2, difficulty: 1,
   content: 'Match', imageUrl: null, options: [{ id: 'left-1', text: 'A' }], matchingOptions: ['B'],
+  redListProgress: null,
+  checkedAnswer: null,
 }
 
 describe('student testing helpers', () => {

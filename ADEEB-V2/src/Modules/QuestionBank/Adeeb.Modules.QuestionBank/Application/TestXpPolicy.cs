@@ -13,6 +13,8 @@ public sealed class TestXpRewardOptions
     public int MediumCorrectXpUnits { get; set; } = 4;
     public int HardCorrectXpUnits { get; set; } = 5;
     public int CompletionBonusXpUnits { get; set; } = 10;
+    public int RedListPracticeRewardPercent { get; set; } = 50;
+    public int RedListMasteryBonusXpUnits { get; set; } = UnitsPerXp;
 }
 
 public sealed record TestXpQuestionOutcome(DifficultyLevel Difficulty, bool IsCorrect);
@@ -30,12 +32,14 @@ public sealed record TestXpCalculation(
 
 public interface ITestXpPolicy
 {
-    TestXpCalculation Calculate(IReadOnlyCollection<TestXpQuestionOutcome> outcomes, bool isCompleted);
+    TestXpCalculation Calculate(IReadOnlyCollection<TestXpQuestionOutcome> outcomes, bool isCompleted,
+        TestMode mode = TestMode.SubjectTest);
 }
 
 public sealed class TestXpPolicy(IOptions<TestXpRewardOptions> options) : ITestXpPolicy
 {
-    public TestXpCalculation Calculate(IReadOnlyCollection<TestXpQuestionOutcome> outcomes, bool isCompleted)
+    public TestXpCalculation Calculate(IReadOnlyCollection<TestXpQuestionOutcome> outcomes, bool isCompleted,
+        TestMode mode = TestMode.SubjectTest)
     {
         ArgumentNullException.ThrowIfNull(outcomes);
         if (!isCompleted) return TestXpCalculation.None;
@@ -64,14 +68,22 @@ public sealed class TestXpPolicy(IOptions<TestXpRewardOptions> options) : ITestX
                 checked(easy * value.EasyCorrectXpUnits)
                 + checked(medium * value.MediumCorrectXpUnits)
                 + checked(hard * value.HardCorrectXpUnits));
-            var totalUnits = checked(answerUnits + value.CompletionBonusXpUnits);
-            return new(easy, medium, hard, answerUnits, value.CompletionBonusXpUnits, totalUnits);
+            var completionUnits = value.CompletionBonusXpUnits;
+            if (mode == TestMode.RedListPractice)
+            {
+                answerUnits = Scale(answerUnits, value.RedListPracticeRewardPercent);
+                completionUnits = Scale(completionUnits, value.RedListPracticeRewardPercent);
+            }
+            var totalUnits = checked(answerUnits + completionUnits);
+            return new(easy, medium, hard, answerUnits, completionUnits, totalUnits);
         }
         catch (OverflowException exception)
         {
             throw new TestXpCalculationException("Test XP calculation overflowed.", exception);
         }
     }
+
+    private static int Scale(int units, int percent) => checked(units * percent / 100);
 }
 
 public sealed class TestXpCalculationException : Exception

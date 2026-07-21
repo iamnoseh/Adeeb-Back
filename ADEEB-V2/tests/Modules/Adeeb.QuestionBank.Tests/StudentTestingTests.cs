@@ -164,13 +164,17 @@ public sealed class StudentTestingTests
     {
         var questionProperties = typeof(TestQuestionDto).GetProperties().Select(x => x.Name).ToHashSet();
         var optionProperties = typeof(TestAnswerOptionDto).GetProperties().Select(x => x.Name).ToHashSet();
+        var redListProperties = typeof(RedListQuestionProgressDto).GetProperties().Select(x => x.Name).ToHashSet();
 
         Assert.DoesNotContain("IsCorrect", questionProperties);
         Assert.DoesNotContain("CorrectAnswer", questionProperties);
         Assert.DoesNotContain("MatchingRightOptions", questionProperties);
         Assert.Contains("MatchingOptions", questionProperties);
+        Assert.Contains("RedListProgress", questionProperties);
         Assert.DoesNotContain("IsCorrect", optionProperties);
         Assert.DoesNotContain("MatchPairText", optionProperties);
+        Assert.Equal(new[] { "CorrectAnswersRemaining", "CorrectStreak", "RequiredCorrectStreak" },
+            redListProperties.OrderBy(x => x));
     }
 
     private static QuestionBankDbContext CreateDb() => new(new DbContextOptionsBuilder<QuestionBankDbContext>()

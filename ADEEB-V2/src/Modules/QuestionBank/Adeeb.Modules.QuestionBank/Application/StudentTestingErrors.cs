@@ -12,6 +12,9 @@ public static class StudentTestingErrors
     public static readonly Error RewardCalculationFailed = Error.Conflict("test.attempt_reward_calculation_failed", "Testing.AttemptRewardCalculationFailed");
     public static readonly Error RewardConflict = Error.Conflict("test.attempt_reward_conflict", "Testing.AttemptRewardConflict");
     public static readonly Error InvalidMode = Error.Validation("test.invalid_mode", "Testing.InvalidMode");
+    public static readonly Error ImmediateCheckNotAllowed = Error.Validation("test.immediate_check_not_allowed", "Testing.ImmediateCheckNotAllowed");
+    public static readonly Error QuestionNotInAttempt = Error.NotFound("test.question_not_in_attempt", "Testing.QuestionNotInAttempt");
+    public static readonly Error AnswerRequired = Error.Validation("test.answer_required", "Testing.AnswerRequired");
     public static readonly Error InvalidQuestionCount = Error.Validation("test.invalid_question_count", "Testing.InvalidQuestionCount");
     public static readonly Error ProfileRequired = Error.Validation("mmt.profile_required", "Testing.MmtProfileRequired");
     public static readonly Error ChoicesRequired = Error.Validation("mmt.choices_required", "Testing.MmtChoicesRequired");
