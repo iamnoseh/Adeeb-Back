@@ -48,6 +48,7 @@ public sealed class StudentTestingLifecycleTests
         Assert.Single(await db.XpLedgerEntries.AsNoTracking().ToListAsync());
         Assert.Single(await db.TestXpSettlements.AsNoTracking().ToListAsync());
         Assert.Empty(await db.StudentXpBalances.AsNoTracking().ToListAsync());
+        Assert.Equal(0m, (await service.XpSummaryAsync(userId, default)).Value!.TotalXp);
     }
 
     [Fact]
@@ -86,6 +87,12 @@ public sealed class StudentTestingLifecycleTests
         Assert.Equal(44, (await db.XpLedgerEntries.AsNoTracking().SingleAsync()).AmountUnits);
         Assert.Equal(44, (await db.TestXpSettlements.AsNoTracking().SingleAsync()).TotalXpUnits);
         Assert.Equal(44, (await db.StudentXpBalances.AsNoTracking().SingleAsync()).TotalXpUnits);
+        var history = await service.HistoryAsync(userId, new(), default);
+        var summary = await service.XpSummaryAsync(userId, default);
+        Assert.Equal(22m, history.Value!.Items.Single().TotalXp);
+        Assert.True(history.Value.Items.Single().XpAwarded);
+        Assert.Equal(22m, summary.Value!.TotalXp);
+        Assert.NotNull(summary.Value.UpdatedAtUtc);
     }
 
     [Fact]

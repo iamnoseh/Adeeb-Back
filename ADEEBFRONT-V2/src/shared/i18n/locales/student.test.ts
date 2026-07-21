@@ -6,11 +6,17 @@ describe('student translations', () => {
     expect(keyPaths(studentRu)).toEqual(keyPaths(studentTg))
   })
 
-  it('does not introduce fake economy or progress labels', () => {
+  it('does not introduce unavailable economy labels', () => {
     const copy = JSON.stringify({ studentRu, studentTg }).toLowerCase()
     expect(copy).not.toContain('adeebcoin')
-    expect(copy).not.toContain(' xp')
     expect(copy).not.toContain('leaderboard')
+  })
+
+  it('provides localized labels for persisted test XP', () => {
+    expect(studentRu.testing.result.xpTitle).toContain('XP')
+    expect(studentTg.testing.result.xpTitle).toContain('XP')
+    expect(studentRu.xp.title).toContain('XP')
+    expect(studentTg.xp.title).toContain('XP')
   })
 })
 

@@ -228,9 +228,27 @@ public sealed class StudentTestingService(
         var page = Math.Max(1, filter.Page); var size = Math.Clamp(filter.PageSize, 1, 50);
         var query = db.TestAttempts.AsNoTracking().Where(x => x.UserId == userId);
         var total = await query.CountAsync(ct);
-        var rows = await query.OrderByDescending(x => x.StartedAtUtc).Skip((page - 1) * size).Take(size).ToListAsync(ct);
+        var rows = await query.OrderByDescending(x => x.StartedAtUtc).Skip((page - 1) * size).Take(size)
+            .Select(x => new
+            {
+                Attempt = x,
+                TotalXpUnits = x.XpSettlement == null ? 0 : x.XpSettlement.TotalXpUnits
+            }).ToListAsync(ct);
         return Result<TestingPageDto<TestHistoryItemDto>>.Success(new(rows.Select(x => new TestHistoryItemDto(
-            x.Id, (int)x.Mode, (int)x.Status, x.StartedAtUtc, x.SubmittedAtUtc, x.QuestionCount, x.CorrectCount, x.Percentage)).ToList(), page, size, total));
+            x.Attempt.Id, (int)x.Attempt.Mode, (int)x.Attempt.Status, x.Attempt.StartedAtUtc,
+            x.Attempt.SubmittedAtUtc, x.Attempt.QuestionCount, x.Attempt.CorrectCount, x.Attempt.Percentage,
+            ToXp(x.TotalXpUnits), x.TotalXpUnits > 0)).ToList(), page, size, total));
+    }
+
+    public async Task<Result<StudentXpSummaryDto>> XpSummaryAsync(Guid userId, CancellationToken ct)
+    {
+        var balance = await db.StudentXpBalances.AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .Select(x => new { x.TotalXpUnits, x.UpdatedAtUtc })
+            .SingleOrDefaultAsync(ct);
+        return Result<StudentXpSummaryDto>.Success(balance is null
+            ? new(0, null)
+            : new(ToXp(balance.TotalXpUnits), balance.UpdatedAtUtc));
     }
 
     private async Task<Result<TestAttemptDto>> StartAsync(Guid userId, TestMode mode, int count, Guid? subjectId,
@@ -337,7 +355,7 @@ public sealed class StudentTestingService(
             ToXp(settlement?.TotalXpUnits ?? 0), settlement is { TotalXpUnits: > 0 });
     }
 
-    private static decimal ToXp(int units) => units / (decimal)TestXpRewardOptions.UnitsPerXp;
+    private static decimal ToXp(long units) => units / (decimal)TestXpRewardOptions.UnitsPerXp;
 
     private static decimal Percentage(int correct, int total) => total == 0 ? 0 : decimal.Round(correct * 100m / total, 2);
 
