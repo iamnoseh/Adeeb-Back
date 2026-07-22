@@ -16,6 +16,13 @@ public sealed class MmtDbContext(DbContextOptions<MmtDbContext> options) : DbCon
     public DbSet<StudentAdmissionChoice> StudentAdmissionChoices => Set<StudentAdmissionChoice>();
     public DbSet<MmtExamEvaluation> ExamEvaluations => Set<MmtExamEvaluation>();
     public DbSet<MmtAdmissionChoiceSnapshot> AdmissionChoiceSnapshots => Set<MmtAdmissionChoiceSnapshot>();
+    public DbSet<MmtExamVersion> ExamVersions => Set<MmtExamVersion>();
+    public DbSet<MmtClusterExamBlueprint> ExamBlueprints => Set<MmtClusterExamBlueprint>();
+    public DbSet<MmtSubtestBlueprint> SubtestBlueprints => Set<MmtSubtestBlueprint>();
+    public DbSet<MmtSpecialtyRange> SpecialtyRanges => Set<MmtSpecialtyRange>();
+    public DbSet<MmtSpecialtyRangeSpecialty> SpecialtyRangeSpecialties => Set<MmtSpecialtyRangeSpecialty>();
+    public DbSet<MmtScoreScaleEntry> ScoreScaleEntries => Set<MmtScoreScaleEntry>();
+    public DbSet<MmtPassThreshold> PassThresholds => Set<MmtPassThreshold>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +37,13 @@ public sealed class MmtDbContext(DbContextOptions<MmtDbContext> options) : DbCon
         modelBuilder.ApplyConfiguration(new StudentAdmissionChoiceConfiguration());
         modelBuilder.ApplyConfiguration(new MmtExamEvaluationConfiguration());
         modelBuilder.ApplyConfiguration(new MmtAdmissionChoiceSnapshotConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtExamVersionConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtClusterExamBlueprintConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtSubtestBlueprintConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtSpecialtyRangeConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtSpecialtyRangeSpecialtyConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtScoreScaleEntryConfiguration());
+        modelBuilder.ApplyConfiguration(new MmtPassThresholdConfiguration());
     }
 }
 

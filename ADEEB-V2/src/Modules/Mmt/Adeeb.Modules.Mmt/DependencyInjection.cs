@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<AdmissionProgramService>();
         services.AddScoped<MmtSimulatorService>();
         services.AddScoped<MmtDashboardService>();
+        services.AddScoped<MmtExamConfigurationService>();
         services.AddScoped<IStudentMmtTestingContext, StudentMmtTestingContextProvider>();
         services.AddScoped<MmtImportService>();
         services.AddSingleton<MmtSpreadsheet>();

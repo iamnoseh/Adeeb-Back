@@ -12,6 +12,7 @@ internal static class StudentTestingDatabaseNames
     public const string AttemptQuestionOrder = "ux_question_bank_attempt_question_order";
     public const string AttemptQuestionIdentity = "ux_question_bank_attempt_question_identity";
     public const string AttemptAnswerQuestion = "ux_question_bank_attempt_answer_question";
+    public const string AttemptDraftQuestion = "ux_question_bank_attempt_draft_question";
     public const string AttemptResult = "ux_question_bank_attempt_result";
     public const string MonthlyWindow = "ux_question_bank_monthly_window";
     public const string XpLedgerIdempotency = "ux_question_bank_xp_ledger_idempotency";
@@ -55,6 +56,7 @@ internal sealed class TestAttemptConfiguration : IEntityTypeConfiguration<TestAt
         b.Property(x => x.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(32);
         b.Property(x => x.SubjectId).HasColumnName("subject_id"); b.Property(x => x.ClusterId).HasColumnName("cluster_id");
         b.Property(x => x.MonthlyWindowKey).HasColumnName("monthly_window_key").HasMaxLength(10);
+        b.Property(x => x.ModeSnapshotJson).HasColumnName("mode_snapshot_json").HasColumnType("jsonb");
         b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc"); b.Property(x => x.StartedAtUtc).HasColumnName("started_at_utc");
         b.Property(x => x.ExpiresAtUtc).HasColumnName("expires_at_utc"); b.Property(x => x.SubmittedAtUtc).HasColumnName("submitted_at_utc");
         b.Property(x => x.QuestionCount).HasColumnName("question_count"); b.Property(x => x.CorrectCount).HasColumnName("correct_count");
@@ -65,8 +67,10 @@ internal sealed class TestAttemptConfiguration : IEntityTypeConfiguration<TestAt
             .HasFilter("monthly_window_key IS NOT NULL");
         b.Navigation(x => x.Questions).UsePropertyAccessMode(PropertyAccessMode.Field);
         b.Navigation(x => x.Answers).UsePropertyAccessMode(PropertyAccessMode.Field);
+        b.Navigation(x => x.DraftAnswers).UsePropertyAccessMode(PropertyAccessMode.Field);
         b.HasMany(x => x.Questions).WithOne(x => x.TestAttempt).HasForeignKey(x => x.TestAttemptId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Answers).WithOne().HasForeignKey(x => x.TestAttemptId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.DraftAnswers).WithOne().HasForeignKey(x => x.TestAttemptId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(x => x.Result).WithOne().HasForeignKey<TestAttemptResult>(x => x.TestAttemptId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne(x => x.XpSettlement).WithOne().HasForeignKey<TestXpSettlement>(x => x.AttemptId).OnDelete(DeleteBehavior.Restrict);
     }
@@ -181,8 +185,25 @@ internal sealed class TestAttemptResultConfiguration : IEntityTypeConfiguration<
         b.Property(x => x.Id).HasColumnName("id"); b.Property(x => x.TestAttemptId).HasColumnName("test_attempt_id");
         b.Property(x => x.TopicBreakdownJson).HasColumnName("topic_breakdown_json").HasColumnType("jsonb");
         b.Property(x => x.ResultSnapshotJson).HasColumnName("result_snapshot_json").HasColumnType("jsonb");
+        b.Property(x => x.OfficialScoreSnapshotJson).HasColumnName("official_score_snapshot_json").HasColumnType("jsonb");
         b.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
         b.HasIndex(x => x.TestAttemptId).IsUnique().HasDatabaseName(StudentTestingDatabaseNames.AttemptResult);
+    }
+}
+
+internal sealed class TestAttemptDraftAnswerConfiguration : IEntityTypeConfiguration<TestAttemptDraftAnswer>
+{
+    public void Configure(EntityTypeBuilder<TestAttemptDraftAnswer> b)
+    {
+        b.ToTable("test_attempt_draft_answers"); b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id"); b.Property(x => x.TestAttemptId).HasColumnName("test_attempt_id");
+        b.Property(x => x.TestAttemptQuestionId).HasColumnName("test_attempt_question_id");
+        b.Property(x => x.QuestionId).HasColumnName("question_id");
+        b.Property(x => x.AnswerSnapshotJson).HasColumnName("answer_snapshot_json").HasColumnType("jsonb");
+        b.Property(x => x.IsMarkedForReview).HasColumnName("is_marked_for_review");
+        b.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
+        b.HasIndex(x => x.TestAttemptQuestionId).IsUnique().HasDatabaseName(StudentTestingDatabaseNames.AttemptDraftQuestion);
+        b.HasOne<TestAttemptQuestion>().WithMany().HasForeignKey(x => x.TestAttemptQuestionId).OnDelete(DeleteBehavior.Cascade);
     }
 }
 

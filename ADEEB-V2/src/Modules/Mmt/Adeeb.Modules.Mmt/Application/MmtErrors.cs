@@ -35,4 +35,9 @@ public static class MmtErrors
     public static readonly Error ProfileConflict = Error.Conflict("mmt.profile_conflict", "MMT.ProfileConflict");
     public static readonly Error ClusterLocked = Error.Conflict("mmt.cluster_locked", "MMT.ClusterLocked");
     public static readonly Error ChoiceUpdateConflict = Error.Conflict("mmt.choice_update_conflict", "MMT.ChoiceUpdateConflict");
+    public static readonly Error ExamVersionNotFound = Error.NotFound("mmt.exam_version_not_found", "MMT.ExamVersionNotFound");
+    public static readonly Error ExamVersionDuplicate = Error.Conflict("mmt.exam_version_exists", "MMT.ExamVersionExists");
+    public static readonly Error ExamVersionImmutable = Error.Conflict("mmt.exam_version_immutable", "MMT.ExamVersionImmutable");
+    public static readonly Error ExamConfigurationInvalid = Error.Validation("mmt.exam_configuration_invalid", "MMT.ExamConfigurationInvalid");
+    public static readonly Error ExamVersionNotReady = Error.Conflict("mmt.exam_version_not_ready", "MMT.ExamVersionNotReady");
 }

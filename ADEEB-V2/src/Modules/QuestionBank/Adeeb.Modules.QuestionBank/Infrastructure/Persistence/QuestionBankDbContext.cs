@@ -11,6 +11,7 @@ public sealed class QuestionBankDbContext(DbContextOptions<QuestionBankDbContext
     public DbSet<TestAttempt> TestAttempts => Set<TestAttempt>();
     public DbSet<TestAttemptQuestion> TestAttemptQuestions => Set<TestAttemptQuestion>();
     public DbSet<TestAttemptAnswer> TestAttemptAnswers => Set<TestAttemptAnswer>();
+    public DbSet<TestAttemptDraftAnswer> TestAttemptDraftAnswers => Set<TestAttemptDraftAnswer>();
     public DbSet<TestAttemptResult> TestAttemptResults => Set<TestAttemptResult>();
     public DbSet<XpLedgerEntry> XpLedgerEntries => Set<XpLedgerEntry>();
     public DbSet<StudentXpBalance> StudentXpBalances => Set<StudentXpBalance>();
@@ -28,6 +29,7 @@ public sealed class QuestionBankDbContext(DbContextOptions<QuestionBankDbContext
         modelBuilder.ApplyConfiguration(new TestAttemptConfiguration());
         modelBuilder.ApplyConfiguration(new TestAttemptQuestionConfiguration());
         modelBuilder.ApplyConfiguration(new TestAttemptAnswerConfiguration());
+        modelBuilder.ApplyConfiguration(new TestAttemptDraftAnswerConfiguration());
         modelBuilder.ApplyConfiguration(new TestAttemptResultConfiguration());
         modelBuilder.ApplyConfiguration(new XpLedgerEntryConfiguration());
         modelBuilder.ApplyConfiguration(new StudentXpBalanceConfiguration());

@@ -15,7 +15,7 @@ public static class MmtEndpoints
     public static IEndpointRouteBuilder MapMmtEndpoints(this IEndpointRouteBuilder app)
     {
         var admin = app.MapGroup("/api/v2/admin/mmt").WithTags("MMT Data Management").RequireAuthorization(Permissions.Mmt.Manage);
-        MapClusters(admin); MapUniversities(admin); MapSpecialties(admin); MapPrograms(admin); MapImport(admin); MapSimulatorAdmin(admin);
+        MapClusters(admin); MapUniversities(admin); MapSpecialties(admin); MapPrograms(admin); MapImport(admin); MapSimulatorAdmin(admin); MapExamConfiguration(admin);
         admin.MapGet("/dashboard", async (MmtDashboardService service, CancellationToken ct) =>
             Results.Ok(await service.GetAsync(ct)));
         var student = app.MapGroup("/api/v2/mmt/admission-programs").WithTags("MMT Admissions").RequireAuthorization();
@@ -84,6 +84,29 @@ public static class MmtEndpoints
         g.MapGet("/catalog/template", (MmtCatalogImportService s) => Results.File(s.CreateTemplate(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "mmt-catalog-template.xlsx"));
         g.MapPost("/catalog/preview", async ([FromForm] MmtCatalogImportRequestDto r, MmtCatalogImportService s, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await s.PreviewAsync(r, ct)).ToHttpResult(c, l)).Accepts<MmtCatalogImportRequestDto>("multipart/form-data").DisableAntiforgery();
         g.MapPost("/catalog/confirm", async ([FromForm] MmtCatalogImportRequestDto r, MmtCatalogImportService s, HttpContext c, IMessageLocalizer l, CancellationToken ct) => (await s.ConfirmAsync(r, ct)).ToHttpResult(c, l)).Accepts<MmtCatalogImportRequestDto>("multipart/form-data").DisableAntiforgery();
+    }
+
+    private static void MapExamConfiguration(RouteGroupBuilder root)
+    {
+        var group = root.MapGroup("/exams");
+        group.MapGet("/", async (MmtExamConfigurationService service, CancellationToken ct) =>
+            Results.Ok(await service.ListAsync(ct)));
+        group.MapGet("/{id:guid}", async (Guid id, MmtExamConfigurationService service, HttpContext c,
+            IMessageLocalizer l, CancellationToken ct) => (await service.GetAsync(id, ct)).ToHttpResult(c, l));
+        group.MapGet("/{id:guid}/readiness", async (Guid id, MmtExamConfigurationService service,
+            CancellationToken ct) => Results.Ok(await service.ReadinessAsync(id, ct)));
+        group.MapPost("/", async (CreateMmtExamVersionDto request, MmtExamConfigurationService service,
+            HttpContext c, IMessageLocalizer l, CancellationToken ct) =>
+            (await service.CreateAsync(request, ct)).ToHttpResult(c, l));
+        group.MapPut("/{id:guid}", async (Guid id, UpdateMmtExamVersionDto request,
+            MmtExamConfigurationService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) =>
+            (await service.UpdateAsync(id, request, ct)).ToHttpResult(c, l));
+        group.MapPut("/{id:guid}/configuration", async (Guid id, ReplaceMmtExamConfigurationDto request,
+            MmtExamConfigurationService service, HttpContext c, IMessageLocalizer l, CancellationToken ct) =>
+            (await service.ReplaceConfigurationAsync(id, request, ct)).ToHttpResult(c, l));
+        group.MapPost("/{id:guid}/publish", async (Guid id, MmtExamConfigurationService service,
+            HttpContext c, IMessageLocalizer l, CancellationToken ct) =>
+            (await service.PublishAsync(id, ct)).ToHttpResult(c, l));
     }
 
     private static void MapSimulatorStudent(IEndpointRouteBuilder app)

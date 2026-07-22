@@ -6,7 +6,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Adeeb.Modules.QuestionBank.Application;
 
 public sealed record QuestionPickerRequest(Guid UserId, TestMode Mode, int Count, Guid? SubjectId = null,
-    IReadOnlyCollection<Guid>? ClusterSubjectIds = null, bool InjectRedList = false);
+    IReadOnlyCollection<Guid>? ClusterSubjectIds = null, bool InjectRedList = false,
+    QuestionType? RequiredType = null, IReadOnlyCollection<Guid>? ExcludedQuestionIds = null);
 
 public interface IQuestionPickerService
 {
@@ -44,6 +45,12 @@ internal sealed class QuestionPickerService(QuestionBankDbContext db, ITestingRa
         {
             var subjects = request.ClusterSubjectIds?.Distinct().ToArray() ?? [];
             eligible = eligible.Where(x => subjects.Contains(x.SubjectId));
+        }
+        if (request.RequiredType.HasValue) eligible = eligible.Where(x => x.Type == request.RequiredType.Value);
+        if (request.ExcludedQuestionIds is { Count: > 0 })
+        {
+            var excluded = request.ExcludedQuestionIds.ToArray();
+            eligible = eligible.Where(x => !excluded.Contains(x.Id));
         }
 
         var redItems = await db.StudentRedListItems.AsNoTracking()

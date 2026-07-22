@@ -61,10 +61,11 @@ public sealed class StudentTestingService(
     {
         var context = await mmtContext.GetAsync(userId, ct);
         if (context is null) return Result<TestAttemptDto>.Failure(StudentTestingErrors.ProfileRequired);
-        var count = request.QuestionCount ?? options.Value.MmtPracticeDefaultQuestions;
-        if (count is < 1 or > 200) return Result<TestAttemptDto>.Failure(StudentTestingErrors.InvalidQuestionCount);
+        if (!context.IsExamReady) return Result<TestAttemptDto>.Failure(StudentTestingErrors.MmtExamNotConfigured);
+        var count = request.QuestionCount ?? context.ExactQuestionCount;
+        if (count != context.ExactQuestionCount) return Result<TestAttemptDto>.Failure(StudentTestingErrors.InvalidQuestionCount);
         return await StartAsync(userId, TestMode.MmtPractice, count, null, context.ClusterId, context.SubjectIds,
-            !request.StrictSimulation, language, options.Value.MmtDurationMinutes, ct);
+            false, language, context.DurationMinutes, ct, mmt: context);
     }
 
     public async Task<Result<TestAttemptDto>> StartMonthlyExamAsync(Guid userId, SupportedLanguage language, CancellationToken ct)
@@ -72,14 +73,18 @@ public sealed class StudentTestingService(
         var context = await mmtContext.GetAsync(userId, ct);
         if (context is null) return Result<TestAttemptDto>.Failure(StudentTestingErrors.ProfileRequired);
         if (context.AdmissionChoicesCount != 12) return Result<TestAttemptDto>.Failure(StudentTestingErrors.ChoicesRequired);
+        if (!context.IsExamReady) return Result<TestAttemptDto>.Failure(StudentTestingErrors.MmtExamNotConfigured);
         var availability = monthlyAvailability.Current();
         if (!availability.IsOpen) return Result<TestAttemptDto>.Failure(StudentTestingErrors.MonthlyExamClosed);
-        if (await db.TestAttempts.AsNoTracking().AnyAsync(x => x.UserId == userId && x.Mode == TestMode.MonthlyExam
-            && x.MonthlyWindowKey == availability.WindowKey, ct))
+        var existing = await AttemptQuery().SingleOrDefaultAsync(x => x.UserId == userId && x.Mode == TestMode.MonthlyExam
+            && x.MonthlyWindowKey == availability.WindowKey, ct);
+        if (existing is { Status: TestAttemptStatus.InProgress } && clock.UtcNow < existing.ExpiresAtUtc)
+            return Result<TestAttemptDto>.Success(ToAttemptDto(existing));
+        if (existing is not null)
             return Result<TestAttemptDto>.Failure(StudentTestingErrors.MonthlyExamAlreadyStarted);
-        return await StartAsync(userId, TestMode.MonthlyExam, options.Value.MonthlyExamQuestionCount, null,
-            context.ClusterId, context.SubjectIds, false, language, options.Value.MmtDurationMinutes, ct,
-            availability.WindowKey);
+        return await StartAsync(userId, TestMode.MonthlyExam, context.ExactQuestionCount, null,
+            context.ClusterId, context.SubjectIds, false, language, context.DurationMinutes, ct,
+            availability.WindowKey, context);
     }
 
     public Task<Result<TestAttemptDto>> StartRedListAsync(Guid userId, StartRedListPracticeRequest request,
@@ -99,12 +104,41 @@ public sealed class StudentTestingService(
             : Result<TestAttemptDto>.Success(ToAttemptDto(attempt));
     }
 
+    public async Task<Result<DraftAnswerDto>> SaveDraftAsync(Guid userId, Guid attemptId, Guid questionId,
+        SaveDraftAnswerRequest request, CancellationToken ct)
+    {
+        await using var transaction = await BeginTransactionAsync(ct);
+        await TestAttemptFinalizationConcurrency.AcquireAttemptLockAsync(db, attemptId, ct);
+        var attempt = await db.TestAttempts.Include(x => x.Questions).Include(x => x.DraftAnswers)
+            .SingleOrDefaultAsync(x => x.Id == attemptId && x.UserId == userId, ct);
+        if (attempt is null) return Result<DraftAnswerDto>.Failure(StudentTestingErrors.AttemptNotFound);
+        if (attempt.Status != TestAttemptStatus.InProgress)
+            return Result<DraftAnswerDto>.Failure(StudentTestingErrors.AttemptAlreadySubmitted);
+        if (clock.UtcNow >= attempt.ExpiresAtUtc)
+            return Result<DraftAnswerDto>.Failure(StudentTestingErrors.AttemptExpired);
+        var attemptQuestion = attempt.Questions.SingleOrDefault(x => x.QuestionId == questionId);
+        if (attemptQuestion is null) return Result<DraftAnswerDto>.Failure(StudentTestingErrors.QuestionNotInAttempt);
+        var json = JsonSerializer.Serialize(new StoredDraftAnswer(request.SelectedOptionId,
+            request.TextResponse, request.MatchingPairs), Json);
+        var draft = attempt.DraftAnswers.SingleOrDefault(x => x.TestAttemptQuestionId == attemptQuestion.Id);
+        if (draft is null)
+        {
+            draft = new TestAttemptDraftAnswer(Guid.NewGuid(), attempt.Id, attemptQuestion.Id, questionId,
+                json, request.IsMarkedForReview, clock.UtcNow);
+            db.TestAttemptDraftAnswers.Add(draft);
+        }
+        else draft.Update(json, request.IsMarkedForReview, clock.UtcNow);
+        await db.SaveChangesAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
+        return Result<DraftAnswerDto>.Success(ToDraftDto(draft));
+    }
+
     public async Task<Result<CheckedTestAnswerDto>> CheckAnswerAsync(Guid userId, Guid attemptId, Guid questionId,
         CheckTestAnswerRequest request, CancellationToken ct)
     {
         await using var transaction = await BeginTransactionAsync(ct);
         await TestAttemptFinalizationConcurrency.AcquireAttemptLockAsync(db, attemptId, ct);
-        var attempt = await db.TestAttempts.Include(x => x.Questions).Include(x => x.Answers)
+        var attempt = await db.TestAttempts.Include(x => x.Questions).Include(x => x.Answers).Include(x => x.DraftAnswers)
             .SingleOrDefaultAsync(x => x.Id == attemptId && x.UserId == userId, ct);
         if (attempt is null) return Result<CheckedTestAnswerDto>.Failure(StudentTestingErrors.AttemptNotFound);
         if (attempt.Mode is not (TestMode.SubjectTest or TestMode.RedListPractice))
@@ -181,9 +215,16 @@ public sealed class StudentTestingService(
             userId, attemptId, attempt.Mode);
 
         var automatic = clock.UtcNow >= attempt.ExpiresAtUtc;
-        var submitted = request.Answers.GroupBy(x => x.QuestionId).ToDictionary(x => x.Key, x => x.Last());
+        var submitted = attempt.DraftAnswers.ToDictionary(x => x.QuestionId, x =>
+        {
+            var draft = JsonSerializer.Deserialize<StoredDraftAnswer>(x.AnswerSnapshotJson, Json)!;
+            return new SubmitAnswerDto(x.QuestionId, draft.SelectedOptionId, draft.TextResponse, draft.MatchingPairs);
+        });
+        foreach (var answer in request.Answers.GroupBy(x => x.QuestionId).Select(x => x.Last()))
+            submitted[answer.QuestionId] = answer;
         var storedResults = new List<StoredAnswerResult>(attempt.QuestionCount);
         var redListUpdates = new List<RedListService.AnswerUpdate>(attempt.QuestionCount);
+        var mmtRawScores = new Dictionary<string, int>(StringComparer.Ordinal);
         var correct = 0;
 
         foreach (var attemptQuestion in attempt.Questions.OrderBy(x => x.DisplayOrder))
@@ -205,6 +246,16 @@ public sealed class StudentTestingService(
             var question = SnapshotQuestion(snapshot);
             var evaluation = evaluator.Evaluate(question, input, snapshot.Language);
             if (evaluation.IsCorrect) correct++;
+            if (snapshot.MmtSubtestCode is { } section)
+            {
+                var points = snapshot.Type switch
+                {
+                    (int)QuestionType.Matching => evaluation.CorrectPairsCount ?? 0,
+                    (int)QuestionType.ClosedAnswer => evaluation.IsCorrect ? 2 : 0,
+                    _ => evaluation.IsCorrect ? 1 : 0
+                };
+                mmtRawScores[section] = mmtRawScores.GetValueOrDefault(section) + points;
+            }
             var displayAnswer = DisplayAnswer(snapshot, answer, evaluation);
             var answerSnapshot = new StoredAnswerSnapshot(answer?.SelectedOptionId, answer?.TextResponse, answer?.MatchingPairs, displayAnswer);
             db.TestAttemptAnswers.Add(new(Guid.NewGuid(), attempt.Id, attemptQuestion.Id, attemptQuestion.QuestionId,
@@ -278,9 +329,21 @@ public sealed class StudentTestingService(
             xp.AnswerXpUnits, xp.CompletionBonusXpUnits, xp.TotalXpUnits, clock.UtcNow);
         db.TestXpSettlements.Add(settlement);
 
+        MmtOfficialScore? officialScore = null;
+        if (!string.IsNullOrWhiteSpace(attempt.ModeSnapshotJson))
+        {
+            var snapshot = JsonSerializer.Deserialize<StoredMmtAttemptSnapshot>(attempt.ModeSnapshotJson, Json);
+            if (snapshot is not null)
+                officialScore = await mmtContext.CalculateAsync(snapshot.ExamVersionId, attempt.ClusterId!.Value,
+                    snapshot.Choices, snapshot.Subtests.Select(x => new MmtSubtestRawScore(
+                        x.Code, Math.Clamp(mmtRawScores.GetValueOrDefault(x.Code), 0, 40))).ToList(), ct);
+            if (officialScore is null)
+                return Result<TestResultDto>.Failure(StudentTestingErrors.MmtExamNotConfigured);
+        }
         attempt.Complete(correct, wrong, correct, percentage, clock.UtcNow, automatic);
         db.TestAttemptResults.Add(new(Guid.NewGuid(), attempt.Id, JsonSerializer.Serialize(breakdown, Json),
-            JsonSerializer.Serialize(storedResults, Json), clock.UtcNow));
+            JsonSerializer.Serialize(storedResults, Json), clock.UtcNow,
+            officialScore is null ? null : JsonSerializer.Serialize(officialScore, Json)));
         try
         {
             await db.SaveChangesAsync(ct);
@@ -296,7 +359,7 @@ public sealed class StudentTestingService(
         logger.LogInformation(
             "Test XP reward committed. UserId={UserId} AttemptId={AttemptId} TestMode={TestMode} RewardId={RewardId} TotalXpUnits={TotalXpUnits}",
             userId, attemptId, attempt.Mode, settlement.LedgerEntryId, settlement.TotalXpUnits);
-        return Result<TestResultDto>.Success(ToResultDto(attempt, breakdown, storedResults, settlement));
+        return Result<TestResultDto>.Success(ToResultDto(attempt, breakdown, storedResults, settlement, officialScore));
     }
 
     public async Task<Result<TestResultDto>> GetResultAsync(Guid userId, Guid attemptId, CancellationToken ct)
@@ -307,7 +370,9 @@ public sealed class StudentTestingService(
             return Result<TestResultDto>.Failure(StudentTestingErrors.AttemptNotFound);
         var breakdown = JsonSerializer.Deserialize<List<TopicBreakdownDto>>(attempt.Result.TopicBreakdownJson, Json) ?? [];
         var answers = JsonSerializer.Deserialize<List<StoredAnswerResult>>(attempt.Result.ResultSnapshotJson, Json) ?? [];
-        return Result<TestResultDto>.Success(ToResultDto(attempt, breakdown, answers, attempt.XpSettlement));
+        var official = string.IsNullOrWhiteSpace(attempt.Result.OfficialScoreSnapshotJson) ? null
+            : JsonSerializer.Deserialize<MmtOfficialScore>(attempt.Result.OfficialScoreSnapshotJson, Json);
+        return Result<TestResultDto>.Success(ToResultDto(attempt, breakdown, answers, attempt.XpSettlement, official));
     }
 
     public async Task<Result<TestingPageDto<TestHistoryItemDto>>> HistoryAsync(Guid userId, TestHistoryQuery filter, CancellationToken ct)
@@ -340,26 +405,57 @@ public sealed class StudentTestingService(
 
     private async Task<Result<TestAttemptDto>> StartAsync(Guid userId, TestMode mode, int count, Guid? subjectId,
         Guid? clusterId, IReadOnlyCollection<Guid>? clusterSubjects, bool injectRedList, SupportedLanguage language,
-        int durationMinutes, CancellationToken ct, string? monthlyWindowKey = null)
+        int durationMinutes, CancellationToken ct, string? monthlyWindowKey = null, StudentMmtTestingContext? mmt = null)
     {
-        var picked = await picker.PickAsync(new(userId, mode, count, subjectId, clusterSubjects, injectRedList), ct);
-        if (picked.IsFailure) return Result<TestAttemptDto>.Failure(picked.Error!);
+        var selections = new List<SelectedQuestion>(count);
+        if (mmt?.Subtests is { Count: > 0 })
+        {
+            foreach (var subtest in mmt.Subtests.OrderBy(x => x.DisplayOrder))
+            {
+                var specs = new[]
+                {
+                    (QuestionType.SingleChoice, subtest.SingleChoiceCount, 1),
+                    (QuestionType.Matching, subtest.MatchingCount, 4),
+                    (QuestionType.ClosedAnswer, subtest.ShortAnswerCount, 2)
+                };
+                foreach (var (type, required, points) in specs.Where(x => x.Item2 > 0))
+                {
+                    var picked = await picker.PickAsync(new(userId, mode, required, null, [subtest.SubjectId],
+                        false, type, selections.Select(x => x.Question.Id).ToArray()), ct);
+                    if (picked.IsFailure) return Result<TestAttemptDto>.Failure(picked.Error!);
+                    var values = picked.Value!.ToList(); randomizer.Shuffle(values);
+                    selections.AddRange(values.Select(x => new SelectedQuestion(x, subtest.Code, points)));
+                }
+            }
+        }
+        else
+        {
+            var picked = await picker.PickAsync(new(userId, mode, count, subjectId, clusterSubjects, injectRedList), ct);
+            if (picked.IsFailure) return Result<TestAttemptDto>.Failure(picked.Error!);
+            selections.AddRange(picked.Value!.Select(x => new SelectedQuestion(x, null, 1)));
+            randomizer.Shuffle(selections);
+        }
         var now = clock.UtcNow;
+        var modeSnapshot = mmt is null ? null : JsonSerializer.Serialize(new StoredMmtAttemptSnapshot(
+            mmt.ExamVersionId!.Value, mmt.ExamVersionName ?? string.Empty, mmt.IsOfficialScale,
+            mmt.DurationMinutes, mmt.Subtests!, mmt.ChoiceScoring ?? []), Json);
         var attempt = new TestAttempt(Guid.NewGuid(), userId, mode, subjectId, clusterId, monthlyWindowKey,
-            count, now, now.AddMinutes(durationMinutes));
+            count, now, now.AddMinutes(durationMinutes), modeSnapshot);
         db.TestAttempts.Add(attempt);
-        var questions = picked.Value!.ToList(); randomizer.Shuffle(questions);
+        var questions = selections.Select(x => x.Question).ToList();
         var questionIds = questions.Select(x => x.Id).ToArray();
         var redListProgress = await db.StudentRedListItems.AsNoTracking()
             .Where(x => x.UserId == userId && x.Status == RedListStatus.Active && questionIds.Contains(x.QuestionId))
             .ToDictionaryAsync(x => x.QuestionId, x => x.CorrectStreak, ct);
         for (var index = 0; index < questions.Count; index++)
         {
-            var question = questions[index];
+            var selection = selections[index];
+            var question = selection.Question;
             var isFromRedList = redListProgress.TryGetValue(question.Id, out var correctStreak);
             db.TestAttemptQuestions.Add(new(Guid.NewGuid(), attempt.Id, question.Id, index + 1, question.SubjectId,
                 question.TopicId, question.Type, question.Difficulty, JsonSerializer.Serialize(
-                    Snapshot(question, language, isFromRedList ? correctStreak : null), Json)));
+                    Snapshot(question, language, isFromRedList ? correctStreak : null,
+                        selection.SectionCode, selection.PointsAvailable), Json)));
         }
         try
         {
@@ -374,7 +470,8 @@ public sealed class StudentTestingService(
         return await GetAttemptAsync(userId, attempt.Id, ct);
     }
 
-    private TestQuestionSnapshot Snapshot(Question question, SupportedLanguage language, int? redListCorrectStreak)
+    private TestQuestionSnapshot Snapshot(Question question, SupportedLanguage language, int? redListCorrectStreak,
+        string? mmtSubtestCode = null, int pointsAvailable = 1)
     {
         var translation = question.Translations.FirstOrDefault(x => x.Language == language)
             ?? question.Translations.FirstOrDefault(x => x.Language == SupportedLanguage.Tajik)
@@ -390,7 +487,7 @@ public sealed class StudentTestingService(
         return new(TestQuestionSnapshot.CurrentVersion, question.Id, question.SubjectId, question.TopicId,
             (int)question.Type, (int)question.Difficulty, translation.Content, translation.Explanation, question.ImageUrl,
             language, optionSnapshots, matchingDisplayOrder, redListCorrectStreak,
-            StudentRedListItem.RequiredCorrectStreak);
+            StudentRedListItem.RequiredCorrectStreak, mmtSubtestCode, pointsAvailable);
     }
 
     private static Question SnapshotQuestion(TestQuestionSnapshot snapshot)
@@ -410,6 +507,9 @@ public sealed class StudentTestingService(
     private static TestAttemptDto ToAttemptDto(TestAttempt attempt)
     {
         var answers = attempt.Answers.ToDictionary(x => x.TestAttemptQuestionId);
+        var drafts = attempt.DraftAnswers.ToDictionary(x => x.TestAttemptQuestionId);
+        var mmt = string.IsNullOrWhiteSpace(attempt.ModeSnapshotJson) ? null
+            : JsonSerializer.Deserialize<StoredMmtAttemptSnapshot>(attempt.ModeSnapshotJson, Json);
         return new(attempt.Id, (int)attempt.Mode, (int)attempt.Status,
             attempt.SubjectId, attempt.ClusterId, attempt.StartedAtUtc, attempt.ExpiresAtUtc, attempt.SubmittedAtUtc,
             attempt.QuestionCount, attempt.Questions.OrderBy(x => x.DisplayOrder).Select(x =>
@@ -425,8 +525,11 @@ public sealed class StudentTestingService(
                 snapshot.Type, snapshot.Difficulty, snapshot.Content, snapshot.ImageUrl, options, matchingOptions,
                 redListProgress, answers.TryGetValue(x.Id, out var answer)
                     ? ToCheckedAnswerDto(snapshot, answer)
-                    : null);
-        }).ToList());
+                    : null, snapshot.MmtSubtestCode, snapshot.PointsAvailable,
+                drafts.TryGetValue(x.Id, out var draft) ? ToDraftDto(draft) : null);
+        }).ToList(), mmt is null ? null : new MmtAttemptInfoDto(mmt.ExamVersionId, mmt.ExamVersionName,
+            mmt.IsOfficialScale, mmt.DurationMinutes, mmt.Subtests.Select(x => new MmtSubtestInfoDto(
+                x.Code, x.DisplayOrder, x.SubjectId, x.QuestionCount, x.MaxRawScore, x.MinimumRawScore)).ToList()));
     }
 
     private static CheckedTestAnswerDto ToCheckedAnswerDto(TestQuestionSnapshot question, TestAttemptAnswer answer)
@@ -443,6 +546,13 @@ public sealed class StudentTestingService(
             answer.CorrectPairsCount, answer.TotalPairsCount, redList);
     }
 
+    private static DraftAnswerDto ToDraftDto(TestAttemptDraftAnswer draft)
+    {
+        var value = JsonSerializer.Deserialize<StoredDraftAnswer>(draft.AnswerSnapshotJson, Json)!;
+        return new(value.SelectedOptionId, value.TextResponse, value.MatchingPairs,
+            draft.IsMarkedForReview, draft.UpdatedAtUtc);
+    }
+
     private static IReadOnlyList<string> MatchingOptions(TestQuestionSnapshot snapshot)
     {
         if (snapshot.Type != (int)QuestionType.Matching) return [];
@@ -455,7 +565,7 @@ public sealed class StudentTestingService(
     }
 
     private static TestResultDto ToResultDto(TestAttempt attempt, IReadOnlyList<TopicBreakdownDto> breakdown,
-        IReadOnlyList<StoredAnswerResult> answers, TestXpSettlement? settlement)
+        IReadOnlyList<StoredAnswerResult> answers, TestXpSettlement? settlement, MmtOfficialScore? officialScore = null)
     {
         var subjects = answers.GroupBy(x => x.SubjectId).Select(group => new SubjectBreakdownDto(
             group.Key, group.Count(), group.Count(x => x.IsCorrect), group.Count(x => !x.IsCorrect),
@@ -471,7 +581,14 @@ public sealed class StudentTestingService(
                 x.CorrectPairsCount, x.TotalPairsCount)).ToList(),
             settlement?.EasyCorrectCount ?? 0, settlement?.MediumCorrectCount ?? 0, settlement?.HardCorrectCount ?? 0,
             ToXp(settlement?.AnswerXpUnits ?? 0), ToXp(settlement?.CompletionBonusXpUnits ?? 0),
-            ToXp(settlement?.TotalXpUnits ?? 0), settlement is { TotalXpUnits: > 0 });
+            ToXp(settlement?.TotalXpUnits ?? 0), settlement is { TotalXpUnits: > 0 },
+            officialScore is null ? null : new MmtOfficialResultDto(officialScore.ExamVersionId,
+                officialScore.ExamVersionName, officialScore.IsOfficialScale,
+                officialScore.Choices.Select(choice => new MmtChoiceResultDto(choice.AdmissionProgramId,
+                    choice.PriorityOrder, choice.SpecialtyRangeCode, choice.TotalScaledScore,
+                    choice.PassedAllSubtests, choice.Subtests.Select(subtest => new MmtScaledSubtestResultDto(
+                        subtest.Code, subtest.RawScore, 40, subtest.MinimumRawScore, subtest.Passed,
+                        subtest.ScaledScore, subtest.MaxScaledScore)).ToList())).ToList()));
     }
 
     private static decimal ToXp(long units) => units / (decimal)TestXpRewardOptions.UnitsPerXp;
@@ -494,6 +611,7 @@ public sealed class StudentTestingService(
     }
 
     private sealed record RedListMasteryGrant(int BonusXpUnits, bool WasAwarded, long TotalXpUnits);
+    private sealed record SelectedQuestion(Question Question, string? SectionCode, int PointsAvailable);
 
     private static decimal Percentage(int correct, int total) => total == 0 ? 0 : decimal.Round(correct * 100m / total, 2);
 
@@ -512,7 +630,7 @@ public sealed class StudentTestingService(
     private static StoredAnswerSnapshot DeserializeAnswer(string json) =>
         JsonSerializer.Deserialize<StoredAnswerSnapshot>(json, Json) ?? throw new InvalidOperationException("Invalid answer snapshot.");
     private IQueryable<TestAttempt> AttemptQuery() => db.TestAttempts.AsNoTracking()
-        .Include(x => x.Questions).Include(x => x.Answers).AsSplitQuery();
+        .Include(x => x.Questions).Include(x => x.Answers).Include(x => x.DraftAnswers).AsSplitQuery();
     private async ValueTask<IDbContextTransaction?> BeginTransactionAsync(CancellationToken ct) => db.Database.IsRelational()
         ? await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct) : null;
 }

@@ -150,3 +150,29 @@ public sealed record MmtDashboardStatsDto(
     int CurrentAdmissionYear,
     int EvaluationsCount,
     int StudentProfilesCount);
+
+public sealed record CreateMmtExamVersionDto(int AdmissionYear, string NameTg, string NameRu,
+    bool IsOfficial, string? SourceUrl, string? SourceChecksum);
+public sealed record UpdateMmtExamVersionDto(string NameTg, string NameRu, bool IsOfficial,
+    string? SourceUrl, string? SourceChecksum, uint Version);
+public sealed record MmtExamVersionListItemDto(Guid Id, int AdmissionYear, string NameTg, string NameRu,
+    bool IsOfficial, int Status, DateTimeOffset UpdatedAtUtc, DateTimeOffset? PublishedAtUtc,
+    int ConfiguredClusters, bool IsReady);
+public sealed record MmtSubtestBlueprintDto(string Code, int DisplayOrder, Guid SubjectId,
+    int SingleChoiceCount, int MatchingCount, int ShortAnswerCount, int MinimumRawScore);
+public sealed record MmtClusterExamBlueprintDto(Guid ClusterId, int DurationMinutes,
+    IReadOnlyList<MmtSubtestBlueprintDto> Subtests);
+public sealed record MmtSpecialtyRangeDto(Guid? Id, Guid ClusterId, string Code,
+    decimal A2MaxScore, decimal A3MaxScore, decimal A4MaxScore, IReadOnlyList<Guid> SpecialtyIds);
+public sealed record MmtScoreScaleEntryDto(Guid ClusterId, string SubtestCode, Guid? SpecialtyRangeId,
+    string? SpecialtyRangeCode, int RawScore, decimal ScaledScore, decimal MaxScaledScore);
+public sealed record ReplaceMmtExamConfigurationDto(IReadOnlyList<MmtClusterExamBlueprintDto> Blueprints,
+    IReadOnlyList<MmtSpecialtyRangeDto> SpecialtyRanges, IReadOnlyList<MmtScoreScaleEntryDto> ScaleEntries);
+public sealed record MmtExamReadinessIssueDto(string Code, Guid? ClusterId, string? Detail);
+public sealed record MmtExamReadinessDto(bool IsReady, int BlueprintCount, int RangeCount,
+    int ScaleEntryCount, IReadOnlyList<MmtExamReadinessIssueDto> Issues);
+public sealed record MmtExamVersionDto(Guid Id, int AdmissionYear, string NameTg, string NameRu,
+    bool IsOfficial, string? SourceUrl, string? SourceChecksum, int Status, uint Version,
+    DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc, DateTimeOffset? PublishedAtUtc,
+    IReadOnlyList<MmtClusterExamBlueprintDto> Blueprints, IReadOnlyList<MmtSpecialtyRangeDto> SpecialtyRanges,
+    MmtExamReadinessDto Readiness);

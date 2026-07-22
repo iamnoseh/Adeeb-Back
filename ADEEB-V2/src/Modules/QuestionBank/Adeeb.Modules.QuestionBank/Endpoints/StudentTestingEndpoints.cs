@@ -27,6 +27,11 @@ public static class StudentTestingEndpoints
             (await WithUser(context, id => service.StartRedListAsync(id, request, CurrentLanguage(), ct))).ToHttpResult(context, localizer));
         tests.MapGet("/attempts/{attemptId:guid}", async (Guid attemptId, StudentTestingService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await WithUser(context, id => service.GetAttemptAsync(id, attemptId, ct))).ToHttpResult(context, localizer));
+        tests.MapPut("/attempts/{attemptId:guid}/answers/{questionId:guid}", async (Guid attemptId,
+            Guid questionId, SaveDraftAnswerRequest request, StudentTestingService service, HttpContext context,
+            IMessageLocalizer localizer, CancellationToken ct) =>
+            (await WithUser(context, id => service.SaveDraftAsync(id, attemptId, questionId, request, ct)))
+            .ToHttpResult(context, localizer));
         tests.MapPost("/attempts/{attemptId:guid}/questions/{questionId:guid}/check", async (Guid attemptId,
             Guid questionId, CheckTestAnswerRequest request, StudentTestingService service, HttpContext context,
             IMessageLocalizer localizer, CancellationToken ct) =>
