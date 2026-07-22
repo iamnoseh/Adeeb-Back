@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { studentTestingApi, studentTestingKeys } from '@/features/student-testing/api/student-testing.api'
-import { buildSubmitPayload, clearDraft, formatTimer, isAnswered, readDraft, secondsUntil, testingErrorKey, writeDraft } from '@/features/student-testing/lib/student-testing'
+import { buildSubmitPayload, clearDraft, formatTimer, getVisibleRedListProgress, isAnswered, readDraft, secondsUntil, testingErrorKey, writeDraft } from '@/features/student-testing/lib/student-testing'
 import { RedListAnswerAction, TestAttemptStatus, TestMode, TestQuestionType, type AttemptAnswers, type CheckedTestAnswerDto, type DraftAnswer, type TestQuestionDto } from '@/features/student-testing/model/student-testing.types'
 import { TestingButton, TestingCard, TestingError, TestingLoading } from '@/features/student-testing/ui/TestingUi'
 import { AttemptExitGuard } from '@/features/student-testing/ui/AttemptExitGuard'
@@ -59,13 +59,7 @@ export function TestAttemptPage() {
   const checkedCount = Object.keys(checkedAnswers).length
   const immediateCheck = attempt.data.mode === TestMode.subject || attempt.data.mode === TestMode.redListPractice
   const currentFeedback = checkedAnswers[question.id]
-  const visibleRedListProgress = currentFeedback?.redList
-    ? currentFeedback.redList.action === RedListAnswerAction.mastered ? null : {
-        correctStreak: currentFeedback.redList.correctStreak,
-        requiredCorrectStreak: currentFeedback.redList.requiredCorrectStreak,
-        correctAnswersRemaining: currentFeedback.redList.correctAnswersRemaining,
-      }
-    : question.redListProgress
+  const visibleRedListProgress = getVisibleRedListProgress(question.redListProgress, currentFeedback)
   function updateQuestion(value: DraftAnswer) { setAnswers((current) => ({ ...current, [question.id]: value })) }
   function checkCurrent() { const answer = answers[question.id]; if (answer && !currentFeedback && !checkAnswer.isPending) checkAnswer.mutate({ questionId: question.id, answer }) }
   return <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">

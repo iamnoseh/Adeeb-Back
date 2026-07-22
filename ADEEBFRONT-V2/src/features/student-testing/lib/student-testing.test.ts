@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildSubmitPayload, canStartRedList, formatTimer, secondsUntil } from '@/features/student-testing/lib/student-testing'
-import type { TestQuestionDto } from '@/features/student-testing/model/student-testing.types'
+import { buildSubmitPayload, canStartRedList, formatTimer, getVisibleRedListProgress, secondsUntil } from '@/features/student-testing/lib/student-testing'
+import { RedListAnswerAction, type CheckedTestAnswerDto, type TestQuestionDto } from '@/features/student-testing/model/student-testing.types'
 
 const question: TestQuestionDto = {
   id: 'question-1', order: 1, subjectId: 'subject-1', topicId: null, type: 2, difficulty: 1,
@@ -27,5 +27,37 @@ describe('student testing helpers', () => {
     expect(secondsUntil('2026-07-16T10:01:01.000Z', Date.parse('2026-07-16T10:00:00.000Z'))).toBe(61)
     expect(formatTimer(61)).toBe('01:01')
     expect(secondsUntil('2026-07-16T09:00:00.000Z', Date.parse('2026-07-16T10:00:00.000Z'))).toBe(0)
+  })
+
+  it('never restores stale Red List progress after the answer was checked', () => {
+    const initial = { correctStreak: 0, requiredCorrectStreak: 3, correctAnswersRemaining: 3 }
+    const feedback = { redList: null } as CheckedTestAnswerDto
+
+    expect(getVisibleRedListProgress(initial, undefined)).toEqual(initial)
+    expect(getVisibleRedListProgress(initial, feedback)).toBeNull()
+    expect(getVisibleRedListProgress(initial, {
+      ...feedback,
+      redList: {
+        action: RedListAnswerAction.progressed,
+        correctStreak: 2,
+        requiredCorrectStreak: 3,
+        correctAnswersRemaining: 1,
+        masteryBonusXp: 0,
+        masteryBonusAwarded: false,
+        totalXp: null,
+      },
+    })).toEqual({ correctStreak: 2, requiredCorrectStreak: 3, correctAnswersRemaining: 1 })
+    expect(getVisibleRedListProgress(initial, {
+      ...feedback,
+      redList: {
+        action: RedListAnswerAction.mastered,
+        correctStreak: 3,
+        requiredCorrectStreak: 3,
+        correctAnswersRemaining: 0,
+        masteryBonusXp: 1,
+        masteryBonusAwarded: true,
+        totalXp: 10,
+      },
+    })).toBeNull()
   })
 })

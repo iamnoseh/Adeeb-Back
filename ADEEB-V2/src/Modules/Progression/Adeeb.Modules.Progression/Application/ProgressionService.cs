@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
 using Adeeb.Application.Abstractions.Progression;
+using Adeeb.Application.Abstractions.Identity;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Progression.Contracts;
 using Adeeb.Modules.Progression.Domain;
@@ -13,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Adeeb.Modules.Progression.Application;
 
 public sealed class ProgressionService(ProgressionDbContext db, IStudentXpReadService xp,
-    IStudentCompetitionDirectory students, IDateTimeProvider clock) : IXpGrantedIntegrationHandler
+    IStudentCompetitionDirectory students, IPublicUserProfileDirectory users, IDateTimeProvider clock) : IXpGrantedIntegrationHandler
 {
     public async Task<IReadOnlyList<LeagueDto>> GetLeaguesAsync(CancellationToken ct)
     {
@@ -312,7 +313,8 @@ public sealed class ProgressionService(ProgressionDbContext db, IStudentXpReadSe
         {
             var next = new LeagueSeason(Guid.NewGuid(), season.Number + 1, season.EndsAtUtc,
                 season.ConfigurationVersion, true, clock.UtcNow); db.Seasons.Add(next);
-            foreach (var movement in db.MovementResults.Local.Where(x => x.SeasonId == season.Id))
+            var movements = db.MovementResults.Local.Where(x => x.SeasonId == season.Id).ToList();
+            foreach (var movement in movements)
                 db.Memberships.Add(new(Guid.NewGuid(), next.Id, movement.ToLeagueId, movement.UserId,
                     balances.GetValueOrDefault(movement.UserId)?.TotalXpUnits ?? 0, next.StartsAtUtc));
         }
@@ -327,12 +329,20 @@ public sealed class ProgressionService(ProgressionDbContext db, IStudentXpReadSe
         if (league is null) return Result<LeaderboardDto>.Failure(ProgressionErrors.NotFound);
         var ranked = await RankedActiveMembershipsAsync(season.Id, leagueId, ct); var movement = MovementCount(ranked.Count);
         (page, pageSize) = Page(page, pageSize, 50); var slice = ranked.Skip((page - 1) * pageSize).Take(pageSize).ToList();
-        var profiles = await students.GetByIdentityUserIdsAsync(slice.Select(x => x.UserId).Append(currentUserId ?? Guid.Empty).Where(x => x != Guid.Empty).Distinct().ToArray(), ct);
+        var visibleUserIds = slice.Select(x => x.UserId).Append(currentUserId ?? Guid.Empty)
+            .Where(x => x != Guid.Empty).Distinct().ToArray();
+        var profiles = await students.GetByIdentityUserIdsAsync(visibleUserIds, ct);
+        var identities = await users.GetByUserIdsAsync(visibleUserIds, ct);
         var leagueCount = (await ActiveLeaguesAsync(ct)).Count;
         LeaderboardItemDto Map(LeagueMembership x)
         {
             var rank = ranked.FindIndex(item => item.Id == x.Id) + 1; var profile = profiles.GetValueOrDefault(x.UserId);
-            return new(rank, x.UserId, profile?.DisplayName ?? "ADEEB Student", profile?.AvatarUrl,
+            var identityName = identities.GetValueOrDefault(x.UserId)?.FullName;
+            var displayName = !string.IsNullOrWhiteSpace(identityName)
+                ? identityName
+                : profile?.DisplayName;
+            return new(rank, x.UserId, string.IsNullOrWhiteSpace(displayName) ? "ADEEB Student" : displayName,
+                profile?.AvatarUrl,
                 ToXp(x.SeasonScoreUnits), x.UserId == currentUserId, Zone(rank, ranked.Count, movement, league.DisplayOrder, leagueCount));
         }
         var current = currentUserId.HasValue ? ranked.SingleOrDefault(x => x.UserId == currentUserId) : null;

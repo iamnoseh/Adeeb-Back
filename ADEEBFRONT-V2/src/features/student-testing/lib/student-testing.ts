@@ -1,5 +1,5 @@
 import { ApiError } from '@/shared/api/problem-details'
-import type { AttemptAnswers, SubmitAttemptRequest, TestQuestionDto } from '@/features/student-testing/model/student-testing.types'
+import { RedListAnswerAction, type AttemptAnswers, type CheckedTestAnswerDto, type RedListQuestionProgressDto, type SubmitAttemptRequest, type TestQuestionDto } from '@/features/student-testing/model/student-testing.types'
 
 export function canStartRedList(activeCount: number, minimum: number) {
   return activeCount >= minimum
@@ -39,6 +39,20 @@ export function buildSubmitPayload(questions: TestQuestionDto[], answers: Attemp
         ...(answer?.matchingPairs ? { matchingPairs: answer.matchingPairs } : {}),
       }
     }),
+  }
+}
+
+export function getVisibleRedListProgress(
+  initialProgress: RedListQuestionProgressDto | null,
+  feedback: CheckedTestAnswerDto | undefined,
+): RedListQuestionProgressDto | null {
+  if (!feedback) return initialProgress
+  if (!feedback.redList || feedback.redList.action === RedListAnswerAction.mastered) return null
+
+  return {
+    correctStreak: feedback.redList.correctStreak,
+    requiredCorrectStreak: feedback.redList.requiredCorrectStreak,
+    correctAnswersRemaining: feedback.redList.correctAnswersRemaining,
   }
 }
 

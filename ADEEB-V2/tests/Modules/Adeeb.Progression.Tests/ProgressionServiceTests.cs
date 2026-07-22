@@ -1,4 +1,5 @@
 using Adeeb.Application.Abstractions.Progression;
+using Adeeb.Application.Abstractions.Identity;
 using Adeeb.Application.Abstractions.Time;
 using Adeeb.Modules.Progression.Application;
 using Adeeb.Modules.Progression.Contracts;
@@ -18,7 +19,7 @@ public sealed class ProgressionServiceTests
         await using var db = CreateDb();
         var clock = new Clock();
         var xp = new XpRead([new(userId, 200, clock.UtcNow)]);
-        var service = new ProgressionService(db, xp, new Directory(userId), clock);
+        var service = new ProgressionService(db, xp, new Directory(userId), new IdentityDirectory(userId), clock);
         await ConfigureAndStartAsync(service);
         var ledgerId = Guid.NewGuid();
         var message = new XpGrantedIntegrationEvent(ledgerId, userId, XpSourceType.TestAttempt,
@@ -30,6 +31,8 @@ public sealed class ProgressionServiceTests
         var membership = await db.Memberships.SingleAsync(x => x.UserId == userId);
         Assert.Equal(20, membership.SeasonScoreUnits);
         Assert.Equal(1, await db.ScoreEvents.CountAsync());
+        var leaderboard = await service.GetAdminLeaderboardAsync(membership.LeagueId, 1, 10, default);
+        Assert.Equal("Student Name", leaderboard.Value!.Items.Single().DisplayName);
     }
 
     [Fact]
@@ -39,7 +42,7 @@ public sealed class ProgressionServiceTests
         await using var db = CreateDb();
         var clock = new Clock();
         var service = new ProgressionService(db, new XpRead([new(userId, 200, clock.UtcNow)]),
-            new Directory(userId), clock);
+            new Directory(userId), new IdentityDirectory(userId), clock);
         await ConfigureAndStartAsync(service);
 
         await service.HandleAsync(new(Guid.NewGuid(), userId, XpSourceType.AdminAdjustment,
@@ -53,7 +56,7 @@ public sealed class ProgressionServiceTests
     public async Task Start_rejects_non_contiguous_thresholds()
     {
         await using var db = CreateDb();
-        var service = new ProgressionService(db, new XpRead([]), new Directory(), new Clock());
+        var service = new ProgressionService(db, new XpRead([]), new Directory(), new IdentityDirectory(), new Clock());
         Assert.True((await service.CreateLeagueAsync(Form("Starter", 0, 100, 1), null, default)).IsSuccess);
         Assert.False((await service.CreateLeagueAsync(Form("Gold", 120, null, 2), null, default)).IsSuccess);
         Assert.True((await service.StartSeasonAsync(default)).IsFailure);
@@ -66,7 +69,7 @@ public sealed class ProgressionServiceTests
         await using var db = CreateDb();
         var clock = new Clock();
         var xp = new XpRead([]);
-        var service = new ProgressionService(db, xp, new Directory(userId), clock);
+        var service = new ProgressionService(db, xp, new Directory(userId), new IdentityDirectory(userId), clock);
         await ConfigureAndStartAsync(service);
         xp.Balances = [new(userId, 200, clock.UtcNow)];
         xp.Aggregates = [new(userId, 40, clock.UtcNow.AddDays(1))];
@@ -108,6 +111,17 @@ public sealed class ProgressionServiceTests
         {
             IReadOnlyDictionary<Guid, StudentCompetitionReference> result = identityUserIds
                 .Where(users.Contains).ToDictionary(x => x, x => new StudentCompetitionReference(x, $"Student {x:N}", null, true));
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class IdentityDirectory(params Guid[] users) : IPublicUserProfileDirectory
+    {
+        public Task<IReadOnlyDictionary<Guid, PublicUserProfile>> GetByUserIdsAsync(
+            IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)
+        {
+            IReadOnlyDictionary<Guid, PublicUserProfile> result = userIds.Where(users.Contains)
+                .ToDictionary(x => x, x => new PublicUserProfile(x, "Student", "Name"));
             return Task.FromResult(result);
         }
     }

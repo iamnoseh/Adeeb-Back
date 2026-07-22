@@ -62,6 +62,8 @@ public sealed class RedListService(QuestionBankDbContext db, IDateTimeProvider c
         if (eligible.Count == 0) return [];
 
         var questionIds = eligible.Select(x => x.QuestionId).Distinct().ToArray();
+        foreach (var questionId in questionIds.Order())
+            await RedListConcurrency.AcquireAsync(db, userId, questionId, ct);
         var existing = await db.StudentRedListItems
             .Where(x => x.UserId == userId && questionIds.Contains(x.QuestionId))
             .ToDictionaryAsync(x => x.QuestionId, ct);

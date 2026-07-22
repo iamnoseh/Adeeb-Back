@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, Clock3, Crown, Medal, RefreshCw, Sparkles, Trophy, UsersRound } from 'lucide-react'
+import { ArrowDown, ArrowUp, Clock3, Medal, RefreshCw, Sparkles, Trophy, UsersRound } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
 import { leagueKeys, progressionStudentApi } from '@/features/progression/api/league.api'
 import type { LeaderboardItemDto } from '@/features/progression/model/league.types'
 import { leagueCountdown, serverClockOffset } from '@/features/progression/lib/league-time'
@@ -36,8 +35,6 @@ export function StudentLeaguePage() {
   if (overview.isError) return <LeagueState text={t('progression.loadFailed')} retryLabel={t('progression.retry')} retry={() => void overview.refetch()} />
   if (!data?.league) return <div className="grid gap-6"><StudentPageHeader description={t('progression.studentDescription')} /><LeagueState text={data?.lifetimeXp ? t('progression.noSeason') : t('progression.unranked')} /></div>
 
-  const top = leaderboard.data?.items.filter((item) => item.rank <= 3) ?? []
-
   return <div className="grid gap-5">
     <StudentPageHeader description={t('progression.studentDescription')} />
     <section className="overflow-hidden rounded-lg border border-[#ddd9ff] bg-white shadow-[0_14px_36px_rgb(20_31_70/0.06)]">
@@ -49,8 +46,6 @@ export function StudentLeaguePage() {
       <div className="grid border-t border-[#eceaf9] sm:grid-cols-2"><Metric icon={<Sparkles />} label={t('progression.lifetimeXp')} value={`${number.format(data.lifetimeXp)} XP`} /><Metric icon={<UsersRound />} label={t('progression.rankedStudents')} value={number.format(data.rankedStudentsCount)} /></div>
     </section>
 
-    {top.length ? <section className="grid items-end gap-3 sm:grid-cols-3">{[top[1], top[0], top[2]].filter(Boolean).map((item) => <Podium key={item!.userId} item={item!} />)}</section> : null}
-
     <section className="overflow-hidden rounded-lg border border-[#e1e4ef] bg-white shadow-[0_10px_28px_rgb(20_31_70/0.04)]">
       <div className="flex flex-col border-b border-[#eceef3] bg-white">
         <div className="flex items-center justify-between px-5 py-4"><div><h2 className="font-black text-[#111b3d]">{t('progression.leaderboard')}</h2><p className="mt-1 text-xs text-[#68718c]">{t('progression.movementHint', { count: leaderboard.data?.movementCount ?? 0 })}</p></div><Trophy className="h-5 w-5 text-[#5146f0]" /></div>
@@ -58,7 +53,7 @@ export function StudentLeaguePage() {
           <div className="flex flex-wrap gap-2 border-t border-[#eceef3] px-5 py-3 bg-[#f8f9fc]">
             {leagues.data.map((lg) => {
               const isActive = lg.id === selectedLeagueId;
-              const isUserLeague = lg.id === data.league.id;
+              const isUserLeague = lg.id === data.league?.id;
               return (
                 <button
                   key={lg.id}
@@ -104,45 +99,6 @@ function LeagueAvatar({ name, url, large = false, mini = false }: { name: string
 
 function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) { return <div className="flex items-center gap-3 border-b border-[#eceaf9] p-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0"><span className="grid h-10 w-10 place-items-center rounded-lg bg-[#f0efff] text-[#5146f0] [&>svg]:h-5 [&>svg]:w-5">{icon}</span><div><p className="text-xs font-bold text-[#7b8299]">{label}</p><p className="mt-0.5 text-lg font-black text-[#111b3d]">{value}</p></div></div> }
 
-function Podium({ item }: { item: LeaderboardItemDto }) {
-  const { t } = useTranslation();
-  const isFirst = item.rank === 1;
-  const isSecond = item.rank === 2;
-  const isThird = item.rank === 3;
-  return (
-    <article className={cn(
-      'flex items-center gap-3 rounded-lg border bg-white p-4 shadow-sm transition-all hover:shadow-md',
-      isFirst 
-        ? 'border-amber-300 bg-gradient-to-br from-amber-50/50 to-white sm:min-h-28' 
-        : isSecond 
-          ? 'border-slate-300 bg-gradient-to-br from-slate-50/50 to-white' 
-          : 'border-orange-200 bg-gradient-to-br from-orange-50/50 to-white'
-    )}>
-      <span className={cn(
-        'grid h-10 w-10 place-items-center rounded-full font-black text-sm shrink-0',
-        isFirst 
-          ? 'bg-amber-100 text-amber-700' 
-          : isSecond 
-            ? 'bg-slate-100 text-slate-700' 
-            : 'bg-orange-100 text-orange-700'
-      )}>
-        {isFirst ? <Crown className="h-5 w-5" /> : item.rank}
-      </span>
-      <div className="min-w-0">
-        <p className="truncate font-black text-[#111b3d] flex items-center gap-1">
-          {item.displayName}
-          {item.isCurrentUser && (
-            <span className="text-[9px] bg-[#5146f0] text-white px-1 py-0.5 rounded font-black uppercase">
-              {t('progression.you')}
-            </span>
-          )}
-        </p>
-        <p className="mt-1 text-sm font-bold text-[#68718c]">{item.seasonXp} XP</p>
-      </div>
-    </article>
-  );
-}
-
 function LeaderRow({ item }: { item: LeaderboardItemDto }) {
   const { t } = useTranslation();
   const isPromoting = item.zone === 'promotion' || item.zone === 'top';
@@ -154,7 +110,7 @@ function LeaderRow({ item }: { item: LeaderboardItemDto }) {
 
   return (
     <div className={cn(
-      'grid min-h-16 grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 border-b border-[#eef0f5] px-4 py-2 last:border-b-0 transition-colors',
+      'grid min-h-[4.5rem] grid-cols-[42px_42px_minmax(0,1fr)_auto] items-center gap-3 border-b border-[#eef0f5] px-4 py-2 last:border-b-0 transition-colors',
       item.isCurrentUser 
         ? 'bg-[#f3f1ff] border-l-4 border-[#5146f0] pl-3' 
         : isPromoting 
@@ -166,6 +122,7 @@ function LeaderRow({ item }: { item: LeaderboardItemDto }) {
       <span className="text-center font-black tabular-nums text-[#505978]">
         {rankContent}
       </span>
+      <StudentAvatar name={item.displayName} url={item.avatarUrl} />
       <div className="min-w-0">
         <p className="truncate text-sm font-black text-[#111b3d] flex items-center">
           {item.displayName}
@@ -180,6 +137,12 @@ function LeaderRow({ item }: { item: LeaderboardItemDto }) {
       <strong className="text-sm tabular-nums text-[#111b3d]">{item.seasonXp} XP</strong>
     </div>
   );
+}
+
+function StudentAvatar({ name, url }: { name: string; url: string | null }) {
+  if (url) return <img src={url} alt="" className="h-10 w-10 rounded-full border border-white object-cover shadow-sm" />
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
+  return <span className="grid h-10 w-10 place-items-center rounded-full bg-[#e9e7ff] text-xs font-black text-[#5146f0]">{initials || 'A'}</span>
 }
 
 function Zone({ zone }: { zone: string }) { const { t } = useTranslation(); if (zone === 'promotion') return <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-emerald-600"><ArrowUp className="h-3 w-3" />{t('progression.promotion')}</span>; if (zone === 'relegation') return <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-red-600"><ArrowDown className="h-3 w-3" />{t('progression.relegation')}</span>; return <span className="mt-1 block text-xs text-[#8a90a5]">{t(`progression.zone.${zone}`, { defaultValue: t('progression.stable') })}</span> }
