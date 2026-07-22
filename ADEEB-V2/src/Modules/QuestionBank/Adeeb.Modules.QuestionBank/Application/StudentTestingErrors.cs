@@ -18,6 +18,7 @@ public static class StudentTestingErrors
     public static readonly Error InvalidQuestionCount = Error.Validation("test.invalid_question_count", "Testing.InvalidQuestionCount");
     public static readonly Error ProfileRequired = Error.Validation("mmt.profile_required", "Testing.MmtProfileRequired");
     public static readonly Error ChoicesRequired = Error.Validation("mmt.choices_required", "Testing.MmtChoicesRequired");
+    public static readonly Error MmtExamNotConfigured = Error.Conflict("mmt.exam_not_configured", "Testing.MmtExamNotConfigured");
     public static readonly Error MonthlyExamClosed = Error.Validation("monthly_exam.closed", "Testing.MonthlyExamClosed");
     public static readonly Error MonthlyExamAlreadyStarted = Error.Conflict("monthly_exam.already_started", "Testing.MonthlyExamAlreadyStarted");
     public static readonly Error UserRequired = Error.Unauthorized("test.user_required", "Common.Unauthorized");

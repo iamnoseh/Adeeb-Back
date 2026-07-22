@@ -6,13 +6,14 @@ public sealed class TestAttempt : Entity
 {
     private readonly List<TestAttemptQuestion> _questions = [];
     private readonly List<TestAttemptAnswer> _answers = [];
+    private readonly List<TestAttemptDraftAnswer> _draftAnswers = [];
     private TestAttempt() { }
 
     public TestAttempt(Guid id, Guid userId, TestMode mode, Guid? subjectId, Guid? clusterId, string? monthlyWindowKey,
-        int questionCount, DateTimeOffset now, DateTimeOffset expiresAt)
+        int questionCount, DateTimeOffset now, DateTimeOffset expiresAt, string? modeSnapshotJson = null)
     {
         Id = id; UserId = userId; Mode = mode; SubjectId = subjectId; ClusterId = clusterId;
-        MonthlyWindowKey = monthlyWindowKey; QuestionCount = questionCount; Status = TestAttemptStatus.Created;
+        MonthlyWindowKey = monthlyWindowKey; ModeSnapshotJson = modeSnapshotJson; QuestionCount = questionCount; Status = TestAttemptStatus.Created;
         CreatedAtUtc = now; Start(now, expiresAt);
     }
 
@@ -21,6 +22,7 @@ public sealed class TestAttempt : Entity
     public Guid? SubjectId { get; private set; }
     public Guid? ClusterId { get; private set; }
     public string? MonthlyWindowKey { get; private set; }
+    public string? ModeSnapshotJson { get; private set; }
     public TestAttemptStatus Status { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset StartedAtUtc { get; private set; }
@@ -33,6 +35,7 @@ public sealed class TestAttempt : Entity
     public decimal Percentage { get; private set; }
     public IReadOnlyCollection<TestAttemptQuestion> Questions => _questions;
     public IReadOnlyCollection<TestAttemptAnswer> Answers => _answers;
+    public IReadOnlyCollection<TestAttemptDraftAnswer> DraftAnswers => _draftAnswers;
     public TestAttemptResult? Result { get; private set; }
     public TestXpSettlement? XpSettlement { get; private set; }
 
@@ -47,6 +50,25 @@ public sealed class TestAttempt : Entity
         CorrectCount = correct; WrongCount = wrong; Score = score; Percentage = percentage;
         SubmittedAtUtc = now; Status = automatic ? TestAttemptStatus.AutoSubmitted : TestAttemptStatus.Submitted;
     }
+}
+
+public sealed class TestAttemptDraftAnswer : Entity
+{
+    private TestAttemptDraftAnswer() { }
+    public TestAttemptDraftAnswer(Guid id, Guid attemptId, Guid attemptQuestionId, Guid questionId,
+        string answerSnapshotJson, bool isMarkedForReview, DateTimeOffset now)
+    {
+        Id = id; TestAttemptId = attemptId; TestAttemptQuestionId = attemptQuestionId; QuestionId = questionId;
+        Update(answerSnapshotJson, isMarkedForReview, now);
+    }
+    public Guid TestAttemptId { get; private set; }
+    public Guid TestAttemptQuestionId { get; private set; }
+    public Guid QuestionId { get; private set; }
+    public string AnswerSnapshotJson { get; private set; } = string.Empty;
+    public bool IsMarkedForReview { get; private set; }
+    public DateTimeOffset UpdatedAtUtc { get; private set; }
+    public void Update(string answerSnapshotJson, bool isMarkedForReview, DateTimeOffset now)
+    { AnswerSnapshotJson = answerSnapshotJson; IsMarkedForReview = isMarkedForReview; UpdatedAtUtc = now; }
 }
 
 public sealed class TestAttemptQuestion : Entity
@@ -93,11 +115,13 @@ public sealed class TestAttemptAnswer : Entity
 public sealed class TestAttemptResult : Entity
 {
     private TestAttemptResult() { }
-    public TestAttemptResult(Guid id, Guid attemptId, string topicBreakdownJson, string resultSnapshotJson, DateTimeOffset now)
-    { Id = id; TestAttemptId = attemptId; TopicBreakdownJson = topicBreakdownJson; ResultSnapshotJson = resultSnapshotJson; CreatedAtUtc = now; }
+    public TestAttemptResult(Guid id, Guid attemptId, string topicBreakdownJson, string resultSnapshotJson, DateTimeOffset now,
+        string? officialScoreSnapshotJson = null)
+    { Id = id; TestAttemptId = attemptId; TopicBreakdownJson = topicBreakdownJson; ResultSnapshotJson = resultSnapshotJson; OfficialScoreSnapshotJson = officialScoreSnapshotJson; CreatedAtUtc = now; }
     public Guid TestAttemptId { get; private set; }
     public string TopicBreakdownJson { get; private set; } = string.Empty;
     public string ResultSnapshotJson { get; private set; } = string.Empty;
+    public string? OfficialScoreSnapshotJson { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
 }
 

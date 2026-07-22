@@ -160,6 +160,36 @@ public sealed class StudentTestingTests
     }
 
     [Fact]
+    public async Task Mastered_red_list_question_does_not_restart_its_correct_streak()
+    {
+        await using var db = CreateDb();
+        var userId = Guid.NewGuid();
+        var update = new RedListService.AnswerUpdate(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), QuestionType.ClosedAnswer, false);
+        var service = new RedListService(db, new FakeClock(DateTimeOffset.UtcNow));
+
+        await service.ApplyAnswerAsync(userId, update, default);
+        await db.SaveChangesAsync();
+
+        var correct = update with { IsCorrect = true };
+        var first = await service.ApplyAnswerAsync(userId, correct, default);
+        var second = await service.ApplyAnswerAsync(userId, correct, default);
+        var third = await service.ApplyAnswerAsync(userId, correct, default);
+        await db.SaveChangesAsync();
+        var fourth = await service.ApplyAnswerAsync(userId, correct, default);
+
+        Assert.Equal(RedListService.AnswerAction.Progressed, first.Action);
+        Assert.Equal(1, first.CorrectStreak);
+        Assert.Equal(2, second.CorrectStreak);
+        Assert.Equal(RedListService.AnswerAction.Mastered, third.Action);
+        Assert.Equal(3, third.CorrectStreak);
+        Assert.Equal(RedListService.AnswerAction.None, fourth.Action);
+        Assert.Equal(3, fourth.CorrectStreak);
+        Assert.Equal(0, fourth.CorrectAnswersRemaining);
+        Assert.Equal(RedListStatus.Mastered, (await db.StudentRedListItems.SingleAsync()).Status);
+    }
+
+    [Fact]
     public void Attempt_contract_does_not_expose_correct_answers_before_submission()
     {
         var questionProperties = typeof(TestQuestionDto).GetProperties().Select(x => x.Name).ToHashSet();

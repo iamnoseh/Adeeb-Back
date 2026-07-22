@@ -17,6 +17,7 @@ public static class RolePermissionMapping
             Permissions.QuestionBank.View,
             Permissions.QuestionBank.Manage,
             Permissions.QuestionBank.Import,
+            .. Permissions.Progression.All,
             .. Permissions.Vocabulary.All,
             .. Permissions.Mmt.All
         ],

@@ -7,6 +7,13 @@ public static class AdeebClaimNames
 
 public static class Permissions
 {
+    public static class Progression
+    {
+        public const string View = "progression.view";
+        public const string Manage = "progression.manage";
+        public static readonly IReadOnlyList<string> All = [View, Manage];
+    }
+
     public static class Vocabulary
     {
         public const string View = "vocabulary.view";
@@ -60,6 +67,7 @@ public static class Permissions
 
     public static readonly IReadOnlyList<string> All =
     [
+        .. Progression.All,
         .. Vocabulary.All,
         .. Mmt.All,
         .. Commerce.All,

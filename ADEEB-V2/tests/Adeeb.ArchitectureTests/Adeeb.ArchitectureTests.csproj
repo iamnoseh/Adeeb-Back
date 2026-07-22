@@ -19,6 +19,7 @@
     <ProjectReference Include="..\..\src\Modules\QuestionBank\Adeeb.Modules.QuestionBank\Adeeb.Modules.QuestionBank.csproj" />
     <ProjectReference Include="..\..\src\Modules\Students\Adeeb.Modules.Students\Adeeb.Modules.Students.csproj" />
     <ProjectReference Include="..\..\src\Modules\Vocabulary\Adeeb.Modules.Vocabulary\Adeeb.Modules.Vocabulary.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Progression\Adeeb.Modules.Progression\Adeeb.Modules.Progression.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

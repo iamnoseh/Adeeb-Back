@@ -25,6 +25,9 @@
   <Folder Name="/src/Modules/QuestionBank/">
     <Project Path="src/Modules/QuestionBank/Adeeb.Modules.QuestionBank/Adeeb.Modules.QuestionBank.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Progression/">
+    <Project Path="src/Modules/Progression/Adeeb.Modules.Progression/Adeeb.Modules.Progression.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Students/">
     <Project Path="src/Modules/Students/Adeeb.Modules.Students/Adeeb.Modules.Students.csproj" />
   </Folder>
@@ -45,5 +48,8 @@
   </Folder>
   <Folder Name="/tests/Modules/Vocabulary/">
     <Project Path="tests/Modules/Adeeb.Vocabulary.Tests/Adeeb.Vocabulary.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Modules/Progression/">
+    <Project Path="tests/Modules/Adeeb.Progression.Tests/Adeeb.Progression.Tests.csproj" />
   </Folder>
 </Solution>

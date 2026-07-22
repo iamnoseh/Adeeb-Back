@@ -13,7 +13,7 @@ namespace Adeeb.Modules.Students.Application;
 public sealed class StudentsService(
     StudentsDbContext db,
     IDateTimeProvider clock,
-    ILogger<StudentsService> logger) : IStudentLookup, IStudentRegistrationProvisioner
+    ILogger<StudentsService> logger) : IStudentLookup, IStudentRegistrationProvisioner, IStudentCompetitionDirectory
 {
     public async Task<Result<StudentResponse>> GetCurrentAsync(ClaimsPrincipal principal, CancellationToken cancellationToken)
     {
@@ -169,6 +169,17 @@ public sealed class StudentsService(
             .Where(x => x.Id == studentId)
             .Select(x => new StudentReference(x.Id, x.IdentityUserId, x.Status.ToString(), x.Profile.TimeZoneId))
             .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, StudentCompetitionReference>> GetByIdentityUserIdsAsync(
+        IReadOnlyCollection<Guid> identityUserIds, CancellationToken cancellationToken)
+    {
+        if (identityUserIds.Count == 0) return new Dictionary<Guid, StudentCompetitionReference>();
+        return await db.Students.AsNoTracking()
+            .Where(x => identityUserIds.Contains(x.IdentityUserId))
+            .Select(x => new StudentCompetitionReference(x.IdentityUserId, x.Profile.DisplayName,
+                x.Profile.AvatarUrl, x.Status == StudentStatus.Active))
+            .ToDictionaryAsync(x => x.IdentityUserId, cancellationToken);
+    }
 
     private IQueryable<StudentResponse> ProjectStudents() =>
         db.Students.AsNoTracking()

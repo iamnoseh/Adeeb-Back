@@ -1,5 +1,6 @@
 using System.Text;
 using Adeeb.Application.Abstractions.Students;
+using Adeeb.Application.Abstractions.Identity;
 using Adeeb.Modules.Identity.Application;
 using Adeeb.Modules.Identity.Domain.Users;
 using Adeeb.Modules.Identity.Infrastructure.Authentication;
@@ -47,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IAccessTokenGenerator, JwtTokenGenerator>();
         services.TryAddScoped<IStudentRegistrationProvisioner, MissingStudentRegistrationProvisioner>();
         services.AddScoped<IdentityService>();
+        services.AddScoped<IPublicUserProfileDirectory, PublicUserProfileDirectory>();
 
         var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
             ?? throw new InvalidOperationException("JWT configuration is required.");

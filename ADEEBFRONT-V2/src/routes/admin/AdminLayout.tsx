@@ -21,6 +21,7 @@ import {
   type LucideIcon,
   Library,
   Database,
+  Trophy,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -109,6 +110,14 @@ export function AdminLayout() {
       ],
     },
     {
+      id: "competition",
+      label: t("progression.navGroup"),
+      icon: Trophy,
+      items: [
+        { to: "/admin/progression", label: t("progression.adminNav"), icon: Trophy },
+      ],
+    },
+    {
       id: "monitoring",
       label: t("navGroupMonitoring"),
       icon: UsersRound,
@@ -137,6 +146,7 @@ export function AdminLayout() {
     content: activeGroup === "content",
     mmtData: activeGroup === "mmtData",
     monitoring: activeGroup === "monitoring",
+    competition: activeGroup === "competition",
   }));
 
   useEffect(() => {

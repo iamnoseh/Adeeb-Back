@@ -27,7 +27,7 @@ import { StudentLearningPage } from "@/routes/student/StudentLearningPage";
 import { StudentProfilePage } from "@/routes/student/StudentProfilePage";
 import { StudentSectionPage } from "@/routes/student/StudentSectionPage";
 import { StudentSettingsPage } from "@/routes/student/StudentSettingsPage";
-import { Award, CalendarCheck2, HelpCircle, Rocket, Swords, Trophy } from "lucide-react";
+import { Award, CalendarCheck2, HelpCircle, Rocket, Swords } from "lucide-react";
 
 const MmtCatalogPage = lazy(() =>
   import("@/features/mmt/ui/MmtCatalogPage").then((module) => ({
@@ -96,6 +96,8 @@ const StudentRedListPage = lazy(() => import("@/routes/student/testing/StudentTe
 const StudentVocabularyPage = lazy(() => import("@/routes/student/vocabulary/StudentVocabularyPage").then((module) => ({ default: module.StudentVocabularyPage })));
 const StudentVocabularySessionPage = lazy(() => import("@/routes/student/vocabulary/StudentVocabularySessionPage").then((module) => ({ default: module.StudentVocabularySessionPage })));
 const AdminVocabularyPage = lazy(() => import("@/routes/admin/vocabulary/AdminVocabularyPage").then((module) => ({ default: module.AdminVocabularyPage })));
+const AdminProgressionPage = lazy(() => import("@/routes/admin/progression/AdminProgressionPage").then((module) => ({ default: module.AdminProgressionPage })));
+const StudentLeaguePage = lazy(() => import("@/routes/student/StudentLeaguePage").then((module) => ({ default: module.StudentLeaguePage })));
 
 function MmtRouteFallback() {
   const { t } = useTranslation();
@@ -157,6 +159,7 @@ const router = createBrowserRouter(
             element={<QuestionFormRoute />}
           />
           <Route path="vocabulary" element={<Suspense fallback={<MmtRouteFallback />}><AdminVocabularyPage /></Suspense>} />
+          <Route path="progression" element={<Suspense fallback={<MmtRouteFallback />}><AdminProgressionPage /></Suspense>} />
           <Route
             path="mmt"
             element={
@@ -229,7 +232,7 @@ const router = createBrowserRouter(
           <Route path="duels" element={<StudentSectionPage titleKey="student.duel" icon={Swords} />} />
           <Route path="daily-tasks" element={<StudentSectionPage titleKey="student.dailyTasks" icon={CalendarCheck2} />} />
           <Route path="missions" element={<StudentSectionPage titleKey="student.missions" icon={Rocket} />} />
-          <Route path="league" element={<StudentSectionPage titleKey="student.league" icon={Trophy} />} />
+          <Route path="league" element={<StudentTestingRoute><StudentLeaguePage /></StudentTestingRoute>} />
           <Route path="achievements" element={<StudentSectionPage titleKey="student.achievements" icon={Award} />} />
           <Route path="profile" element={<StudentProfilePage />} />
           <Route path="settings" element={<StudentSettingsPage />} />

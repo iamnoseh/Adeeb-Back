@@ -543,6 +543,62 @@ namespace Adeeb.Modules.QuestionBank.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Adeeb.Modules.QuestionBank.Infrastructure.Persistence.XpGrantOutboxMessage", b =>
+                {
+                    b.Property<Guid>("LedgerEntryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("ledger_entry_id");
+
+                    b.Property<int>("AmountUnits")
+                        .HasColumnType("integer")
+                        .HasColumnName("amount_units");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("EntryType")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("entry_type");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("last_error");
+
+                    b.Property<long>("NewBalanceUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("new_balance_units");
+
+                    b.Property<DateTimeOffset?>("ProcessedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at_utc");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("source_type");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("LedgerEntryId");
+
+                    b.HasIndex("ProcessedAtUtc", "CreatedAtUtc")
+                        .HasDatabaseName("ix_question_bank_xp_outbox_pending");
+
+                    b.ToTable("xp_grant_outbox", "question_bank");
+                });
+
             modelBuilder.Entity("Adeeb.SharedKernel.Progression.StudentXpBalance", b =>
                 {
                     b.Property<Guid>("UserId")

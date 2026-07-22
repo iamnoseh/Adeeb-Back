@@ -131,6 +131,24 @@ internal sealed class StudentXpService(
         if (await updateLedger.ExecuteNonQueryAsync(ct) != 1)
             return Result<XpGrantResult>.Failure(XpErrors.PersistenceFailed);
 
+        await using var outbox = new NpgsqlCommand("""
+            INSERT INTO question_bank.xp_grant_outbox
+                (ledger_entry_id, user_id, source_type, entry_type, amount_units, new_balance_units,
+                 created_at_utc, processed_at_utc, attempts, last_error)
+            VALUES (@ledger_entry_id, @user_id, @source_type, @entry_type, @amount_units,
+                    @new_balance_units, @created_at_utc, NULL, 0, NULL)
+            ON CONFLICT (ledger_entry_id) DO NOTHING;
+            """, connection, transaction);
+        outbox.Parameters.AddWithValue("ledger_entry_id", ledgerEntryId);
+        outbox.Parameters.AddWithValue("user_id", request.UserId);
+        outbox.Parameters.AddWithValue("source_type", request.SourceType.ToString());
+        outbox.Parameters.AddWithValue("entry_type", request.EntryType.ToString());
+        outbox.Parameters.AddWithValue("amount_units", request.AmountUnits);
+        outbox.Parameters.AddWithValue("new_balance_units", newBalance);
+        outbox.Parameters.AddWithValue("created_at_utc", now);
+        if (await outbox.ExecuteNonQueryAsync(ct) != 1)
+            return Result<XpGrantResult>.Failure(XpErrors.PersistenceFailed);
+
         logger.LogInformation(
             "XP ledger entry created and balance updated. UserId={UserId} SourceType={SourceType} SourceId={SourceId} EntryType={EntryType} AmountUnits={AmountUnits} PreviousBalanceUnits={PreviousBalanceUnits} NewBalanceUnits={NewBalanceUnits} LedgerEntryId={LedgerEntryId}",
             request.UserId, request.SourceType, request.SourceId, request.EntryType, request.AmountUnits,
@@ -212,6 +230,8 @@ internal sealed class StudentXpService(
         db.XpLedgerEntries.Add(new(id, request.UserId, request.SourceType, request.SourceId, request.EntryType,
             request.AmountUnits, request.IdempotencyKey, previous, current,
             request.Metadata is null ? null : JsonSerializer.Serialize(request.Metadata, Json), now));
+        db.XpGrantOutbox.Add(new(id, request.UserId, request.SourceType, request.EntryType, request.AmountUnits,
+            current, now));
         await db.SaveChangesAsync(ct);
         return Result<XpGrantResult>.Success(new(id, previous, current, request.AmountUnits, WasAlreadyProcessed: false));
     }
