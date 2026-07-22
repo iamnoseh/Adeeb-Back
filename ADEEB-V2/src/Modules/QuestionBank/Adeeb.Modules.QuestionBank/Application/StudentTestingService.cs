@@ -201,7 +201,7 @@ public sealed class StudentTestingService(
     {
         await using var transaction = await BeginTransactionAsync(ct);
         await TestAttemptFinalizationConcurrency.AcquireAttemptLockAsync(db, attemptId, ct);
-        var attempt = await db.TestAttempts.Include(x => x.Questions).Include(x => x.Answers)
+        var attempt = await db.TestAttempts.Include(x => x.Questions).Include(x => x.Answers).Include(x => x.DraftAnswers)
             .SingleOrDefaultAsync(x => x.Id == attemptId && x.UserId == userId, ct);
         if (attempt is null) return Result<TestResultDto>.Failure(StudentTestingErrors.AttemptNotFound);
         if (attempt.Status != TestAttemptStatus.InProgress)

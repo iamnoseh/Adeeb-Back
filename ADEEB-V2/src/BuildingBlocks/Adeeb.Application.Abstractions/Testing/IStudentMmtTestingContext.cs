@@ -43,5 +43,5 @@ public interface IStudentMmtTestingContext
     Task<StudentMmtTestingContext?> GetAsync(Guid userId, CancellationToken ct);
     Task<MmtOfficialScore?> CalculateAsync(Guid examVersionId, Guid clusterId,
         IReadOnlyList<MmtChoiceScoringContext> choices, IReadOnlyList<MmtSubtestRawScore> rawScores,
-        CancellationToken ct);
+        CancellationToken ct) => Task.FromResult<MmtOfficialScore?>(null);
 }
