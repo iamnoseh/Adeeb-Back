@@ -78,6 +78,15 @@ public sealed class StudentProfile
         UpdatedAtUtc = now;
     }
 
+    public void UpdateEducationSnapshot(string? region, string? city, string? schoolName, short? grade, DateTimeOffset now)
+    {
+        Region = NormalizeOptional(region);
+        City = NormalizeOptional(city);
+        SchoolName = NormalizeOptional(schoolName);
+        Grade = grade;
+        UpdatedAtUtc = now;
+    }
+
     public bool HasMeaningfulData() =>
         !string.IsNullOrWhiteSpace(DisplayName) ||
         !string.IsNullOrWhiteSpace(AvatarUrl) ||

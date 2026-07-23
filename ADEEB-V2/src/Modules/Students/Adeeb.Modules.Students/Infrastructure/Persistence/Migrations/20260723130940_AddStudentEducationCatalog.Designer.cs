@@ -3,6 +3,7 @@ using System;
 using Adeeb.Modules.Students.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Adeeb.Modules.Students.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(StudentsDbContext))]
-    partial class StudentsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260723130940_AddStudentEducationCatalog")]
+    partial class AddStudentEducationCatalog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -149,74 +152,6 @@ namespace Adeeb.Modules.Students.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("academic_year_rollover_items", "students");
-                });
-
-            modelBuilder.Entity("Adeeb.Modules.Students.Domain.Education.EducationImportBatch", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset?>("CompletedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("completed_at_utc");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at_utc");
-
-                    b.Property<int>("CreatedRegions")
-                        .HasColumnType("integer")
-                        .HasColumnName("created_regions");
-
-                    b.Property<int>("CreatedSchools")
-                        .HasColumnType("integer")
-                        .HasColumnName("created_schools");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(260)
-                        .HasColumnType("character varying(260)")
-                        .HasColumnName("file_name");
-
-                    b.Property<int>("InvalidRows")
-                        .HasColumnType("integer")
-                        .HasColumnName("invalid_rows");
-
-                    b.Property<int>("Kind")
-                        .HasColumnType("integer")
-                        .HasColumnName("kind");
-
-                    b.Property<Guid?>("RequestedByUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("requested_by_user_id");
-
-                    b.Property<int>("SkippedSchools")
-                        .HasColumnType("integer")
-                        .HasColumnName("skipped_schools");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
-                    b.Property<string>("SummaryJson")
-                        .HasColumnType("text")
-                        .HasColumnName("summary_json");
-
-                    b.Property<int>("TotalRows")
-                        .HasColumnType("integer")
-                        .HasColumnName("total_rows");
-
-                    b.Property<int>("ValidRows")
-                        .HasColumnType("integer")
-                        .HasColumnName("valid_rows");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Kind", "CreatedAtUtc");
-
-                    b.ToTable("education_import_batches", "students");
                 });
 
             modelBuilder.Entity("Adeeb.Modules.Students.Domain.Education.Region", b =>
