@@ -1,10 +1,13 @@
 import { ArrowRight, CalendarCheck2, CheckCircle2, Flame, Languages, Mail, Route, ShieldCheck, Sparkles, Swords, Trophy, UserRound } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/features/auth/model/auth-context'
 import { StudentCalendar } from '@/routes/student/StudentCalendar'
 import { useCurrentStudentActivity } from '@/features/student-activity/model/useStudentActivity'
+import { studentsApi } from '@/features/students/api/students.api'
+import { toAssetUrl } from '@/shared/lib/asset-url'
 
 export function StudentHomePage() {
   const { user } = useAuth()
@@ -12,6 +15,8 @@ export function StudentHomePage() {
   const name = user?.firstName || t('student.profile')
   const initials = `${user?.firstName?.[0] ?? 'A'}${user?.lastName?.[0] ?? ''}`.toUpperCase()
   const activity = useCurrentStudentActivity()
+  const studentQuery = useQuery({ queryKey: ['students', 'me'], queryFn: studentsApi.me, retry: false })
+  const avatarUrl = toAssetUrl(studentQuery.data?.profile.avatarUrl)
   const modules = [
     { title: t('student.tests'), to: '/student/tests', icon: <ShieldCheck />, tone: 'purple' as const },
     { title: t('vocabulary.studentNav'), to: '/student/vocabulary', icon: <Languages />, tone: 'green' as const },
@@ -23,7 +28,11 @@ export function StudentHomePage() {
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="grid min-w-0 gap-5">
         <section className="flex flex-col gap-5 rounded-lg border border-[#e1e4ef] bg-white p-5 shadow-[0_10px_28px_rgb(20_31_70/0.04)] sm:flex-row sm:items-center sm:p-6">
-          <span className="grid h-24 w-24 shrink-0 place-items-center rounded-full bg-[#f0efff] text-3xl font-black text-[#5146f0] ring-8 ring-[#faf9ff]">{initials}</span>
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="h-24 w-24 shrink-0 rounded-full object-cover ring-8 ring-[#faf9ff] shadow-[0_12px_28px_rgb(81_70_240/0.14)]" />
+          ) : (
+            <span className="grid h-24 w-24 shrink-0 place-items-center rounded-full bg-[#f0efff] text-3xl font-black text-[#5146f0] ring-8 ring-[#faf9ff]">{initials}</span>
+          )}
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-black tracking-normal text-[#111b3d] sm:text-2xl">{t('student.greeting', { name })}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#68718c]">{t('student.heroSubtitle')}</p>

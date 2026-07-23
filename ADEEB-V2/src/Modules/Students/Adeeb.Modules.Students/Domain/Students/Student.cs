@@ -42,10 +42,23 @@ public sealed class Student : Entity
         string? city,
         string? schoolName,
         short? grade,
+        string? gender,
         DateTimeOffset now)
     {
         EnsureOpen();
-        Profile.Update(displayName, avatarUrl, dateOfBirth, region, city, schoolName, grade, now);
+        Profile.Update(displayName, avatarUrl, dateOfBirth, region, city, schoolName, grade, gender, now);
+        if (OnboardingState == OnboardingState.NotStarted && Profile.HasMeaningfulData())
+        {
+            OnboardingState = OnboardingState.InProgress;
+        }
+
+        UpdatedAtUtc = now;
+    }
+
+    public void UpdateAvatar(string avatarUrl, DateTimeOffset now)
+    {
+        EnsureOpen();
+        Profile.ChangeAvatar(avatarUrl, now);
         if (OnboardingState == OnboardingState.NotStarted && Profile.HasMeaningfulData())
         {
             OnboardingState = OnboardingState.InProgress;

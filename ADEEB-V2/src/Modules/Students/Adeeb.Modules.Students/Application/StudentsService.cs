@@ -23,8 +23,8 @@ public sealed class StudentsService(
             return Result<StudentResponse>.Failure(StudentErrors.ProvisioningRequired);
         }
 
-        var response = await ProjectStudents()
-            .SingleOrDefaultAsync(x => x.IdentityUserId == identityUserId.Value, cancellationToken);
+        var response = await ProjectStudentsByIdentityUserId(identityUserId.Value)
+            .SingleOrDefaultAsync(cancellationToken);
 
         return response is null
             ? Result<StudentResponse>.Failure(StudentErrors.NotFound)
@@ -63,19 +63,64 @@ public sealed class StudentsService(
             return Result<StudentResponse>.Failure(StudentErrors.Closed);
         }
 
-        student.UpdateProfile(
-            request.DisplayName,
-            request.AvatarUrl,
-            request.DateOfBirth,
-            request.Region,
-            request.City,
-            request.SchoolName,
-            request.Grade,
-            clock.UtcNow);
+        try
+        {
+            student.UpdateProfile(
+                request.DisplayName,
+                request.AvatarUrl,
+                request.DateOfBirth,
+                request.Region,
+                request.City,
+                request.SchoolName,
+                request.Grade,
+                request.Gender,
+                clock.UtcNow);
+        }
+        catch (InvalidOperationException)
+        {
+            return Result<StudentResponse>.Failure(StudentErrors.DateOfBirthLocked);
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "student.profile.updated student_id={StudentId} identity_user_id={IdentityUserId}",
+            student.Id,
+            student.IdentityUserId);
+        return Result<StudentResponse>.Success(ToResponse(student));
+    }
+
+    public async Task<Result<StudentResponse>> UpdateCurrentAvatarAsync(ClaimsPrincipal principal, string avatarUrl, CancellationToken cancellationToken)
+    {
+        var identityUserId = GetUserId(principal);
+        if (identityUserId is null)
+        {
+            return Result<StudentResponse>.Failure(StudentErrors.ProvisioningRequired);
+        }
+
+        var student = await db.Students
+            .Include(x => x.Profile)
+            .SingleOrDefaultAsync(x => x.IdentityUserId == identityUserId.Value, cancellationToken);
+        if (student is null)
+        {
+            return Result<StudentResponse>.Failure(StudentErrors.NotFound);
+        }
+
+        if (student.Status == StudentStatus.Suspended)
+        {
+            return Result<StudentResponse>.Failure(StudentErrors.Suspended);
+        }
+
+        if (student.Status == StudentStatus.Closed)
+        {
+            return Result<StudentResponse>.Failure(StudentErrors.Closed);
+        }
+
+        student.UpdateAvatar(avatarUrl, clock.UtcNow);
+        await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "student.profile.avatar.updated student_id={StudentId} identity_user_id={IdentityUserId}",
             student.Id,
             student.IdentityUserId);
         return Result<StudentResponse>.Success(ToResponse(student));
@@ -181,8 +226,13 @@ public sealed class StudentsService(
             .ToDictionaryAsync(x => x.IdentityUserId, cancellationToken);
     }
 
-    private IQueryable<StudentResponse> ProjectStudents() =>
-        db.Students.AsNoTracking()
+    private IQueryable<StudentResponse> ProjectStudents() => ProjectStudentsQuery(db.Students.AsNoTracking());
+
+    private IQueryable<StudentResponse> ProjectStudentsByIdentityUserId(Guid identityUserId) =>
+        ProjectStudentsQuery(db.Students.AsNoTracking().Where(x => x.IdentityUserId == identityUserId));
+
+    private static IQueryable<StudentResponse> ProjectStudentsQuery(IQueryable<Student> query) =>
+        query
             .Select(x => new StudentResponse(
                 x.Id,
                 x.IdentityUserId,
@@ -196,6 +246,7 @@ public sealed class StudentsService(
                     x.Profile.City,
                     x.Profile.SchoolName,
                     x.Profile.Grade,
+                    x.Profile.Gender,
                     x.Profile.TimeZoneId,
                     x.Profile.UpdatedAtUtc),
                 x.CreatedAtUtc,
@@ -215,6 +266,7 @@ public sealed class StudentsService(
                 student.Profile.City,
                 student.Profile.SchoolName,
                 student.Profile.Grade,
+                student.Profile.Gender,
                 student.Profile.TimeZoneId,
                 student.Profile.UpdatedAtUtc),
             student.CreatedAtUtc,

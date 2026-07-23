@@ -63,10 +63,15 @@ public sealed class MmtCluster : Entity
     public string? DescriptionFor(SupportedLanguage language) => language == SupportedLanguage.Russian ? DescriptionRu ?? Description : Description;
     public void ReplaceSubjects(IEnumerable<Guid> subjectIds)
     {
-        var requested = subjectIds.Distinct().ToHashSet();
+        var requested = subjectIds.Distinct().ToList();
         _subjects.RemoveAll(x => !requested.Contains(x.SubjectId));
-        foreach (var subjectId in requested.Where(id => _subjects.All(x => x.SubjectId != id)))
-            _subjects.Add(new MmtClusterSubject(Id, subjectId));
+        for (var index = 0; index < requested.Count; index++)
+        {
+            var subjectId = requested[index];
+            var link = _subjects.SingleOrDefault(x => x.SubjectId == subjectId);
+            if (link is null) _subjects.Add(new MmtClusterSubject(Id, subjectId, index + 1));
+            else link.SetDisplayOrder(index + 1);
+        }
     }
     public void SetActive(bool active, DateTimeOffset now) { IsActive = active; UpdatedAtUtc = now; }
 }
@@ -74,10 +79,21 @@ public sealed class MmtCluster : Entity
 public sealed class MmtClusterSubject
 {
     private MmtClusterSubject() { }
-    public MmtClusterSubject(Guid clusterId, Guid subjectId) { MmtClusterId = clusterId; SubjectId = subjectId; }
+    public MmtClusterSubject(Guid clusterId, Guid subjectId, int displayOrder)
+    {
+        MmtClusterId = clusterId;
+        SubjectId = subjectId;
+        SetDisplayOrder(displayOrder);
+    }
     public Guid MmtClusterId { get; private set; }
     public Guid SubjectId { get; private set; }
+    public int DisplayOrder { get; private set; }
     public MmtCluster MmtCluster { get; private set; } = null!;
+    internal void SetDisplayOrder(int value)
+    {
+        if (value is < 1 or > 100) throw new ArgumentOutOfRangeException(nameof(value));
+        DisplayOrder = value;
+    }
 }
 
 public sealed class University : Entity

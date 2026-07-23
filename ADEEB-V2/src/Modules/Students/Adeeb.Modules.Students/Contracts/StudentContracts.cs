@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 namespace Adeeb.Modules.Students.Contracts;
 
 public sealed record StudentResponse(
@@ -17,6 +19,7 @@ public sealed record StudentProfileResponse(
     string? City,
     string? SchoolName,
     short? Grade,
+    string? Gender,
     string TimeZoneId,
     DateTimeOffset UpdatedAtUtc);
 
@@ -42,7 +45,13 @@ public sealed record UpdateStudentProfileRequest(
     string? Region,
     string? City,
     string? SchoolName,
-    short? Grade);
+    short? Grade,
+    string? Gender);
+
+public sealed class UpdateStudentAvatarRequest
+{
+    public IFormFile? Avatar { get; init; }
+}
 
 public sealed record ChangeStudentStatusRequest(int Status, string? Reason);
 

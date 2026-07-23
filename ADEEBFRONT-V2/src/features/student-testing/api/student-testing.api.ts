@@ -59,6 +59,9 @@ export const studentTestingApi = {
   async getAttempt(attemptId: string) {
     return (await httpClient.get<TestAttemptDto>(`${testsBase}/attempts/${attemptId}`)).data
   },
+  async saveDraft(attemptId: string, questionId: string, input: CheckTestAnswerRequest & { isMarkedForReview?: boolean }) {
+    return (await httpClient.put(`${testsBase}/attempts/${attemptId}/answers/${questionId}`, input)).data
+  },
   async submitAttempt(attemptId: string, input: SubmitAttemptRequest) {
     return (await httpClient.post<TestResultDto>(`${testsBase}/attempts/${attemptId}/submit`, input)).data
   },

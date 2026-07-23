@@ -52,6 +52,15 @@ public static class Validation
         return errors.Count == 0 ? Result.Success() : Result.ValidationFailure(errors);
     }
 
+    public static Result ValidateUpdateProfile(UpdateIdentityProfileRequest request)
+    {
+        var errors = new Dictionary<string, IReadOnlyList<Error>>(StringComparer.OrdinalIgnoreCase);
+        ValidateEmail(request.Email, errors);
+        ValidateName(request.FirstName, "firstName", errors);
+        ValidateName(request.LastName, "lastName", errors);
+        return errors.Count == 0 ? Result.Success() : Result.ValidationFailure(errors);
+    }
+
     private static void ValidateEmail(string? email, Dictionary<string, IReadOnlyList<Error>> errors)
     {
         if (string.IsNullOrWhiteSpace(email))

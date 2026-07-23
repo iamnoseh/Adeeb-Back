@@ -76,7 +76,10 @@ internal sealed class MmtClusterSubjectConfiguration : IEntityTypeConfiguration<
         b.HasKey(x => new { x.MmtClusterId, x.SubjectId });
         b.Property(x => x.MmtClusterId).HasColumnName("cluster_id");
         b.Property(x => x.SubjectId).HasColumnName("subject_id");
+        b.Property(x => x.DisplayOrder).HasColumnName("display_order");
         b.HasIndex(x => x.SubjectId).HasDatabaseName("ix_mmt_cluster_subjects_subject_id");
+        b.HasIndex(x => new { x.MmtClusterId, x.DisplayOrder }).IsUnique()
+            .HasDatabaseName("ux_mmt_cluster_subjects_cluster_order");
     }
 }
 

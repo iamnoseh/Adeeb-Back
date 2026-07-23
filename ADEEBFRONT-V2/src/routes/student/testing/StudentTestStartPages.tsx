@@ -32,10 +32,12 @@ export function SubjectTestStartPage() {
 }
 
 export function MmtPracticeStartPage() {
-  const { t } = useTranslation(); const [strict, setStrict] = useState(false)
-  const start = useStart(() => studentTestingApi.startMmtPractice({ strictSimulation: strict }))
+  const { t } = useTranslation(); const config = useQuery({ queryKey: studentTestingKeys.config(), queryFn: studentTestingApi.getTestingConfig })
+  const start = useStart(() => studentTestingApi.startMmtPractice({}))
   const profileRequired = start.isError && testingErrorKey(start.error) === 'profileRequired'
-  return <StartShell title={t('student.testing.mmt.title')} description={t('student.testing.mmt.startDescription')} icon={<Route />}><div className="grid gap-5"><TestingToggle checked={strict} onChange={setStrict} label={t('student.testing.mmt.strict')} description={t(strict ? 'student.testing.mmt.strictDescription' : 'student.testing.mmt.normalDescription')} />{start.isError ? <TestingError error={start.error} /> : null}{profileRequired ? <Link to="/student/mmt/setup" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#5146f0] px-4 text-sm font-black text-[#5146f0] no-underline">{t('student.testing.setupMmt')}</Link> : null}<TestingButton type="button" onClick={() => start.mutate()} disabled={start.isPending}>{t('student.testing.start')}</TestingButton></div></StartShell>
+  if (config.isLoading) return <TestingLoading />
+  if (config.isError) return <TestingError error={config.error} onRetry={() => void config.refetch()} />
+  return <StartShell title={t('student.testing.mmt.title')} description={t('student.testing.mmt.startDescription')} icon={<Route />}><div className="grid gap-5">{config.data?.mmt ? <div className="rounded-lg border border-[var(--student-border)] p-4"><div className="flex flex-wrap items-center justify-between gap-2"><strong>{config.data.mmt.examVersionName}</strong><span className="text-sm font-black text-[#5146f0]">{config.data.mmt.subtests.reduce((sum, item) => sum + item.questionCount, 0)} · {config.data.mmt.durationMinutes} min</span></div><div className="mt-3 grid grid-cols-4 gap-2">{config.data.mmt.subtests.map((item) => <div key={item.code} className="rounded-md bg-[var(--student-surface-soft)] p-2 text-center"><strong>{item.code}</strong><p className="mt-1 text-xs text-[var(--student-muted)]">{item.questionCount} / {item.maxRawScore}</p></div>)}</div></div> : <p className="rounded-lg bg-amber-50 p-4 text-sm font-bold text-amber-800">{t('student.testing.errors.mmtExamNotConfigured', { defaultValue: 'MMT exam is not configured.' })}</p>}{start.isError ? <TestingError error={start.error} /> : null}{profileRequired ? <Link to="/student/mmt/setup" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#5146f0] px-4 text-sm font-black text-[#5146f0] no-underline">{t('student.testing.setupMmt')}</Link> : null}<TestingButton type="button" onClick={() => start.mutate()} disabled={!config.data?.mmt || start.isPending}>{t('student.testing.start')}</TestingButton></div></StartShell>
 }
 
 export function MonthlyExamStartPage() {

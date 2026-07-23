@@ -15,7 +15,8 @@ public sealed record DraftAnswerDto(Guid? SelectedOptionId, string? TextResponse
 
 public sealed record StudentTestingConfigDto(IReadOnlyList<int> SubjectQuestionCounts, int RedListMinimumQuestions,
     int RedListDefaultQuestions, int MmtPracticeDefaultQuestions, int MonthlyExamQuestionCount,
-    int MmtDurationMinutes, bool MonthlyExamAvailable, DateTimeOffset? MonthlyExamClosesAtUtc);
+    int MmtDurationMinutes, bool MonthlyExamAvailable, DateTimeOffset? MonthlyExamClosesAtUtc,
+    MmtAttemptInfoDto? Mmt = null);
 
 public sealed record TestAttemptDto(Guid Id, int Mode, int Status, Guid? SubjectId, Guid? ClusterId,
     DateTimeOffset StartedAtUtc, DateTimeOffset ExpiresAtUtc, DateTimeOffset? SubmittedAtUtc,
@@ -50,7 +51,9 @@ public sealed record MmtScaledSubtestResultDto(string Code, int RawScore, int Ma
 public sealed record MmtChoiceResultDto(Guid AdmissionProgramId, int PriorityOrder, string SpecialtyRangeCode,
     decimal? TotalScaledScore, bool PassedAllSubtests, IReadOnlyList<MmtScaledSubtestResultDto> Subtests);
 public sealed record MmtOfficialResultDto(Guid ExamVersionId, string ExamVersionName, bool IsOfficialScale,
-    IReadOnlyList<MmtChoiceResultDto> Choices);
+    IReadOnlyList<MmtRawSubtestResultDto> Subtests, IReadOnlyList<MmtChoiceResultDto> Choices);
+public sealed record MmtRawSubtestResultDto(string Code, int RawScore, int MaximumRawScore,
+    int MinimumRawScore, bool Passed);
 public sealed record TopicBreakdownDto(Guid? TopicId, int Total, int Correct, int Wrong);
 public sealed record SubjectBreakdownDto(Guid SubjectId, int Total, int Correct, int Wrong, decimal Percentage);
 public sealed record WeakTopicDto(Guid SubjectId, Guid? TopicId, int Total, int Correct, decimal Percentage);

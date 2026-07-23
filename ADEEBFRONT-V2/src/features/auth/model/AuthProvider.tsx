@@ -115,6 +115,7 @@ export function AuthProvider({ queryClient, children }: AuthProviderProps) {
       login,
       register,
       logout,
+      setCurrentUser: setUser,
     }),
     [isBootstrapping, login, logout, register, user],
   );

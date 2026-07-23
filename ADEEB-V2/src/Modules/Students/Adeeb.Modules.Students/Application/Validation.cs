@@ -15,6 +15,7 @@ internal static class Validation
         ValidateOptionalText(request.Region, "region", StudentProfile.RegionMaxLength, errors);
         ValidateOptionalText(request.City, "city", StudentProfile.CityMaxLength, errors);
         ValidateOptionalText(request.SchoolName, "schoolName", StudentProfile.SchoolNameMaxLength, errors);
+        ValidateGender(request.Gender, errors);
 
         if (request.DateOfBirth.HasValue &&
             (request.DateOfBirth.Value > today || request.DateOfBirth.Value < StudentProfile.MinimumDateOfBirth))
@@ -52,6 +53,22 @@ internal static class Validation
         if (string.IsNullOrWhiteSpace(value) || value.Trim().Length > maxLength)
         {
             errors[field] = [Error.Validation($"student.profile.{field}.invalid", "Student.Profile.Invalid")];
+        }
+    }
+
+    private static void ValidateGender(string? value, Dictionary<string, IReadOnlyList<Error>> errors)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        var normalized = value.Trim();
+        if (normalized.Length > StudentProfile.GenderMaxLength ||
+            !string.Equals(normalized, "Male", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(normalized, "Female", StringComparison.OrdinalIgnoreCase))
+        {
+            errors["gender"] = [Error.Validation("student.profile.gender.invalid", "Student.Profile.InvalidGender")];
         }
     }
 }

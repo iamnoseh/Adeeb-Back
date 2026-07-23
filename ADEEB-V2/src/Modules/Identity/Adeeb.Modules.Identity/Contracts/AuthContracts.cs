@@ -12,3 +12,4 @@ public sealed record AuthSessionResponse(Guid Id, string DeviceName, string Plat
 public sealed record AuthSessionListResponse(IReadOnlyList<AuthSessionResponse> Items);
 public sealed record SessionResponse(Guid Id, string DeviceName);
 public sealed record AuthResponse(UserResponse User, TokenResponse Tokens, SessionResponse Session);
+public sealed record UpdateIdentityProfileRequest(string FirstName, string LastName, string Email);

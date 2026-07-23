@@ -26,6 +26,12 @@ export type RefreshTokenRequest = {
   refreshToken: string
 }
 
+export type UpdateIdentityProfileRequest = {
+  firstName: string
+  lastName: string
+  email: string
+}
+
 export type UserResponse = {
   id: string
   email: string

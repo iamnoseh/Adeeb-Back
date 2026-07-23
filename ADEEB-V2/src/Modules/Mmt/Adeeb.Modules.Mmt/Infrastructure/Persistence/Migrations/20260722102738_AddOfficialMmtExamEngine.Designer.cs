@@ -3,6 +3,7 @@ using System;
 using Adeeb.Modules.Mmt.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(MmtDbContext))]
-    partial class MmtDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260722102738_AddOfficialMmtExamEngine")]
+    partial class AddOfficialMmtExamEngine
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -340,18 +343,10 @@ namespace Adeeb.Modules.Mmt.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("subject_id");
 
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("display_order");
-
                     b.HasKey("MmtClusterId", "SubjectId");
 
                     b.HasIndex("SubjectId")
                         .HasDatabaseName("ix_mmt_cluster_subjects_subject_id");
-
-                    b.HasIndex("MmtClusterId", "DisplayOrder")
-                        .IsUnique()
-                        .HasDatabaseName("ux_mmt_cluster_subjects_cluster_order");
 
                     b.ToTable("cluster_subjects", "mmt");
                 });

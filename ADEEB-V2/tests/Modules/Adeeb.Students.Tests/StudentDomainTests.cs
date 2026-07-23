@@ -31,7 +31,7 @@ public sealed class StudentDomainTests
     {
         var student = new Student(Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow);
 
-        student.UpdateProfile(" Learner ", null, null, null, null, null, null, DateTimeOffset.UtcNow);
+        student.UpdateProfile(" Learner ", null, null, null, null, null, null, null, DateTimeOffset.UtcNow);
 
         Assert.Equal("Learner", student.Profile.DisplayName);
         Assert.Equal(OnboardingState.InProgress, student.OnboardingState);
@@ -57,6 +57,6 @@ public sealed class StudentDomainTests
         student.ChangeStatus(StudentStatus.Closed, DateTimeOffset.UtcNow);
 
         Assert.Throws<InvalidOperationException>(() => student.ChangeStatus(StudentStatus.Active, DateTimeOffset.UtcNow));
-        Assert.Throws<InvalidOperationException>(() => student.UpdateProfile("Name", null, null, null, null, null, null, DateTimeOffset.UtcNow));
+        Assert.Throws<InvalidOperationException>(() => student.UpdateProfile("Name", null, null, null, null, null, null, null, DateTimeOffset.UtcNow));
     }
 }

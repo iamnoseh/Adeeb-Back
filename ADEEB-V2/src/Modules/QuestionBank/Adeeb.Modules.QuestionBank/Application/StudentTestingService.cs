@@ -41,9 +41,11 @@ public sealed class StudentTestingService(
     {
         var availability = monthlyAvailability.Current();
         var value = options.Value;
+        var context = await mmtContext.GetAsync(userId, ct);
+        var mmt = context?.IsExamReady == true ? ToMmtInfo(context) : null;
         return Result<StudentTestingConfigDto>.Success(new(SubjectCounts, value.RedListMinimumQuestions,
             value.RedListDefaultQuestions, value.MmtPracticeDefaultQuestions, value.MonthlyExamQuestionCount,
-            value.MmtDurationMinutes, availability.IsOpen, availability.ClosesAtUtc));
+            value.MmtDurationMinutes, availability.IsOpen, availability.ClosesAtUtc, mmt));
     }
 
     public async Task<Result<TestAttemptDto>> StartSubjectAsync(Guid userId, StartSubjectTestRequest request,
@@ -201,7 +203,7 @@ public sealed class StudentTestingService(
     {
         await using var transaction = await BeginTransactionAsync(ct);
         await TestAttemptFinalizationConcurrency.AcquireAttemptLockAsync(db, attemptId, ct);
-        var attempt = await db.TestAttempts.Include(x => x.Questions).Include(x => x.Answers)
+        var attempt = await db.TestAttempts.Include(x => x.Questions).Include(x => x.Answers).Include(x => x.DraftAnswers)
             .SingleOrDefaultAsync(x => x.Id == attemptId && x.UserId == userId, ct);
         if (attempt is null) return Result<TestResultDto>.Failure(StudentTestingErrors.AttemptNotFound);
         if (attempt.Status != TestAttemptStatus.InProgress)
@@ -527,9 +529,7 @@ public sealed class StudentTestingService(
                     ? ToCheckedAnswerDto(snapshot, answer)
                     : null, snapshot.MmtSubtestCode, snapshot.PointsAvailable,
                 drafts.TryGetValue(x.Id, out var draft) ? ToDraftDto(draft) : null);
-        }).ToList(), mmt is null ? null : new MmtAttemptInfoDto(mmt.ExamVersionId, mmt.ExamVersionName,
-            mmt.IsOfficialScale, mmt.DurationMinutes, mmt.Subtests.Select(x => new MmtSubtestInfoDto(
-                x.Code, x.DisplayOrder, x.SubjectId, x.QuestionCount, x.MaxRawScore, x.MinimumRawScore)).ToList()));
+        }).ToList(), mmt is null ? null : ToMmtInfo(mmt));
     }
 
     private static CheckedTestAnswerDto ToCheckedAnswerDto(TestQuestionSnapshot question, TestAttemptAnswer answer)
@@ -552,6 +552,16 @@ public sealed class StudentTestingService(
         return new(value.SelectedOptionId, value.TextResponse, value.MatchingPairs,
             draft.IsMarkedForReview, draft.UpdatedAtUtc);
     }
+
+    private static MmtAttemptInfoDto ToMmtInfo(StudentMmtTestingContext context) => new(
+        context.ExamVersionId!.Value, context.ExamVersionName ?? string.Empty, context.IsOfficialScale,
+        context.DurationMinutes, context.Subtests!.Select(x => new MmtSubtestInfoDto(x.Code,
+            x.DisplayOrder, x.SubjectId, x.QuestionCount, x.MaxRawScore, x.MinimumRawScore)).ToList());
+
+    private static MmtAttemptInfoDto ToMmtInfo(StoredMmtAttemptSnapshot snapshot) => new(
+        snapshot.ExamVersionId, snapshot.ExamVersionName, snapshot.IsOfficialScale,
+        snapshot.DurationMinutes, snapshot.Subtests.Select(x => new MmtSubtestInfoDto(x.Code,
+            x.DisplayOrder, x.SubjectId, x.QuestionCount, x.MaxRawScore, x.MinimumRawScore)).ToList());
 
     private static IReadOnlyList<string> MatchingOptions(TestQuestionSnapshot snapshot)
     {
@@ -584,6 +594,8 @@ public sealed class StudentTestingService(
             ToXp(settlement?.TotalXpUnits ?? 0), settlement is { TotalXpUnits: > 0 },
             officialScore is null ? null : new MmtOfficialResultDto(officialScore.ExamVersionId,
                 officialScore.ExamVersionName, officialScore.IsOfficialScale,
+                officialScore.Subtests.Select(x => new MmtRawSubtestResultDto(x.Code, x.RawScore,
+                    x.MaximumRawScore, x.MinimumRawScore, x.Passed)).ToList(),
                 officialScore.Choices.Select(choice => new MmtChoiceResultDto(choice.AdmissionProgramId,
                     choice.PriorityOrder, choice.SpecialtyRangeCode, choice.TotalScaledScore,
                     choice.PassedAllSubtests, choice.Subtests.Select(subtest => new MmtScaledSubtestResultDto(

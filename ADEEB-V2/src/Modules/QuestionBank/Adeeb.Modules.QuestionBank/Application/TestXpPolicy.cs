@@ -13,6 +13,8 @@ public sealed class TestXpRewardOptions
     public int MediumCorrectXpUnits { get; set; } = 4;
     public int HardCorrectXpUnits { get; set; } = 5;
     public int CompletionBonusXpUnits { get; set; } = 10;
+    public int MmtPracticeCompletionBonusXpUnits { get; set; } = 20;
+    public int MonthlyExamCompletionBonusXpUnits { get; set; } = 50;
     public int RedListPracticeRewardPercent { get; set; } = 50;
     public int RedListMasteryBonusXpUnits { get; set; } = UnitsPerXp;
 }
@@ -58,9 +60,6 @@ public sealed class TestXpPolicy(IOptions<TestXpRewardOptions> options) : ITestX
             }
         }
 
-        var correct = checked(easy + medium + hard);
-        if (correct == 0) return TestXpCalculation.None;
-
         try
         {
             var value = options.Value;
@@ -68,7 +67,9 @@ public sealed class TestXpPolicy(IOptions<TestXpRewardOptions> options) : ITestX
                 checked(easy * value.EasyCorrectXpUnits)
                 + checked(medium * value.MediumCorrectXpUnits)
                 + checked(hard * value.HardCorrectXpUnits));
-            var completionUnits = value.CompletionBonusXpUnits;
+            var correct = checked(easy + medium + hard);
+            var completionUnits = CompletionBonusUnits(mode, value, correct);
+            if (answerUnits == 0 && completionUnits == 0) return TestXpCalculation.None;
             if (mode == TestMode.RedListPractice)
             {
                 answerUnits = Scale(answerUnits, value.RedListPracticeRewardPercent);
@@ -84,6 +85,13 @@ public sealed class TestXpPolicy(IOptions<TestXpRewardOptions> options) : ITestX
     }
 
     private static int Scale(int units, int percent) => checked(units * percent / 100);
+
+    private static int CompletionBonusUnits(TestMode mode, TestXpRewardOptions options, int correctCount) => mode switch
+    {
+        TestMode.MonthlyExam => options.MonthlyExamCompletionBonusXpUnits,
+        TestMode.MmtPractice => correctCount > 0 ? options.MmtPracticeCompletionBonusXpUnits : 0,
+        _ => correctCount > 0 ? options.CompletionBonusXpUnits : 0
+    };
 }
 
 public sealed class TestXpCalculationException : Exception

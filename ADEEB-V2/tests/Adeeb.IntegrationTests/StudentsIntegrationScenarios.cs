@@ -90,7 +90,7 @@ public sealed class StudentsIntegrationScenarios(AdeebApiFactory factory) : ICla
         var secondStudentBefore = await GetMeAsync(client, second.Tokens.AccessToken);
 
         using var patch = Authenticated(HttpMethod.Patch, "/api/v2/students/me/profile", first.Tokens.AccessToken);
-        patch.Content = JsonContent.Create(new UpdateStudentProfileRequest("User A", null, null, null, null, null, null));
+        patch.Content = JsonContent.Create(new UpdateStudentProfileRequest("User A", null, null, null, null, null, null, null));
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(patch)).StatusCode);
 
         var secondStudentAfter = await GetMeAsync(client, second.Tokens.AccessToken);
@@ -146,7 +146,7 @@ public sealed class StudentsIntegrationScenarios(AdeebApiFactory factory) : ICla
         var auth = await RegisterAsync(client, "student-persist@adeeb.tj");
 
         using var patch = Authenticated(HttpMethod.Patch, "/api/v2/students/me/profile", auth.Tokens.AccessToken);
-        patch.Content = JsonContent.Create(new UpdateStudentProfileRequest("Persisted", null, null, "Sughd", "Khujand", "School 1", 8));
+        patch.Content = JsonContent.Create(new UpdateStudentProfileRequest("Persisted", null, null, "Sughd", "Khujand", "School 1", 8, null));
         var patched = await ReadJsonAsync<StudentResponse>(await client.SendAsync(patch));
 
         await using var scope = factory.Services.CreateAsyncScope();

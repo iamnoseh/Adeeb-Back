@@ -1,6 +1,5 @@
 import { httpClient } from '@/shared/api/http-client'
-import type { AuthResponse, LoginRequest, RefreshTokenRequest, RegisterRequest, UserResponse } from '@/features/auth/model/auth.types'
-
+import type { AuthResponse, LoginRequest, RefreshTokenRequest, RegisterRequest, UserResponse, UpdateIdentityProfileRequest } from '@/features/auth/model/auth.types'
 export const authApi = {
   async register(request: RegisterRequest) {
     const response = await httpClient.post<AuthResponse>('/api/v2/auth/register', request)
@@ -18,6 +17,10 @@ export const authApi = {
   },
   async me() {
     const response = await httpClient.get<UserResponse>('/api/v2/auth/me')
+    return response.data
+  },
+  async updateProfile(request: UpdateIdentityProfileRequest) {
+    const response = await httpClient.put<UserResponse>('/api/v2/auth/me/profile', request)
     return response.data
   },
   async logout() {

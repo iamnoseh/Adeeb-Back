@@ -2,8 +2,10 @@ using Adeeb.Application.Abstractions.Localization;
 using Adeeb.Application.Abstractions.Authorization;
 using Adeeb.Modules.Students.Application;
 using Adeeb.Modules.Students.Contracts;
+using Adeeb.Modules.Students.Infrastructure.Files;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 
 namespace Adeeb.Modules.Students.Endpoints;
@@ -21,6 +23,21 @@ public static class StudentEndpoints
         group.MapPatch("/me/profile", async (UpdateStudentProfileRequest request, StudentsService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.UpdateCurrentProfileAsync(context.User, request, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization();
+
+        group.MapPost("/me/profile/avatar", async ([FromForm] UpdateStudentAvatarRequest request, StudentAvatarStorage storage, StudentsService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
+        {
+            var avatar = request.Avatar
+                ?? context.Request.Form.Files.GetFile("Avatar")
+                ?? context.Request.Form.Files.GetFile("avatar")
+                ?? context.Request.Form.Files.FirstOrDefault(file => string.Equals(file.Name, "Avatar", StringComparison.OrdinalIgnoreCase));
+            var stored = await storage.SaveAsync(avatar, ct);
+            return stored.IsFailure
+                ? stored.ToHttpResult(context, localizer)
+                : (await service.UpdateCurrentAvatarAsync(context.User, stored.Value!, ct)).ToHttpResult(context, localizer);
+        })
+            .RequireAuthorization()
+            .Accepts<UpdateStudentAvatarRequest>("multipart/form-data")
+            .DisableAntiforgery();
 
         group.MapPost("/me/provision", async (StudentsService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
         {

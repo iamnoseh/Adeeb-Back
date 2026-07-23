@@ -52,7 +52,7 @@ public sealed class StudentsServiceTests
 
         var result = await service.UpdateCurrentProfileAsync(
             principal,
-            new UpdateStudentProfileRequest(" Learner ", null, null, " Dushanbe ", null, null, 7),
+            new UpdateStudentProfileRequest(" Learner ", null, null, " Dushanbe ", null, null, 7, null),
             CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -69,7 +69,7 @@ public sealed class StudentsServiceTests
 
         var result = await service.UpdateCurrentProfileAsync(
             TestPrincipal.ForUser(Guid.NewGuid()),
-            new UpdateStudentProfileRequest(null, null, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), null, null, null, null),
+            new UpdateStudentProfileRequest(null, null, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), null, null, null, null, null),
             CancellationToken.None);
 
         Assert.True(result.IsFailure);
@@ -85,11 +85,11 @@ public sealed class StudentsServiceTests
         var provisioned = await service.ProvisionForIdentityUserAsync(identityUserId, CancellationToken.None);
         await service.ChangeStatusAsync(provisioned.Value!.StudentId, TestPrincipal.ForUser(Guid.NewGuid()), new ChangeStudentStatusRequest((int)StudentStatus.Suspended, null), CancellationToken.None);
 
-        var suspended = await service.UpdateCurrentProfileAsync(TestPrincipal.ForUser(identityUserId), new UpdateStudentProfileRequest("Name", null, null, null, null, null, null), CancellationToken.None);
+        var suspended = await service.UpdateCurrentProfileAsync(TestPrincipal.ForUser(identityUserId), new UpdateStudentProfileRequest("Name", null, null, null, null, null, null, null), CancellationToken.None);
         Assert.Equal(StudentErrors.Suspended.Code, suspended.Error!.Code);
 
         await service.ChangeStatusAsync(provisioned.Value.StudentId, TestPrincipal.ForUser(Guid.NewGuid()), new ChangeStudentStatusRequest((int)StudentStatus.Closed, null), CancellationToken.None);
-        var closed = await service.UpdateCurrentProfileAsync(TestPrincipal.ForUser(identityUserId), new UpdateStudentProfileRequest("Name", null, null, null, null, null, null), CancellationToken.None);
+        var closed = await service.UpdateCurrentProfileAsync(TestPrincipal.ForUser(identityUserId), new UpdateStudentProfileRequest("Name", null, null, null, null, null, null, null), CancellationToken.None);
         Assert.Equal(StudentErrors.Closed.Code, closed.Error!.Code);
     }
 
