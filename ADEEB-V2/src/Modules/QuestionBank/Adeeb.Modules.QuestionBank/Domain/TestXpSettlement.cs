@@ -15,8 +15,8 @@ public sealed class TestXpSettlement : Entity
             throw new ArgumentOutOfRangeException(nameof(totalXpUnits), "XP settlement values cannot be negative.");
         if (totalXpUnits != checked(answerXpUnits + completionBonusXpUnits))
             throw new ArgumentException("Total XP units must equal answer and completion units.", nameof(totalXpUnits));
-        if (easyCorrectCount + mediumCorrectCount + hardCorrectCount == 0 && totalXpUnits != 0)
-            throw new ArgumentException("A zero-correct settlement cannot award XP.", nameof(totalXpUnits));
+        if (easyCorrectCount + mediumCorrectCount + hardCorrectCount == 0 && answerXpUnits != 0)
+            throw new ArgumentException("A zero-correct settlement cannot award answer XP.", nameof(answerXpUnits));
 
         Id = id;
         AttemptId = attemptId;
