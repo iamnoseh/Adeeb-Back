@@ -53,6 +53,7 @@ internal sealed class StudentProfileConfiguration : IEntityTypeConfiguration<Stu
         builder.Property(x => x.City).HasColumnName("city").HasMaxLength(StudentProfile.CityMaxLength);
         builder.Property(x => x.SchoolName).HasColumnName("school_name").HasMaxLength(StudentProfile.SchoolNameMaxLength);
         builder.Property(x => x.Grade).HasColumnName("grade");
+        builder.Property(x => x.Gender).HasColumnName("gender").HasMaxLength(StudentProfile.GenderMaxLength);
         builder.Property(x => x.TimeZoneId).HasColumnName("time_zone_id").HasMaxLength(StudentProfile.TimeZoneIdMaxLength).IsRequired();
         builder.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc").IsRequired();
     }

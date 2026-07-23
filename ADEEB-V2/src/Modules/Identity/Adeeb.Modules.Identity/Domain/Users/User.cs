@@ -74,4 +74,17 @@ public sealed class User : Entity
         Status = status;
         UpdatedAtUtc = now;
     }
+
+    public void UpdateProfile(string firstName, string lastName, string email, string normalizedEmail, DateTimeOffset now)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+        if (Email != email)
+        {
+            Email = email;
+            NormalizedEmail = normalizedEmail;
+            EmailVerified = false;
+        }
+        UpdatedAtUtc = now;
+    }
 }

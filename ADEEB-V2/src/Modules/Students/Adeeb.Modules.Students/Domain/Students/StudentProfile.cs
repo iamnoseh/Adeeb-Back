@@ -8,6 +8,7 @@ public sealed class StudentProfile
     public const int CityMaxLength = 80;
     public const int SchoolNameMaxLength = 160;
     public const int TimeZoneIdMaxLength = 100;
+    public const int GenderMaxLength = 32;
     public const string DefaultTimeZoneId = "Asia/Dushanbe";
     public const short MinGrade = 1;
     public const short MaxGrade = 11;
@@ -30,6 +31,7 @@ public sealed class StudentProfile
     public string? City { get; private set; }
     public string? SchoolName { get; private set; }
     public short? Grade { get; private set; }
+    public string? Gender { get; private set; }
     public string TimeZoneId { get; private set; } = DefaultTimeZoneId;
     public DateTimeOffset UpdatedAtUtc { get; private set; }
 
@@ -52,15 +54,27 @@ public sealed class StudentProfile
         string? city,
         string? schoolName,
         short? grade,
+        string? gender,
         DateTimeOffset now)
     {
         DisplayName = NormalizeOptional(displayName);
         AvatarUrl = NormalizeOptional(avatarUrl);
-        DateOfBirth = dateOfBirth;
+        if (DateOfBirth.HasValue && dateOfBirth.HasValue && DateOfBirth != dateOfBirth)
+        {
+            throw new InvalidOperationException("Date of birth cannot be changed once set.");
+        }
+        DateOfBirth = dateOfBirth ?? DateOfBirth;
         Region = NormalizeOptional(region);
         City = NormalizeOptional(city);
         SchoolName = NormalizeOptional(schoolName);
         Grade = grade;
+        Gender = NormalizeGender(gender);
+        UpdatedAtUtc = now;
+    }
+
+    public void ChangeAvatar(string avatarUrl, DateTimeOffset now)
+    {
+        AvatarUrl = NormalizeOptional(avatarUrl);
         UpdatedAtUtc = now;
     }
 
@@ -71,8 +85,18 @@ public sealed class StudentProfile
         !string.IsNullOrWhiteSpace(Region) ||
         !string.IsNullOrWhiteSpace(City) ||
         !string.IsNullOrWhiteSpace(SchoolName) ||
-        Grade.HasValue;
+        Grade.HasValue ||
+        !string.IsNullOrWhiteSpace(Gender);
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string? NormalizeGender(string? value)
+    {
+        var normalized = NormalizeOptional(value);
+        if (normalized is null) return null;
+        if (string.Equals(normalized, "female", StringComparison.OrdinalIgnoreCase)) return "Female";
+        if (string.Equals(normalized, "male", StringComparison.OrdinalIgnoreCase)) return "Male";
+        return normalized;
+    }
 }

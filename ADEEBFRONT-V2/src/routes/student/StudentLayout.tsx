@@ -1,4 +1,5 @@
 import { BookOpenCheck, CalendarCheck2, ChevronDown, HelpCircle, History, Home, Languages, ListChecks, LogOut, PanelLeftClose, PanelLeftOpen, Route, Settings, ShieldCheck, Swords, Trophy, UserRound, type LucideIcon } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
@@ -9,6 +10,8 @@ import { StudentPreferencesProvider } from '@/routes/student/StudentPreferences'
 import { useStudentPreferences } from '@/routes/student/student-preferences-context'
 import { useStudentActivityVisit } from '@/features/student-activity/model/useStudentActivity'
 import { StudentXpIndicator } from '@/features/progression/ui/StudentXpIndicator'
+import { studentsApi } from '@/features/students/api/students.api'
+import { toAssetUrl } from '@/shared/lib/asset-url'
 
 type StudentNavItem = { to: string; label: string; icon: LucideIcon; end?: boolean }
 type StudentNavGroup = { id: string; label: string; icon: LucideIcon; items: StudentNavItem[] }
@@ -20,6 +23,7 @@ export function StudentLayout() {
 function StudentLayoutContent() {
   useStudentActivityVisit()
   const { user, logout } = useAuth()
+  const studentQuery = useQuery({ queryKey: ['students', 'me'], queryFn: studentsApi.me, retry: false })
   const { t } = useTranslation()
   const { theme } = useStudentPreferences()
   const location = useLocation()
@@ -48,6 +52,7 @@ function StudentLayoutContent() {
   const current = allItems.find((item) => item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)) ?? homeItem
   const activeGroup = navGroups.find((group) => group.items.some((item) => location.pathname.startsWith(item.to)))?.id
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({ practice: activeGroup === 'practice', competition: activeGroup === 'competition', account: activeGroup === 'account' }))
+  const avatarUrl = toAssetUrl(studentQuery.data?.profile.avatarUrl)
 
   useEffect(() => {
     if (activeGroup) setOpenGroups((currentGroups) => ({ ...currentGroups, [activeGroup]: true }))
@@ -94,7 +99,14 @@ function StudentLayoutContent() {
             <div className="ml-auto flex items-center gap-2 sm:gap-4">
               <StudentXpIndicator />
               <Link to="/student/support" className="hidden min-h-10 items-center gap-2 rounded-lg border border-[var(--student-border)] px-4 text-sm font-bold text-[var(--student-text)] no-underline hover:bg-[var(--student-surface-soft)] sm:inline-flex"><HelpCircle className="h-4 w-4" />{t('student.support')}</Link>
-              <Link to="/student/profile" className="flex min-w-0 items-center gap-3 text-[var(--student-text)] no-underline"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#e9e7ff] text-sm font-black text-[#5146f0]">{initials(user?.firstName, user?.lastName)}</span><span className="hidden max-w-40 truncate text-sm font-black xl:block">{user?.firstName} {user?.lastName}</span><ChevronDown className="hidden h-4 w-4 text-[var(--student-muted)] sm:block" /></Link>
+              <Link to="/student/profile" className="flex min-w-0 items-center gap-3 text-[var(--student-text)] no-underline">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover ring-4 ring-[#f0efff]" />
+                ) : (
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#e9e7ff] text-sm font-black text-[#5146f0]">{initials(user?.firstName, user?.lastName)}</span>
+                )}
+                <span className="hidden max-w-40 truncate text-sm font-black xl:block">{user?.firstName} {user?.lastName}</span><ChevronDown className="hidden h-4 w-4 text-[var(--student-muted)] sm:block" />
+              </Link>
             </div>
           </header>
           <main className="mx-auto w-full max-w-[1450px] px-4 py-5 pb-28 sm:px-6 md:pb-8 lg:px-8 lg:py-6"><Outlet /></main>

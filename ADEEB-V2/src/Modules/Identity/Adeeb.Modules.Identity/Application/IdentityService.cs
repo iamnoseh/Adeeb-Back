@@ -314,6 +314,46 @@ public sealed class IdentityService(
         return Result<UserResponse>.Success(ToUserResponse(user));
     }
 
+    public async Task<Result<UserResponse>> UpdateProfileAsync(ClaimsPrincipal principal, UpdateIdentityProfileRequest request, CancellationToken cancellationToken)
+    {
+        var validation = Validation.ValidateUpdateProfile(request);
+        if (validation.IsFailure)
+        {
+            return Result<UserResponse>.ValidationFailure(validation.ValidationErrors!);
+        }
+
+        var userId = GetUserId(principal);
+        if (userId is null)
+        {
+            return Result<UserResponse>.Failure(IdentityErrors.InvalidCredentials);
+        }
+
+        var normalizedEmail = NormalizeEmail(request.Email);
+        if (await db.Users.AnyAsync(x => x.NormalizedEmail == normalizedEmail && x.Id != userId.Value, cancellationToken))
+        {
+            return Result<UserResponse>.Failure(IdentityErrors.EmailAlreadyExists);
+        }
+
+        var user = await db.Users.SingleOrDefaultAsync(x => x.Id == userId.Value, cancellationToken);
+        if (user is null)
+        {
+            return Result<UserResponse>.Failure(IdentityErrors.InvalidCredentials);
+        }
+
+        user.UpdateProfile(request.FirstName.Trim(), request.LastName.Trim(), request.Email.Trim(), normalizedEmail, clock.UtcNow);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (PostgresExceptionHelper.IsUniqueViolation(ex, UserDatabaseConstraints.NormalizedEmailUnique))
+        {
+            return Result<UserResponse>.Failure(IdentityErrors.EmailAlreadyExists);
+        }
+
+        logger.LogInformation("auth.profile.updated user_id={UserId}", user.Id);
+        return Result<UserResponse>.Success(ToUserResponse(user));
+    }
+
     public async Task<Result> ChangePasswordAsync(ClaimsPrincipal principal, ChangePasswordRequest request, CancellationToken cancellationToken)
     {
         var validation = Validation.ValidateChangePassword(request, passwordPolicy);

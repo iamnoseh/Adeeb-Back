@@ -54,6 +54,10 @@ public static class IdentityEndpoints
             (await service.ChangePreferredLanguageAsync(context.User, request, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization();
 
+        group.MapPut("/me/profile", async (UpdateIdentityProfileRequest request, IdentityService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
+            (await service.UpdateProfileAsync(context.User, request, ct)).ToHttpResult(context, localizer))
+            .RequireAuthorization();
+
         return app;
     }
 

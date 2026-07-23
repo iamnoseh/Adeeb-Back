@@ -1,24 +1,61 @@
-import { LogOut, Mail, Phone, ShieldCheck, Sparkles, Trophy, UserRound } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { Edit, LogOut, Mail, Phone, ShieldCheck, Sparkles, Trophy, UserRound } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/features/auth/model/auth-context'
+import type { UserResponse } from '@/features/auth/model/auth.types'
 import { Button } from '@/shared/ui/Button'
 import { StudentPageHeader } from '@/routes/student/StudentUi'
 import { leagueKeys, progressionStudentApi } from '@/features/progression/api/league.api'
+import { studentsApi } from '@/features/students/api/students.api'
+import type { StudentResponse } from '@/features/students/model/students.types'
+import { EditStudentProfile } from './EditStudentProfile'
+import { toAssetUrl } from '@/shared/lib/asset-url'
 
 export function StudentProfilePage() {
-  const { user, logout } = useAuth()
+  const { user, logout, setCurrentUser } = useAuth()
   const { i18n, t } = useTranslation()
+  const queryClient = useQueryClient()
+  const [isEditing, setIsEditing] = useState(false)
   const language = i18n.language === 'ru-RU' ? t('languageRu') : t('languageTg')
   const initials = `${user?.firstName?.[0] ?? 'A'}${user?.lastName?.[0] ?? ''}`.toUpperCase()
   const progression = useQuery({ queryKey: leagueKeys.overview(), queryFn: progressionStudentApi.overview, retry: false })
+  const studentQuery = useQuery({ queryKey: ['students', 'me'], queryFn: studentsApi.me })
+
+  const profile = studentQuery.data?.profile
+  const avatarUrl = toAssetUrl(profile?.avatarUrl)
+
+  const handleEditSuccess = async (updatedUser: UserResponse, updatedStudent: StudentResponse) => {
+    setCurrentUser(updatedUser)
+    queryClient.setQueryData(['students', 'me'], updatedStudent)
+    setIsEditing(false)
+    await queryClient.invalidateQueries({ queryKey: ['students', 'me'] })
+  }
+
+  if (isEditing) {
+    return (
+      <div className="grid gap-6">
+        <StudentPageHeader title={t('student.profileTitle')} description={t('student.profileDescription')} />
+        <EditStudentProfile
+          profile={profile ?? null}
+          onSuccess={handleEditSuccess}
+          onCancel={() => setIsEditing(false)}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="grid gap-6">
       <StudentPageHeader title={t('student.profileTitle')} description={t('student.profileDescription')} />
       <section className="grid gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
         <article className="flex flex-col rounded-lg border border-[#ddd9ff] bg-[#f7f6ff] p-6 text-[#111b3d] shadow-[0_10px_28px_rgb(20_31_70/0.04)]">
-          <span className="grid h-20 w-20 place-items-center rounded-full bg-[#e9e7ff] text-2xl font-black text-[#5146f0] ring-8 ring-white">{initials}</span>
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="Avatar" className="h-20 w-20 rounded-full object-cover ring-8 ring-white shadow-sm" />
+          ) : (
+            <span className="grid h-20 w-20 place-items-center rounded-full bg-[#e9e7ff] text-2xl font-black text-[#5146f0] ring-8 ring-white">{initials}</span>
+          )}
           <h2 className="mt-6 text-xl font-black tracking-normal">{user?.firstName} {user?.lastName}</h2>
           <div className="mt-8 grid gap-3 border-t border-[#e1defd] pt-6 text-sm">
             <ProfileSummary icon={<Mail />} value={user?.email || t('student.noValue')} />
@@ -27,9 +64,14 @@ export function StudentProfilePage() {
         </article>
 
         <article className="rounded-lg border border-[#e1e4ef] bg-white p-5 shadow-[0_10px_28px_rgb(20_31_70/0.04)] sm:p-7">
-          <div className="flex items-center gap-3 border-b border-[#e7e8ee] pb-5">
-            <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#f0efff] text-[#5146f0]"><UserRound className="h-5 w-5" /></span>
-            <h2 className="text-lg font-black tracking-normal">{t('student.accountSummary')}</h2>
+          <div className="flex items-center justify-between border-b border-[#e7e8ee] pb-5">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-[#f0efff] text-[#5146f0]"><UserRound className="h-5 w-5" /></span>
+              <h2 className="text-lg font-black tracking-normal">{t('student.accountSummary')}</h2>
+            </div>
+            <Button variant="secondary" onClick={() => setIsEditing(true)}>
+              <Edit className="h-4 w-4" /> {t('edit')}
+            </Button>
           </div>
           <dl className="mt-6 grid gap-x-8 gap-y-5 sm:grid-cols-2">
             <ProfileField label={t('student.firstName')} value={user?.firstName} fallback={t('student.noValue')} />
@@ -37,6 +79,8 @@ export function StudentProfilePage() {
             <ProfileField label={t('student.email')} value={user?.email} fallback={t('student.noValue')} />
             <ProfileField label={t('student.phone')} value={user?.phoneNumber} fallback={t('student.noValue')} />
             <ProfileField label={t('student.currentLanguage')} value={language} fallback={t('student.noValue')} />
+            <ProfileField label={t('student.dateOfBirth')} value={profile?.dateOfBirth} fallback={t('student.noValue')} />
+            <ProfileField label={t('student.gender')} value={profile?.gender ? t(`student.genderValues.${profile.gender}`, profile.gender) : undefined} fallback={t('student.noValue')} />
           </dl>
           <div className="mt-7 flex flex-col items-start justify-between gap-4 rounded-lg bg-[#f6f7fb] p-4 sm:flex-row sm:items-center">
             <p className="flex items-start gap-2 text-sm leading-6 text-[#68718c]"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#5146f0]" />{t('student.profileReadOnly')}</p>
