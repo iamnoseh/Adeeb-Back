@@ -32,6 +32,16 @@ describe('XpRewardSummary', () => {
     expect(within(summary).getByText('student.testing.result.xpZeroDescription')).toBeInTheDocument()
     expect(within(summary).queryByText('+0', { exact: false })).not.toBeInTheDocument()
   })
+
+  it('renders completion-only XP rewards for monthly exam submissions', () => {
+    render(<XpRewardSummary data={result({ answerXp: 0, completionBonusXp: 25, totalXp: 25, xpAwarded: true })} language="ru-RU" />)
+
+    const summary = screen.getByTestId('xp-reward-summary')
+    expect(summary).toHaveAttribute('data-awarded', 'true')
+    expect(within(summary).getByText('+25', { exact: false })).toBeInTheDocument()
+    expect(within(summary).getByText('0 XP')).toBeInTheDocument()
+    expect(within(summary).getByText('25 XP')).toBeInTheDocument()
+  })
 })
 
 function result(values: Partial<Pick<TestResultDto, 'easyCorrect' | 'mediumCorrect' | 'hardCorrect' | 'answerXp' | 'completionBonusXp' | 'totalXp' | 'xpAwarded'>>): TestResultDto {
