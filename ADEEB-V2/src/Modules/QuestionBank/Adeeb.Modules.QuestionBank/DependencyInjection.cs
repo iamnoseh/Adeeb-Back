@@ -52,6 +52,8 @@ public static class DependencyInjection
                 && x.MediumCorrectXpUnits is >= 0 and <= TestXpRewardOptions.MaximumConfiguredUnits
                 && x.HardCorrectXpUnits is >= 0 and <= TestXpRewardOptions.MaximumConfiguredUnits
                 && x.CompletionBonusXpUnits is >= 0 and <= TestXpRewardOptions.MaximumConfiguredUnits
+                && x.MmtPracticeCompletionBonusXpUnits is >= 0 and <= TestXpRewardOptions.MaximumConfiguredUnits
+                && x.MonthlyExamCompletionBonusXpUnits is >= 0 and <= TestXpRewardOptions.MaximumConfiguredUnits
                 && x.RedListPracticeRewardPercent is >= 1 and < 100
                 && x.RedListMasteryBonusXpUnits == TestXpRewardOptions.UnitsPerXp,
                 "Test XP reward units must be non-negative and within the supported limit.")

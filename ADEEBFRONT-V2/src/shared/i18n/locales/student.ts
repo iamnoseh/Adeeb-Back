@@ -1,3 +1,6 @@
+const testingMmtTg = { mmtAttempt: { points: 'хол', saving: 'Сабт шуда истодааст', saved: 'Сабт шуд', saveFailed: 'Сабт нашуд', review: 'Барои бозбинӣ', officialResult: 'Натиҷаи ММТ', officialScale: 'Ҷадвали расмӣ', referenceScale: 'Ҳисоби маълумотӣ', rawScore: 'Холи хом', scaledScore: 'Балли ҳисобшуда', passed: 'Гузашт', failed: 'Нагузашт', choice: 'Интихоби №{{priority}}', noCompetitionTotal: 'Аз сабаби нагузаштани ҳадди ақал балли умумӣ ҳисоб намешавад.' } }
+const testingMmtRu = { mmtAttempt: { points: 'балла', saving: 'Сохраняется', saved: 'Сохранено', saveFailed: 'Не сохранено', review: 'На проверку', officialResult: 'Результат ММТ', officialScale: 'Официальная шкала', referenceScale: 'Справочный расчёт', rawScore: 'Первичный балл', scaledScore: 'Расчётный балл', passed: 'Порог пройден', failed: 'Порог не пройден', choice: 'Выбор №{{priority}}', noCompetitionTotal: 'Общий конкурсный балл не рассчитывается, потому что минимальный порог не пройден.' } }
+
 export const studentTg = {
   home: 'Асосӣ',
   mmt: 'ММТ',
@@ -130,6 +133,7 @@ export const studentTg = {
     loadFailed: 'XP бор карда нашуд.',
   },
   testing: {
+    ...testingMmtTg,
     title: 'Тестҳо', hubDescription: 'Навъи машқро интихоб кунед ва натиҷаҳои худро пайгирӣ намоед.', loading: 'Маълумот гирифта мешавад...', start: 'Оғоз', starting: 'Оғоз мешавад...', submitting: 'Ирсол мешавад...', locked: 'Ҳоло дастрас нест', available: 'Дастрас', unavailable: 'Дастрас нест', activeCount: '{{count}} саволи фаъол', backToTests: 'Бозгашт ба тестҳо', setupMmt: 'Танзими профили ММТ', search: 'Ҷустуҷӯ', questionCount: 'Шумораи саволҳо', subjectUnknown: 'Фан',
     subject: { title: 'Тести фаннӣ', description: 'Дониши худро аз як фан мустаҳкам кунед.', startDescription: 'Фан ва шумораи саволҳоро интихоб кунед.', choose: 'Фан', placeholder: 'Фанро интихоб кунед', includeRedList: 'Саволҳои хатогиҳои пешинаро ҳамроҳ кардан', timing: 'Вақт аз сиёсати фан дар backend ҳисоб мешавад; баъзе фанҳои дақиқ вақти бештар доранд.' },
     mmt: { title: 'Симулятсияи ММТ', description: 'Машқ аз рӯйи кластери интихобшудаи шумо.', startDescription: 'Симулятсия аз фанҳои кластери ММТ-и шумо тартиб дода мешавад.', strict: 'Режими сахт', strictDescription: 'Саволҳои Red List омехта намешаванд.', normalDescription: 'Барои омӯзиш чанд саволи хатогиҳои пешина низ метавонад илова шавад.' },
@@ -280,6 +284,7 @@ export const studentRu: typeof studentTg = {
     loadFailed: 'Не удалось загрузить XP.',
   },
   testing: {
+    ...testingMmtRu,
     title: 'Тесты', hubDescription: 'Выберите формат практики и отслеживайте свои результаты.', loading: 'Загрузка данных...', start: 'Начать', starting: 'Запуск...', submitting: 'Отправка...', locked: 'Пока недоступно', available: 'Доступно', unavailable: 'Недоступно', activeCount: '{{count}} активных вопросов', backToTests: 'Назад к тестам', setupMmt: 'Настроить профиль ММТ', search: 'Поиск', questionCount: 'Количество вопросов', subjectUnknown: 'Предмет',
     subject: { title: 'Предметный тест', description: 'Закрепите знания по одному предмету.', startDescription: 'Выберите предмет и количество вопросов.', choose: 'Предмет', placeholder: 'Выберите предмет', includeRedList: 'Добавить вопросы из прошлых ошибок', timing: 'Время рассчитывается по политике предмета на сервере; для некоторых точных дисциплин предусмотрено больше времени.' },
     mmt: { title: 'Симуляция ММТ', description: 'Практика по выбранному вами кластеру.', startDescription: 'Симуляция составляется из предметов вашего кластера ММТ.', strict: 'Строгий режим', strictDescription: 'Вопросы из Red List не подмешиваются.', normalDescription: 'Для обучения могут быть добавлены вопросы из прошлых ошибок.' },

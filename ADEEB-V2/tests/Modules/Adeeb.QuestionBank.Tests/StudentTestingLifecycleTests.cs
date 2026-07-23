@@ -231,20 +231,20 @@ public sealed class StudentTestingLifecycleTests
         await using var db = CreateDb();
         var clock = new MutableClock(new DateTimeOffset(2026, 7, 16, 8, 0, 0, TimeSpan.Zero));
         var picker = new CapturingPicker();
-        var context = new StudentMmtTestingContext(Guid.NewGuid(), Guid.NewGuid(), [Guid.NewGuid()], 12, 2026);
+        var context = ExactMmtContext();
         var service = CreateService(db, clock, picker, new FakeMmtContext(context));
 
-        var strict = await service.StartMmtPracticeAsync(Guid.NewGuid(), new(true, 25), SupportedLanguage.Tajik, default);
-        var strictRequest = picker.Requests.Single();
+        var strict = await service.StartMmtPracticeAsync(Guid.NewGuid(), new(true), SupportedLanguage.Tajik, default);
+        var strictRequests = picker.Requests.ToList();
         picker.Requests.Clear();
         var monthly = await service.StartMonthlyExamAsync(Guid.NewGuid(), SupportedLanguage.Tajik, default);
-        var monthlyRequest = picker.Requests.Single();
+        var monthlyRequests = picker.Requests.ToList();
 
         Assert.True(strict.IsSuccess);
-        Assert.False(strictRequest.InjectRedList);
+        Assert.All(strictRequests, request => Assert.False(request.InjectRedList));
         Assert.True(monthly.IsSuccess);
-        Assert.False(monthlyRequest.InjectRedList);
-        Assert.Equal(TestMode.MonthlyExam, monthlyRequest.Mode);
+        Assert.All(monthlyRequests, request => Assert.False(request.InjectRedList));
+        Assert.All(monthlyRequests, request => Assert.Equal(TestMode.MonthlyExam, request.Mode));
     }
 
     [Fact]
@@ -254,14 +254,15 @@ public sealed class StudentTestingLifecycleTests
         var userId = Guid.NewGuid();
         var clock = new MutableClock(new DateTimeOffset(2026, 7, 15, 20, 0, 0, TimeSpan.Zero));
         var picker = new CapturingPicker();
-        var context = new StudentMmtTestingContext(Guid.NewGuid(), Guid.NewGuid(), [Guid.NewGuid()], 12, 2026);
+        var context = ExactMmtContext();
         var service = CreateService(db, clock, picker, new FakeMmtContext(context));
 
         var first = await service.StartMonthlyExamAsync(userId, SupportedLanguage.Tajik, default);
         var duplicate = await service.StartMonthlyExamAsync(userId, SupportedLanguage.Tajik, default);
 
         Assert.True(first.IsSuccess);
-        Assert.Equal("monthly_exam.already_started", duplicate.Error?.Code);
+        Assert.True(duplicate.IsSuccess);
+        Assert.Equal(first.Value!.Id, duplicate.Value!.Id);
     }
 
     [Fact]
@@ -436,6 +437,54 @@ public sealed class StudentTestingLifecycleTests
             (await db.StudentXpBalances.SingleAsync()).TotalXpUnits);
     }
 
+    [Fact]
+    public async Task Mmt_practice_completion_awards_ten_xp_bonus_when_at_least_one_answer_is_correct()
+    {
+        await using var db = CreateDb();
+        var userId = Guid.NewGuid();
+        var context = ExactMmtContext();
+        var questions = context.Subtests!.Select(x => CreateActiveQuestion(QuestionType.SingleChoice, x.SubjectId)).ToList();
+        db.Questions.AddRange(questions);
+        await db.SaveChangesAsync();
+        var service = CreateService(db, new MutableClock(DateTimeOffset.UtcNow), mmtContext: new FakeMmtContext(context));
+
+        var attempt = await service.StartMmtPracticeAsync(userId, new(true), SupportedLanguage.Tajik, default);
+        var firstQuestion = questions[0];
+        var result = await service.SubmitAsync(userId, attempt.Value!.Id,
+            new([new(firstQuestion.Id, SelectedOptionId: firstQuestion.AnswerOptions.Single(x => x.IsCorrect).Id)]),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1.5m, result.Value!.AnswerXp);
+        Assert.Equal(10m, result.Value.CompletionBonusXp);
+        Assert.Equal(11.5m, result.Value.TotalXp);
+        Assert.Equal(23, (await db.TestXpSettlements.AsNoTracking().SingleAsync()).TotalXpUnits);
+        Assert.Equal(23, (await db.StudentXpBalances.AsNoTracking().SingleAsync()).TotalXpUnits);
+    }
+
+    [Fact]
+    public async Task Monthly_exam_completion_awards_twenty_five_xp_submission_bonus_even_with_zero_correct_answers()
+    {
+        await using var db = CreateDb();
+        var userId = Guid.NewGuid();
+        var context = ExactMmtContext();
+        var questions = context.Subtests!.Select(x => CreateActiveQuestion(QuestionType.SingleChoice, x.SubjectId)).ToList();
+        db.Questions.AddRange(questions);
+        await db.SaveChangesAsync();
+        var clock = new MutableClock(new DateTimeOffset(2026, 7, 15, 19, 30, 0, TimeSpan.Zero));
+        var service = CreateService(db, clock, mmtContext: new FakeMmtContext(context));
+
+        var attempt = await service.StartMonthlyExamAsync(userId, SupportedLanguage.Tajik, default);
+        var result = await service.SubmitAsync(userId, attempt.Value!.Id, new([]), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(0m, result.Value!.AnswerXp);
+        Assert.Equal(25m, result.Value.CompletionBonusXp);
+        Assert.Equal(25m, result.Value.TotalXp);
+        Assert.Equal(50, (await db.TestXpSettlements.AsNoTracking().SingleAsync()).TotalXpUnits);
+        Assert.Equal(50, (await db.StudentXpBalances.AsNoTracking().SingleAsync()).TotalXpUnits);
+    }
+
     [Theory]
     [InlineData(TestMode.MmtPractice)]
     [InlineData(TestMode.MonthlyExam)]
@@ -531,6 +580,25 @@ public sealed class StudentTestingLifecycleTests
     private sealed class FakeMmtContext(StudentMmtTestingContext? context) : IStudentMmtTestingContext
     {
         public Task<StudentMmtTestingContext?> GetAsync(Guid userId, CancellationToken ct) => Task.FromResult(context);
+
+        public Task<MmtOfficialScore?> CalculateAsync(Guid examVersionId, Guid clusterId,
+            IReadOnlyList<MmtChoiceScoringContext> choices, IReadOnlyList<MmtSubtestRawScore> rawScores,
+            CancellationToken ct) => Task.FromResult<MmtOfficialScore?>(new(examVersionId, "MMT 2026", true,
+            rawScores.Select(x => new MmtRawSubtestResult(x.Code, x.RawScore, 40, 0, true)).ToList(),
+            choices.Select(choice => new MmtChoiceScore(choice.AdmissionProgramId, choice.PriorityOrder,
+                choice.SpecialtyRangeId, choice.SpecialtyRangeCode, rawScores.Sum(x => x.RawScore),
+                true, rawScores.Select(x => new MmtScaledSubtestScore(x.Code, x.RawScore, 0,
+                    true, x.RawScore, 40)).ToList())).ToList()));
+    }
+
+    private static StudentMmtTestingContext ExactMmtContext()
+    {
+        var clusterId = Guid.NewGuid();
+        var subtests = Enumerable.Range(1, 4).Select(index => new MmtSubtestDefinition($"A{index}",
+            index, Guid.NewGuid(), 1, 0, 0, 0)).ToList();
+        return new(Guid.NewGuid(), clusterId, subtests.Select(x => x.SubjectId).ToList(), 12, 2026,
+            Guid.NewGuid(), "MMT 2026", true, 190, subtests,
+            [new(Guid.NewGuid(), 1, Guid.NewGuid(), Guid.NewGuid(), "R1")], []);
     }
 
     private sealed class CapturingPicker : IQuestionPickerService

@@ -63,6 +63,43 @@ public sealed class TestXpPolicyTests
     }
 
     [Fact]
+    public void Mmt_practice_awards_ten_xp_completion_bonus_when_at_least_one_answer_is_correct()
+    {
+        var result = _policy.Calculate(
+            [new(DifficultyLevel.Medium, true), new(DifficultyLevel.Hard, false)],
+            isCompleted: true,
+            TestMode.MmtPractice);
+
+        Assert.Equal(4, result.AnswerXpUnits);
+        Assert.Equal(20, result.CompletionBonusXpUnits);
+        Assert.Equal(24, result.TotalXpUnits);
+    }
+
+    [Fact]
+    public void Mmt_practice_with_zero_correct_answers_awards_no_completion_bonus()
+    {
+        var result = _policy.Calculate(
+            [new(DifficultyLevel.Medium, false), new(DifficultyLevel.Hard, false)],
+            isCompleted: true,
+            TestMode.MmtPractice);
+
+        Assert.Equal(TestXpCalculation.None, result);
+    }
+
+    [Fact]
+    public void Monthly_exam_awards_twenty_five_xp_submission_bonus_even_with_zero_correct_answers()
+    {
+        var result = _policy.Calculate(
+            [new(DifficultyLevel.Medium, false), new(DifficultyLevel.Hard, false)],
+            isCompleted: true,
+            TestMode.MonthlyExam);
+
+        Assert.Equal(0, result.AnswerXpUnits);
+        Assert.Equal(50, result.CompletionBonusXpUnits);
+        Assert.Equal(50, result.TotalXpUnits);
+    }
+
+    [Fact]
     public void Non_completed_attempt_awards_nothing()
     {
         var result = _policy.Calculate([new(DifficultyLevel.Hard, true)], isCompleted: false);

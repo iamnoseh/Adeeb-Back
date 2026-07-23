@@ -170,7 +170,8 @@ public sealed class MmtCatalogService(MmtDbContext db, IDateTimeProvider clock, 
     }
     internal static MmtClusterDto ToDto(MmtCluster x, SupportedLanguage language, IReadOnlyDictionary<Guid, AcademicSubjectLookupItem>? subjects = null) =>
         new(x.Id, x.NameFor(language), x.Code, x.DescriptionFor(language), x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.Name, x.NameRu, x.Description, x.DescriptionRu,
-            x.Subjects.Where(s => subjects?.ContainsKey(s.SubjectId) == true).Select(s => subjects![s.SubjectId]).Select(s => new MmtClusterSubjectDto(s.Id, s.Code, s.Name)).ToList());
+            x.Subjects.OrderBy(s => s.DisplayOrder).Where(s => subjects?.ContainsKey(s.SubjectId) == true)
+                .Select(s => subjects![s.SubjectId]).Select(s => new MmtClusterSubjectDto(s.Id, s.Code, s.Name)).ToList());
     internal static UniversityDto ToDto(University x, SupportedLanguage language) => new(x.Id, x.FullNameFor(language), x.ShortNameFor(language), x.CityFor(language), (int)x.Type, x.LogoUrl, x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.FullName, x.FullNameRu, x.ShortName, x.ShortNameRu, x.City, x.CityRu, !x.HasTajikTranslation);
     internal static SpecialtyDto ToDto(Specialty x, SupportedLanguage language) => new(x.Id, x.Code, x.NameFor(language), x.DescriptionFor(language), x.IsActive, x.CreatedAtUtc, x.UpdatedAtUtc, x.Name, x.NameRu, x.Description, x.DescriptionRu, !x.HasTajikTranslation);
     internal static MmtClusterDto ToDto(MmtCluster x) => ToDto(x, CurrentLanguage);

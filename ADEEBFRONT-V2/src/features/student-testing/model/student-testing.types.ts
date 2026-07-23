@@ -37,10 +37,11 @@ export type StudentTestingConfigDto = {
   mmtDurationMinutes: number
   monthlyExamAvailable: boolean
   monthlyExamClosesAtUtc: string | null
+  mmt: MmtAttemptInfoDto | null
 }
 
 export type StartSubjectTestRequest = { subjectId: string; questionCount: number; includeRedList: boolean }
-export type StartMmtPracticeRequest = { strictSimulation: boolean; questionCount?: number }
+export type StartMmtPracticeRequest = { strictSimulation?: boolean; questionCount?: number }
 export type StartRedListPracticeRequest = { questionCount?: number }
 
 export type TestAnswerOptionDto = { id: string; text: string }
@@ -85,7 +86,13 @@ export type TestQuestionDto = {
   matchingOptions: string[]
   redListProgress: RedListQuestionProgressDto | null
   checkedAnswer: CheckedTestAnswerDto | null
+  sectionCode?: string | null
+  pointsAvailable?: number
+  draftAnswer?: (DraftAnswer & { savedAtUtc: string }) | null
 }
+
+export type MmtSubtestInfoDto = { code: string; displayOrder: number; subjectId: string; questionCount: number; maxRawScore: number; minimumRawScore: number }
+export type MmtAttemptInfoDto = { examVersionId: string; examVersionName: string; isOfficialScale: boolean; durationMinutes: number; subtests: MmtSubtestInfoDto[] }
 
 export type TestAttemptDto = {
   id: string
@@ -98,6 +105,7 @@ export type TestAttemptDto = {
   submittedAtUtc: string | null
   questionCount: number
   questions: TestQuestionDto[]
+  mmt?: MmtAttemptInfoDto | null
 }
 
 export type SubmitAnswerDto = {
@@ -147,7 +155,11 @@ export type TestResultDto = {
   completionBonusXp: number
   totalXp: number
   xpAwarded: boolean
+  mmt?: MmtOfficialResultDto | null
 }
+export type MmtScaledSubtestResultDto = { code: string; rawScore: number; maximumRawScore: number; minimumRawScore: number; passed: boolean; scaledScore: number; maxScaledScore: number }
+export type MmtChoiceResultDto = { admissionProgramId: string; priorityOrder: number; specialtyRangeCode: string; totalScaledScore: number | null; passedAllSubtests: boolean; subtests: MmtScaledSubtestResultDto[] }
+export type MmtOfficialResultDto = { examVersionId: string; examVersionName: string; isOfficialScale: boolean; subtests: { code: string; rawScore: number; maximumRawScore: number; minimumRawScore: number; passed: boolean }[]; choices: MmtChoiceResultDto[] }
 
 export type TestHistoryItemDto = {
   attemptId: string
@@ -190,5 +202,6 @@ export type DraftAnswer = {
   selectedOptionId?: string
   textResponse?: string
   matchingPairs?: Record<string, string>
+  isMarkedForReview?: boolean
 }
 export type AttemptAnswers = Record<string, DraftAnswer>

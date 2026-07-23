@@ -30,13 +30,15 @@ public sealed record MmtChoiceScoringContext(Guid AdmissionProgramId, int Priori
     Guid SpecialtyId, Guid SpecialtyRangeId, string SpecialtyRangeCode);
 
 public sealed record MmtSubtestRawScore(string Code, int RawScore);
+public sealed record MmtRawSubtestResult(string Code, int RawScore, int MaximumRawScore,
+    int MinimumRawScore, bool Passed);
 public sealed record MmtScaledSubtestScore(string Code, int RawScore, int MinimumRawScore,
     bool Passed, decimal ScaledScore, decimal MaxScaledScore);
 public sealed record MmtChoiceScore(Guid AdmissionProgramId, int PriorityOrder, Guid SpecialtyRangeId,
     string SpecialtyRangeCode, decimal? TotalScaledScore, bool PassedAllSubtests,
     IReadOnlyList<MmtScaledSubtestScore> Subtests);
 public sealed record MmtOfficialScore(Guid ExamVersionId, string ExamVersionName, bool IsOfficialScale,
-    IReadOnlyList<MmtChoiceScore> Choices);
+    IReadOnlyList<MmtRawSubtestResult> Subtests, IReadOnlyList<MmtChoiceScore> Choices);
 
 public interface IStudentMmtTestingContext
 {
