@@ -57,6 +57,7 @@ public static class Permissions
     {
         public const string View = "students.view";
         public const string Manage = "students.manage";
+        public const string Import = "students.import";
     }
 
     public static class AcademicCatalog
@@ -76,6 +77,7 @@ public static class Permissions
         QuestionBank.Import,
         Students.View,
         Students.Manage,
+        Students.Import,
         AcademicCatalog.View,
         AcademicCatalog.Manage
     ];

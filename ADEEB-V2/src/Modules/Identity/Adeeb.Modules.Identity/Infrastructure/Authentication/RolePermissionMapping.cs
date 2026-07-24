@@ -12,6 +12,7 @@ public static class RolePermissionMapping
         [
             Permissions.Students.View,
             Permissions.Students.Manage,
+            Permissions.Students.Import,
             Permissions.AcademicCatalog.View,
             Permissions.AcademicCatalog.Manage,
             Permissions.QuestionBank.View,
