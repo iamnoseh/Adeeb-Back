@@ -63,7 +63,7 @@ public static class StudentEndpoints
             .RequireAuthorization();
 
         group.MapPut("/me/education-profile", async (UpsertStudentEducationProfileRequest request, StudentEducationService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
-            (await service.UpsertCurrentAsync(context.User, request, IsRussian(context), ct)).ToHttpResult(context, localizer))
+            (await service.UpsertCurrentAsync(context.User, request, IsRussian(context), context.TraceIdentifier, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization();
 
         group.MapGet("/regions", async (Guid? parentId, EducationCatalogService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
@@ -75,7 +75,7 @@ public static class StudentEndpoints
             .RequireAuthorization();
 
         group.MapPost("/me/school-suggestions", async (CreateSchoolSuggestionRequest request, StudentEducationService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
-            (await service.CreateSuggestionAsync(context.User, request, IsRussian(context), ct)).ToHttpResult(context, localizer))
+            (await service.CreateSuggestionAsync(context.User, request, IsRussian(context), context.TraceIdentifier, ct)).ToHttpResult(context, localizer))
             .RequireAuthorization();
 
         group.MapGet("/me/school-suggestion", async (StudentEducationService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
@@ -90,7 +90,7 @@ public static class StudentEndpoints
             (await service.ChangeStatusAsync(studentId, context.User, request, ct)).ToHttpResult(context, localizer));
 
         admin.MapPut("/{studentId:guid}/education-profile", async (Guid studentId, AdminCorrectEducationProfileRequest request, StudentEducationService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
-            (await service.CorrectByAdminAsync(studentId, request, context.User, IsRussian(context), ct)).ToHttpResult(context, localizer));
+            (await service.CorrectByAdminAsync(studentId, request, context.User, IsRussian(context), context.TraceIdentifier, ct)).ToHttpResult(context, localizer));
 
         MapEducationCatalogAdmin(admin);
 
@@ -131,7 +131,7 @@ public static class StudentEndpoints
         suggestions.MapGet("/", async ([AsParameters] AdminSchoolSuggestionFilter request, StudentEducationService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
             (await service.GetSuggestionsAsync(request, IsRussian(context), ct)).ToHttpResult(context, localizer));
         suggestions.MapPost("/{id:guid}/review", async (Guid id, ReviewSchoolSuggestionRequest request, StudentEducationService service, HttpContext context, IMessageLocalizer localizer, CancellationToken ct) =>
-            (await service.ReviewSuggestionAsync(id, request, context.User, IsRussian(context), ct)).ToHttpResult(context, localizer));
+            (await service.ReviewSuggestionAsync(id, request, context.User, IsRussian(context), context.TraceIdentifier, ct)).ToHttpResult(context, localizer));
 
         var imports = admin.MapGroup("/education-imports").RequireAuthorization(Permissions.Students.Import);
         imports.MapGet("/schools/template", (EducationSchoolImportService service) =>

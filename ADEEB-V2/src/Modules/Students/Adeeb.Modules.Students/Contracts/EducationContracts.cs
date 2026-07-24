@@ -40,6 +40,8 @@ public sealed record StudentEducationProfileResponse(
     int? ExpectedGraduationYear,
     string Status,
     string? AddressText,
+    DateTimeOffset? ProfileCompletedAtUtc,
+    DateTimeOffset? GraduatedAtUtc,
     uint Version,
     DateTimeOffset UpdatedAtUtc);
 
@@ -150,7 +152,15 @@ public sealed record AcademicYearRolloverResponse(
     int ConflictCount,
     DateTimeOffset PreviewCreatedAtUtc,
     DateTimeOffset? ExecutedAtUtc,
-    uint Version);
+    uint Version,
+    IReadOnlyList<AcademicYearRolloverItemResponse> Items);
+
+public sealed record AcademicYearRolloverItemResponse(
+    Guid Id,
+    Guid StudentId,
+    short? SourceGrade,
+    string Action,
+    string? Reason);
 
 public sealed record CreateAcademicYearRolloverPreviewRequest(int AcademicYearStart, string IdempotencyKey);
 public sealed record ExecuteAcademicYearRolloverRequest(uint ExpectedVersion);
@@ -162,9 +172,10 @@ public sealed class EducationSchoolImportRequest
 }
 
 public sealed record EducationSchoolImportRowResponse(int RowNumber, string? RegionPathRu, string? SchoolNameRu,
-    int? SchoolNumber, bool IsValid, bool IsDuplicate, IReadOnlyList<string> Errors);
+    int? SchoolNumber, bool IsValid, bool IsDuplicate, bool IsDuplicateInDatabase, IReadOnlyList<string> Errors);
 
 public sealed record EducationSchoolImportPreviewResponse(int TotalRows, int ValidRows, int InvalidRows, int DuplicateRows,
+    int DatabaseDuplicateRows, int WouldCreateRegions, int WouldCreateSchools, int WouldSkipSchools,
     IReadOnlyList<EducationSchoolImportRowResponse> Rows);
 
 public sealed record EducationSchoolImportResultResponse(Guid BatchId, int ImportedRegions, int ImportedSchools, int SkippedSchools,

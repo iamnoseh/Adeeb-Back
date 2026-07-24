@@ -31,7 +31,7 @@ public sealed class EducationSchoolImportService(StudentsDbContext db, IDateTime
         var loaded = await LoadAsync(request.File, ct);
         return loaded.IsFailure
             ? Result<EducationSchoolImportPreviewResponse>.ValidationFailure(loaded.ValidationErrors!)
-            : Result<EducationSchoolImportPreviewResponse>.Success(ToPreview(loaded.Value!));
+            : Result<EducationSchoolImportPreviewResponse>.Success(await ToPreviewAsync(loaded.Value!, ct));
     }
 
     public byte[] CreateCsvTemplate() => Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(
@@ -55,7 +55,7 @@ public sealed class EducationSchoolImportService(StudentsDbContext db, IDateTime
                 var batch = new EducationImportBatch(Guid.NewGuid(), EducationImportKind.Schools, request.File!.FileName, actorId,
                     rows.Count, rows.Count, 0, now);
                 db.EducationImportBatches.Add(batch);
-                var regionCache = await db.Regions.ToDictionaryAsync(x => RegionKey(x.ParentId, x.NormalizedNameRu), ct);
+                var regionCache = await db.Regions.ToDictionaryAsync(x => RegionKey(x.ParentId, x.Type, x.NormalizedNameRu), ct);
                 var createdRegions = 0;
                 var createdSchools = 0;
                 var skippedSchools = 0;
@@ -101,11 +101,11 @@ public sealed class EducationSchoolImportService(StudentsDbContext db, IDateTime
         for (var index = 0; index < row.RegionPathRu.Length; index++)
         {
             var ru = row.RegionPathRu[index];
-            var key = RegionKey(parent?.Id, EducationNormalization.Key(ru));
+            var type = TypeForDepth(index);
+            var key = RegionKey(parent?.Id, type, EducationNormalization.Key(ru));
             if (cache.TryGetValue(key, out var found)) { parent = found; continue; }
             var tg = row.RegionPathTg.ElementAtOrDefault(index);
             if (string.IsNullOrWhiteSpace(tg)) tg = ru;
-            var type = TypeForDepth(index);
             var id = Guid.NewGuid();
             var paths = parent is null ? new[] { id } : [.. parent.PathIds, id];
             var region = new Region(id, parent?.Id, type, tg, ru, EducationNormalization.Key(tg), EducationNormalization.Key(ru), 0, paths, paths.Length - 1, now);
@@ -168,7 +168,7 @@ public sealed class EducationSchoolImportService(StudentsDbContext db, IDateTime
             var tgPath = Value(1).Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             var nameRu = Value(2);
             var nameTg = string.IsNullOrWhiteSpace(Value(3)) ? null : Value(3);
-            if (ruPath.Length is < 1 or > 8 || ruPath.Any(x => x.Length > Region.NameMaxLength)) errors.Add("RegionPathRu is invalid.");
+            if (ruPath.Length is < 1 or > 8 || ruPath.Any(x => x.Length > Region.NameMaxLength) || !HasValidHierarchy(ruPath.Length)) errors.Add("RegionPathRu is invalid.");
             if (tgPath.Length > 0 && tgPath.Length != ruPath.Length) errors.Add("RegionPathTg must have the same segments as RegionPathRu.");
             if (string.IsNullOrWhiteSpace(nameRu) || nameRu.Length > School.NameMaxLength) errors.Add("SchoolNameRu is invalid.");
             if (nameTg?.Length > School.NameMaxLength) errors.Add("SchoolNameTg is too long.");
@@ -191,8 +191,73 @@ public sealed class EducationSchoolImportService(StudentsDbContext db, IDateTime
         return rows;
     }
 
-    private static EducationSchoolImportPreviewResponse ToPreview(IReadOnlyList<ParsedImportRow> rows) => new(rows.Count, rows.Count(x => x.IsValid), rows.Count(x => !x.IsValid), rows.Count(x => x.IsDuplicate),
-        rows.Select(x => new EducationSchoolImportRowResponse(x.RowNumber, string.Join(" / ", x.RegionPathRu), x.SchoolNameRu, x.Number, x.IsValid, x.IsDuplicate, x.Errors)).ToArray());
+    private async Task<EducationSchoolImportPreviewResponse> ToPreviewAsync(IReadOnlyList<ParsedImportRow> rows, CancellationToken ct)
+    {
+        var existingRegions = await db.Regions.AsNoTracking().ToListAsync(ct);
+        var regionByKey = existingRegions.ToDictionary(x => RegionKey(x.ParentId, x.Type, x.NormalizedNameRu), StringComparer.Ordinal);
+        var existingSchools = await db.Schools.AsNoTracking()
+            .Where(x => x.Status == SchoolStatus.Draft || x.Status == SchoolStatus.Verified || x.Status == SchoolStatus.Inactive)
+            .Select(x => new { x.RegionId, x.Type, x.Number, x.NormalizedName })
+            .ToListAsync(ct);
+        var schoolKeys = existingSchools.Select(x => SchoolKey(x.RegionId, x.Type, x.Number, x.NormalizedName)).ToHashSet(StringComparer.Ordinal);
+        var responses = new List<EducationSchoolImportRowResponse>(rows.Count);
+        var databaseDuplicates = 0;
+        var wouldCreateRegions = 0;
+        var wouldCreateSchools = 0;
+        var wouldSkipSchools = 0;
+        var previewRegionKeys = new HashSet<string>(regionByKey.Keys, StringComparer.Ordinal);
+
+        foreach (var row in rows)
+        {
+            var duplicateInDatabase = false;
+            if (row.IsValid && TryResolveExistingRegion(row, previewRegionKeys, regionByKey, out var regionId, out var missingRegions))
+            {
+                wouldCreateRegions += missingRegions;
+                if (regionId.HasValue && schoolKeys.Contains(SchoolKey(regionId.Value, row.Type, row.Number, row.NormalizedNameRu)))
+                {
+                    duplicateInDatabase = true;
+                    databaseDuplicates++;
+                    wouldSkipSchools++;
+                }
+                else if (!row.IsDuplicate)
+                {
+                    wouldCreateSchools++;
+                }
+            }
+
+            responses.Add(new EducationSchoolImportRowResponse(row.RowNumber, string.Join(" / ", row.RegionPathRu), row.SchoolNameRu, row.Number,
+                row.IsValid, row.IsDuplicate, duplicateInDatabase, row.Errors));
+        }
+
+        return new(rows.Count, rows.Count(x => x.IsValid), rows.Count(x => !x.IsValid), rows.Count(x => x.IsDuplicate),
+            databaseDuplicates, wouldCreateRegions, wouldCreateSchools, wouldSkipSchools, responses);
+    }
+
+    private static bool TryResolveExistingRegion(ParsedImportRow row, HashSet<string> previewRegionKeys, IReadOnlyDictionary<string, Region> existingRegions,
+        out Guid? existingLeafRegionId, out int missingRegions)
+    {
+        existingLeafRegionId = null;
+        missingRegions = 0;
+        Guid? parentId = null;
+        for (var index = 0; index < row.RegionPathRu.Length; index++)
+        {
+            var type = TypeForDepth(index);
+            var key = RegionKey(parentId, type, EducationNormalization.Key(row.RegionPathRu[index]));
+            if (existingRegions.TryGetValue(key, out var existing))
+            {
+                parentId = existing.Id;
+                existingLeafRegionId = existing.Id;
+                continue;
+            }
+
+            missingRegions++;
+            previewRegionKeys.Add(key);
+            parentId = null;
+            existingLeafRegionId = null;
+        }
+
+        return true;
+    }
 
     private static IReadOnlyList<IReadOnlyList<string>> ReadWorkbook(Stream stream)
     {
@@ -257,8 +322,30 @@ public sealed class EducationSchoolImportService(StudentsDbContext db, IDateTime
         foreach (var ch in (reference ?? "A1").TakeWhile(char.IsLetter)) column = column * 26 + char.ToUpperInvariant(ch) - 'A' + 1;
         return Math.Max(1, column);
     }
-    private static RegionType TypeForDepth(int depth) => depth switch { 0 => RegionType.Country, 1 => RegionType.Province, 2 => RegionType.City, 3 => RegionType.District, 4 => RegionType.Jamoat, 5 => RegionType.Village, 6 => RegionType.Neighborhood, _ => RegionType.Neighborhood };
-    private static string RegionKey(Guid? parentId, string normalizedRu) => $"{parentId?.ToString("N") ?? "root"}|{normalizedRu}";
+    private static RegionType TypeForDepth(int depth) => depth switch { 0 => RegionType.Country, 1 => RegionType.Province, 2 => RegionType.City, 3 => RegionType.District, 4 => RegionType.Jamoat, 5 => RegionType.Village, _ => RegionType.Neighborhood };
+    private static string RegionKey(Guid? parentId, RegionType type, string normalizedRu) => $"{parentId?.ToString("N") ?? "root"}|{(int)type}|{normalizedRu}";
+    private static string SchoolKey(Guid regionId, SchoolType type, int? number, string normalizedName) => $"{regionId:N}|{(int)type}|{number?.ToString(CultureInfo.InvariantCulture) ?? normalizedName}";
+    private static bool HasValidHierarchy(int segmentCount)
+    {
+        if (segmentCount is < 1 or > 6) return false;
+        for (var index = 1; index < segmentCount; index++)
+        {
+            if (!CanContain(TypeForDepth(index - 1), TypeForDepth(index))) return false;
+        }
+
+        return true;
+    }
+
+    private static bool CanContain(RegionType parent, RegionType child) => parent switch
+    {
+        RegionType.Country => child is RegionType.Province or RegionType.City,
+        RegionType.Province => child is RegionType.District or RegionType.City or RegionType.Town,
+        RegionType.City => child is RegionType.District or RegionType.Town or RegionType.Neighborhood,
+        RegionType.District => child is RegionType.Jamoat or RegionType.Town or RegionType.Village or RegionType.Neighborhood,
+        RegionType.Jamoat => child is RegionType.Village or RegionType.Neighborhood,
+        RegionType.Town => child == RegionType.Neighborhood,
+        _ => false
+    };
     private static bool TryType(string value, out SchoolType type)
     {
         var normalized = EducationNormalization.Key(value);

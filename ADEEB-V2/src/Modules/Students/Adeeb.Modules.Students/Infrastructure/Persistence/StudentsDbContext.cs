@@ -62,9 +62,13 @@ internal sealed class RegionConfiguration : IEntityTypeConfiguration<Region>
         builder.HasOne<Region>().WithMany().HasForeignKey(x => x.ParentId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(x => x.PathIds).HasMethod("gin");
         builder.HasIndex(x => new { x.ParentId, x.Type, x.NormalizedNameRu }).IsUnique()
-            .HasFilter("parent_id IS NOT NULL AND is_active = true").HasDatabaseName(StudentDatabaseConstraints.RegionSiblingUnique);
+            .HasFilter("parent_id IS NOT NULL AND is_active = true").HasDatabaseName(StudentDatabaseConstraints.RegionSiblingNameRuUnique);
+        builder.HasIndex(x => new { x.ParentId, x.Type, x.NormalizedNameTg }).IsUnique()
+            .HasFilter("parent_id IS NOT NULL AND is_active = true").HasDatabaseName(StudentDatabaseConstraints.RegionSiblingNameTgUnique);
         builder.HasIndex(x => new { x.Type, x.NormalizedNameRu }).IsUnique()
-            .HasFilter("parent_id IS NULL AND is_active = true").HasDatabaseName(StudentDatabaseConstraints.RootRegionTypeNameUnique);
+            .HasFilter("parent_id IS NULL AND is_active = true").HasDatabaseName(StudentDatabaseConstraints.RootRegionTypeNameRuUnique);
+        builder.HasIndex(x => new { x.Type, x.NormalizedNameTg }).IsUnique()
+            .HasFilter("parent_id IS NULL AND is_active = true").HasDatabaseName(StudentDatabaseConstraints.RootRegionTypeNameTgUnique);
         builder.ToTable(t => t.HasCheckConstraint("CK_regions_depth_non_negative", "depth >= 0"));
     }
 }
@@ -123,7 +127,8 @@ internal sealed class StudentEducationProfileConfiguration : IEntityTypeConfigur
         builder.Property(x => x.ExpectedGraduationYear).HasColumnName("expected_graduation_year");
         builder.Property(x => x.Status).HasColumnName("status").HasConversion<int>().IsRequired();
         builder.Property(x => x.AddressText).HasColumnName("address_text").HasMaxLength(School.AddressTextMaxLength);
-        builder.Property(x => x.CompletedAtUtc).HasColumnName("completed_at_utc");
+        builder.Property(x => x.ProfileCompletedAtUtc).HasColumnName("profile_completed_at_utc");
+        builder.Property(x => x.GraduatedAtUtc).HasColumnName("graduated_at_utc");
         builder.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc").IsRequired();
         builder.Property(x => x.Version).HasColumnName("xmin").IsRowVersion();
         builder.HasOne<Student>().WithOne().HasForeignKey<StudentEducationProfile>(x => x.StudentId).OnDelete(DeleteBehavior.Cascade);

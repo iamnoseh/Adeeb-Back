@@ -43,9 +43,9 @@ public sealed class EducationCatalogService(
         if (parent.IsFailure) return Result<RegionResponse>.Failure(parent.Error!);
         var normalizedTg = EducationNormalization.Key(request.NameTg);
         var normalizedRu = EducationNormalization.Key(request.NameRu);
-        if (await RegionNameExistsAsync(request.ParentId, type, normalizedRu, null, ct))
+        if (await RegionNameExistsAsync(request.ParentId, type, normalizedTg, normalizedRu, null, ct))
         {
-            return Result<RegionResponse>.Failure(EducationErrors.SchoolDuplicate);
+            return Result<RegionResponse>.Failure(EducationErrors.RegionDuplicate);
         }
 
         var now = clock.UtcNow;
@@ -70,7 +70,7 @@ public sealed class EducationCatalogService(
             return Result<RegionResponse>.ValidationFailure(Invalid("region", "student.region.invalid", "Student.Region.Invalid"));
         var normalizedTg = EducationNormalization.Key(request.NameTg);
         var normalizedRu = EducationNormalization.Key(request.NameRu);
-        if (await RegionNameExistsAsync(region.ParentId, region.Type, normalizedRu, id, ct)) return Result<RegionResponse>.Failure(EducationErrors.SchoolDuplicate);
+        if (await RegionNameExistsAsync(region.ParentId, region.Type, normalizedTg, normalizedRu, id, ct)) return Result<RegionResponse>.Failure(EducationErrors.RegionDuplicate);
 
         var now = clock.UtcNow;
         region.Update(request.NameTg.Trim(), request.NameRu.Trim(), normalizedTg, normalizedRu, request.SortOrder, now);
@@ -254,7 +254,9 @@ public sealed class EducationCatalogService(
         if (terms.TypeHint == "gymnasium") query = query.Where(x => x.school.Type == SchoolType.Gymnasium);
         var total = await query.CountAsync(ct);
         var ordered = query
-            .OrderByDescending(x => terms.Number.HasValue && x.school.Number == terms.Number)
+            .OrderByDescending(x => selectedRegion != null && x.region.Id == selectedRegion.Id)
+            .ThenByDescending(x => selectedRegion != null && x.region.PathIds.Contains(selectedRegion.Id))
+            .ThenByDescending(x => terms.Number.HasValue && x.school.Number == terms.Number)
             .ThenByDescending(x => !string.IsNullOrEmpty(terms.NormalizedQuery) && x.school.NormalizedName == terms.NormalizedQuery);
         var items = useTrigram
             ? await ordered.ThenByDescending(x => EF.Functions.TrigramsSimilarity(x.school.SearchText, terms.NormalizedQuery))
@@ -292,8 +294,9 @@ public sealed class EducationCatalogService(
         }
     }
 
-    private async Task<bool> RegionNameExistsAsync(Guid? parentId, RegionType type, string normalizedRu, Guid? exceptId, CancellationToken ct) =>
-        await db.Regions.AnyAsync(x => x.ParentId == parentId && x.Type == type && x.NormalizedNameRu == normalizedRu && x.IsActive && (!exceptId.HasValue || x.Id != exceptId), ct);
+    private async Task<bool> RegionNameExistsAsync(Guid? parentId, RegionType type, string normalizedTg, string normalizedRu, Guid? exceptId, CancellationToken ct) =>
+        await db.Regions.AnyAsync(x => x.ParentId == parentId && x.Type == type && x.IsActive && (!exceptId.HasValue || x.Id != exceptId) &&
+            (x.NormalizedNameRu == normalizedRu || x.NormalizedNameTg == normalizedTg), ct);
 
     private async Task<bool> SchoolExistsAsync(Guid regionId, int? number, SchoolType type, string normalizedName, Guid? exceptId, CancellationToken ct) =>
         await db.Schools.AnyAsync(x => x.RegionId == regionId && x.Type == type &&

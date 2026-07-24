@@ -292,6 +292,17 @@ public sealed class StudentEducationProfile
         ExpectedGraduationYear = expectedGraduationYear;
         Status = status;
         AddressText = addressText;
+        if (status == EducationStatus.Studying)
+        {
+            ProfileCompletedAtUtc = now;
+        }
+
+        if (status == EducationStatus.Graduated)
+        {
+            ProfileCompletedAtUtc = now;
+            GraduatedAtUtc = now;
+        }
+
         UpdatedAtUtc = now;
     }
 
@@ -305,7 +316,8 @@ public sealed class StudentEducationProfile
     public int? ExpectedGraduationYear { get; private set; }
     public EducationStatus Status { get; private set; }
     public string? AddressText { get; private set; }
-    public DateTimeOffset? CompletedAtUtc { get; private set; }
+    public DateTimeOffset? ProfileCompletedAtUtc { get; private set; }
+    public DateTimeOffset? GraduatedAtUtc { get; private set; }
     public DateTimeOffset UpdatedAtUtc { get; private set; }
     public uint Version { get; private set; }
 
@@ -321,7 +333,7 @@ public sealed class StudentEducationProfile
         ExpectedGraduationYear = expectedGraduationYear;
         Status = EducationStatus.Studying;
         AddressText = addressText;
-        CompletedAtUtc = null;
+        ProfileCompletedAtUtc ??= now;
         UpdatedAtUtc = now;
     }
 
@@ -343,7 +355,7 @@ public sealed class StudentEducationProfile
     public void Graduate(DateTimeOffset now)
     {
         Status = EducationStatus.Graduated;
-        CompletedAtUtc = now;
+        GraduatedAtUtc ??= now;
         PendingSchoolSuggestionId = null;
         UpdatedAtUtc = now;
     }
@@ -363,6 +375,7 @@ public sealed class StudentEducationProfile
         SchoolId = schoolId;
         PendingSchoolSuggestionId = null;
         Status = EducationStatus.Studying;
+        ProfileCompletedAtUtc ??= now;
         UpdatedAtUtc = now;
     }
 
@@ -519,6 +532,15 @@ public sealed class AcademicYearRollover : Entity
     public uint Version { get; private set; }
 
     public void Approve(DateTimeOffset now) { Status = AcademicYearRolloverStatus.Approved; ApprovedAtUtc = now; }
+
+    public void SetPreviewCounts(int promoted, int graduated, int skipped, int conflicts)
+    {
+        PromotedCount = promoted;
+        GraduatedCount = graduated;
+        SkippedCount = skipped;
+        ConflictCount = conflicts;
+    }
+
     public void Complete(Guid? actorId, int promoted, int graduated, int skipped, int conflicts, DateTimeOffset now)
     {
         Status = AcademicYearRolloverStatus.Executed;

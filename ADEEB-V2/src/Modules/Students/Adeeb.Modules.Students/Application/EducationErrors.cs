@@ -8,6 +8,7 @@ internal static class EducationErrors
     public static readonly Error RegionInactive = Error.Conflict("student.region.inactive", "Student.Region.Inactive");
     public static readonly Error RegionHierarchyInvalid = Error.Validation("student.region.hierarchy_invalid", "Student.Region.HierarchyInvalid");
     public static readonly Error RegionInUse = Error.Conflict("student.region.in_use", "Student.Region.InUse");
+    public static readonly Error RegionDuplicate = Error.Conflict("student.region.duplicate", "Student.Region.Duplicate");
     public static readonly Error SchoolNotFound = Error.NotFound("student.school.not_found", "Student.School.NotFound");
     public static readonly Error SchoolNotSelectable = Error.Conflict("student.school.not_selectable", "Student.School.NotSelectable");
     public static readonly Error SchoolDuplicate = Error.Conflict("student.school.duplicate", "Student.School.Duplicate");

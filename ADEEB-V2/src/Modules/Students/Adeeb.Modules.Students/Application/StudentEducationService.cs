@@ -28,7 +28,7 @@ public sealed class StudentEducationService(
     }
 
     public async Task<Result<StudentEducationProfileResponse>> UpsertCurrentAsync(ClaimsPrincipal principal,
-        UpsertStudentEducationProfileRequest request, bool russian, CancellationToken ct)
+        UpsertStudentEducationProfileRequest request, bool russian, string? correlationId, CancellationToken ct)
     {
         if (request.ResidenceRegionId == Guid.Empty || request.SchoolId == Guid.Empty || request.CurrentGrade is < StudentProfile.MinGrade or > StudentProfile.MaxGrade ||
             !ValidOptional(request.AddressText, School.AddressTextMaxLength))
@@ -83,7 +83,7 @@ public sealed class StudentEducationService(
             }
             currentStudent.Profile.UpdateEducationSnapshot(region.NameTg, region.NameTg, school.NameTg ?? school.NameRu, request.CurrentGrade, now);
             WriteAudit(UserId(principal), "student.education.updated", "education_profile", currentStudent.Id, currentStudent.Id,
-                new { schoolId = previousSchoolId, grade = previousGrade }, new { schoolId = school.Id, grade = request.CurrentGrade, year.Start });
+                new { schoolId = previousSchoolId, grade = previousGrade }, new { schoolId = school.Id, grade = request.CurrentGrade, year.Start }, correlationId);
             await db.SaveChangesAsync(ct);
             if (transaction is not null) await transaction.CommitAsync(ct);
             logger.LogInformation("student.education.updated student_id={StudentId} school_id={SchoolId} grade={Grade}", currentStudent.Id, school.Id, request.CurrentGrade);
@@ -92,7 +92,7 @@ public sealed class StudentEducationService(
     }
 
     public async Task<Result<SchoolSuggestionResponse>> CreateSuggestionAsync(ClaimsPrincipal principal, CreateSchoolSuggestionRequest request,
-        bool russian, CancellationToken ct)
+        bool russian, string? correlationId, CancellationToken ct)
     {
         if (request.ResidenceRegionId == Guid.Empty || !ValidName(request.SuggestedName, SchoolSuggestion.NameMaxLength) || request.SuggestedNumber is <= 0 ||
             request.CurrentGrade is < StudentProfile.MinGrade or > StudentProfile.MaxGrade || !ValidOptional(request.AddressText, SchoolSuggestion.AddressMaxLength))
@@ -138,7 +138,7 @@ public sealed class StudentEducationService(
             currentEnrollment?.End("pending_school_suggestion", now);
             currentStudent.Profile.UpdateEducationSnapshot(region.NameTg, region.NameTg, request.SuggestedName, request.CurrentGrade, now);
             WriteAudit(UserId(principal), "student.school_suggestion.created", "school_suggestion", suggestion.Id, currentStudent.Id, null,
-                new { suggestion.RegionId, suggestion.SuggestedNumber });
+                new { suggestion.RegionId, suggestion.SuggestedNumber }, correlationId);
             await db.SaveChangesAsync(ct);
             if (transaction is not null) await transaction.CommitAsync(ct);
             return Result<SchoolSuggestionResponse>.Success(ToSuggestionResponse(suggestion, region, russian));
@@ -180,7 +180,7 @@ public sealed class StudentEducationService(
     }
 
     public async Task<Result<SchoolSuggestionResponse>> ReviewSuggestionAsync(Guid suggestionId, ReviewSchoolSuggestionRequest request,
-        ClaimsPrincipal actor, bool russian, CancellationToken ct)
+        ClaimsPrincipal actor, bool russian, string? correlationId, CancellationToken ct)
     {
         var rejectionReason = Trim(request.RejectionReason);
         var isRejection = rejectionReason is not null;
@@ -208,7 +208,7 @@ public sealed class StudentEducationService(
                 var pendingProfiles = await db.EducationProfiles.Where(x => x.PendingSchoolSuggestionId == suggestion.Id).ToListAsync(ct);
                 foreach (var profile in pendingProfiles) profile.RejectPendingSchool(now);
                 WriteAudit(actorId, "student.school_suggestion.rejected", "school_suggestion", suggestion.Id, suggestion.SubmittedByStudentId, null,
-                    new { request.RejectionReason });
+                    new { request.RejectionReason }, correlationId);
                 await db.SaveChangesAsync(ct);
                 if (transaction is not null) await transaction.CommitAsync(ct);
                 return Result<SchoolSuggestionResponse>.Success(ToSuggestionResponse(suggestion, region, russian));
@@ -244,16 +244,23 @@ public sealed class StudentEducationService(
             var profiles = await db.EducationProfiles.Where(x => x.PendingSchoolSuggestionId == suggestion.Id).ToListAsync(ct);
             var profileStudentIds = profiles.Select(x => x.StudentId).ToArray();
             var students = await db.Students.Include(x => x.Profile).Where(x => profileStudentIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, ct);
+            var currentEnrollments = await db.SchoolEnrollments.Where(x => profileStudentIds.Contains(x.StudentId) && x.IsCurrent)
+                .ToDictionaryAsync(x => x.StudentId, ct);
             foreach (var profile in profiles)
             {
                 profile.ReassignSchoolAfterSuggestion(school.Id, now);
+                if (currentEnrollments.TryGetValue(profile.StudentId, out var currentEnrollment))
+                {
+                    currentEnrollment.End("school_suggestion_approved", now);
+                }
+
                 db.SchoolEnrollments.Add(new StudentSchoolEnrollment(Guid.NewGuid(), profile.StudentId, school.Id, school.RegionId,
                     profile.CurrentGrade!.Value, profile.AcademicYearStart!.Value, profile.AcademicYearEnd!.Value,
                     EnrollmentSource.SchoolSuggestionReview, "school_suggestion_approved", now));
                 students[profile.StudentId].Profile.UpdateEducationSnapshot(region.NameTg, region.NameTg, school.NameTg ?? school.NameRu, profile.CurrentGrade, now);
             }
             WriteAudit(actorId, "student.school_suggestion.approved", "school_suggestion", suggestion.Id, suggestion.SubmittedByStudentId, null,
-                new { schoolId = school.Id, createdAsNew });
+                new { schoolId = school.Id, createdAsNew }, correlationId);
             await db.SaveChangesAsync(ct);
             if (transaction is not null) await transaction.CommitAsync(ct);
             return Result<SchoolSuggestionResponse>.Success(ToSuggestionResponse(suggestion, region, russian));
@@ -261,7 +268,7 @@ public sealed class StudentEducationService(
     }
 
     public async Task<Result<StudentEducationProfileResponse>> CorrectByAdminAsync(Guid studentId, AdminCorrectEducationProfileRequest request,
-        ClaimsPrincipal actor, bool russian, CancellationToken ct)
+        ClaimsPrincipal actor, bool russian, string? correlationId, CancellationToken ct)
     {
         if (studentId == Guid.Empty || request.ResidenceRegionId == Guid.Empty || request.SchoolId == Guid.Empty ||
             request.CurrentGrade is < StudentProfile.MinGrade or > StudentProfile.MaxGrade || !ValidName(request.Reason, StudentSchoolEnrollment.ReasonMaxLength))
@@ -304,7 +311,7 @@ public sealed class StudentEducationService(
                 EnrollmentSource.AdminCorrection, request.Reason.Trim(), now));
             student.Profile.UpdateEducationSnapshot(region.NameTg, region.NameTg, school.NameTg ?? school.NameRu, request.CurrentGrade, now);
             WriteAudit(UserId(actor), "student.education.admin_corrected", "education_profile", studentId, studentId, old,
-                new { schoolId = school.Id, grade = request.CurrentGrade, request.Reason });
+                new { schoolId = school.Id, grade = request.CurrentGrade, request.Reason }, correlationId);
             await db.SaveChangesAsync(ct);
             if (transaction is not null) await transaction.CommitAsync(ct);
             return Result<StudentEducationProfileResponse>.Success(await BuildResponseAsync(studentId, russian, ct));
@@ -314,13 +321,13 @@ public sealed class StudentEducationService(
     private async Task<StudentEducationProfileResponse> BuildResponseAsync(Guid studentId, bool russian, CancellationToken ct)
     {
         var profile = await db.EducationProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.StudentId == studentId, ct);
-        if (profile is null) return new(studentId, null, null, null, null, null, null, null, EducationStatus.Incomplete.ToString(), null, 0, DateTimeOffset.MinValue);
+        if (profile is null) return new(studentId, null, null, null, null, null, null, null, EducationStatus.Incomplete.ToString(), null, null, null, 0, DateTimeOffset.MinValue);
         var region = profile.ResidenceRegionId.HasValue ? await db.Regions.AsNoTracking().SingleOrDefaultAsync(x => x.Id == profile.ResidenceRegionId, ct) : null;
         var school = profile.SchoolId.HasValue ? await db.Schools.AsNoTracking().SingleOrDefaultAsync(x => x.Id == profile.SchoolId, ct) : null;
         Region? schoolRegion = school is null ? null : await db.Regions.AsNoTracking().SingleOrDefaultAsync(x => x.Id == school.RegionId, ct);
         return new(studentId, region is null ? null : ToRegionResponse(region, russian), school is null || schoolRegion is null ? null : ToSchoolResponse(school, schoolRegion, russian),
             profile.PendingSchoolSuggestionId, profile.CurrentGrade, profile.AcademicYearStart, profile.AcademicYearEnd, profile.ExpectedGraduationYear,
-            profile.Status.ToString(), profile.AddressText, profile.Version, profile.UpdatedAtUtc);
+            profile.Status.ToString(), profile.AddressText, profile.ProfileCompletedAtUtc, profile.GraduatedAtUtc, profile.Version, profile.UpdatedAtUtc);
     }
 
     private async Task<Student?> FindStudentAsync(ClaimsPrincipal principal, CancellationToken ct)
@@ -329,10 +336,12 @@ public sealed class StudentEducationService(
         return id is null ? null : await db.Students.AsNoTracking().SingleOrDefaultAsync(x => x.IdentityUserId == id, ct);
     }
 
-    private void WriteAudit(Guid? actorId, string action, string resourceType, Guid resourceId, Guid? studentId, object? oldValues, object? newValues)
+    private void WriteAudit(Guid? actorId, string action, string resourceType, Guid resourceId, Guid? studentId, object? oldValues, object? newValues,
+        string? correlationId)
     {
         db.EducationAuditLogs.Add(new StudentEducationAuditLog(Guid.NewGuid(), actorId, action, resourceType, resourceId.ToString(), studentId,
-            oldValues is null ? null : JsonSerializer.Serialize(oldValues), newValues is null ? null : JsonSerializer.Serialize(newValues), null, clock.UtcNow));
+            oldValues is null ? null : JsonSerializer.Serialize(oldValues), newValues is null ? null : JsonSerializer.Serialize(newValues),
+            correlationId, clock.UtcNow));
     }
 
     private static Error? AccessError(Student? student) => student?.Status switch
