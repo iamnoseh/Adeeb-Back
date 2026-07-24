@@ -36,7 +36,7 @@ public sealed class EducationHardeningTests
         profile.Graduate(graduated);
 
         Assert.Equal(EducationStatus.Graduated, profile.Status);
-        Assert.Equal(11, profile.CurrentGrade);
+        Assert.Equal((short)11, profile.CurrentGrade);
         Assert.Equal(graduated, profile.GraduatedAtUtc);
     }
 
@@ -50,7 +50,7 @@ public sealed class EducationHardeningTests
         var region = CreateRegion("TJ", "Tajikistan", clock.UtcNow);
         var oldSchool = CreateVerifiedSchool(region.Id, "Old school", 1, clock.UtcNow);
         var newSchool = CreateVerifiedSchool(region.Id, "New school", 2, clock.UtcNow);
-        var suggestion = new SchoolSuggestion(Guid.NewGuid(), student.Id, "New school", 2, region.Id, EducationNormalization.Key("New school"), null, clock.UtcNow);
+        var suggestion = new SchoolSuggestion(Guid.NewGuid(), student.Id, "New school", 2, region.Id, Key("New school"), null, clock.UtcNow);
         var profile = new StudentEducationProfile(student.Id, region.Id, null, suggestion.Id, 9, 2026, 2027, 2029,
             EducationStatus.PendingSchoolReview, null, clock.UtcNow);
         db.AddRange(student, region, oldSchool, newSchool, suggestion, profile);
@@ -63,7 +63,7 @@ public sealed class EducationHardeningTests
 
         Assert.True(result.IsSuccess);
         var enrollments = await db.SchoolEnrollments.Where(x => x.StudentId == student.Id).ToListAsync();
-        Assert.Single(enrollments.Where(x => x.IsCurrent));
+        Assert.Single(enrollments, x => x.IsCurrent);
         Assert.Equal(newSchool.Id, enrollments.Single(x => x.IsCurrent).SchoolId);
         Assert.False(enrollments.Single(x => x.SchoolId == oldSchool.Id).IsCurrent);
         Assert.Equal("school_suggestion_approved", enrollments.Single(x => x.SchoolId == oldSchool.Id).ChangeReason);
@@ -124,9 +124,9 @@ public sealed class EducationHardeningTests
         Assert.True(executed.IsSuccess);
         var profile = await db.EducationProfiles.SingleAsync(x => x.StudentId == student.Id);
         Assert.Equal(EducationStatus.Graduated, profile.Status);
-        Assert.Equal(11, profile.CurrentGrade);
+        Assert.Equal((short)11, profile.CurrentGrade);
         Assert.NotNull(profile.GraduatedAtUtc);
-        Assert.Equal(11, (await db.Students.Include(x => x.Profile).SingleAsync(x => x.Id == student.Id)).Profile.Grade);
+        Assert.Equal((short)11, (await db.Students.Include(x => x.Profile).SingleAsync(x => x.Id == student.Id)).Profile.Grade);
         Assert.False((await db.SchoolEnrollments.SingleAsync(x => x.StudentId == student.Id)).IsCurrent);
     }
 
@@ -141,7 +141,7 @@ public sealed class EducationHardeningTests
     private static Region CreateRegion(string nameTg, string nameRu, DateTimeOffset now)
     {
         var id = Guid.NewGuid();
-        var region = new Region(id, null, RegionType.Country, nameTg, nameRu, EducationNormalization.Key(nameTg), EducationNormalization.Key(nameRu), 0, [id], 0, now);
+        var region = new Region(id, null, RegionType.Country, nameTg, nameRu, Key(nameTg), Key(nameRu), 0, [id], 0, now);
         region.SetPaths(nameTg, nameRu, [id], 0, now);
         return region;
     }
@@ -149,7 +149,7 @@ public sealed class EducationHardeningTests
     private static School CreateVerifiedSchool(Guid regionId, string nameRu, int number, DateTimeOffset now)
     {
         var school = new School(Guid.NewGuid(), regionId, null, nameRu, null, number, SchoolType.GeneralSchool,
-            EducationNormalization.Key(nameRu), EducationNormalization.SearchText(null, nameRu, null, number), null, null, now);
+            Key(nameRu), $"{Key(nameRu)} {number}", null, null, now);
         school.Verify(null, now);
         return school;
     }
@@ -163,6 +163,8 @@ public sealed class EducationHardeningTests
         db.AddRange(student, profile);
         return student;
     }
+
+    private static string Key(string value) => value.Trim().ToLowerInvariant();
 
     private sealed class FixedClock : IDateTimeProvider
     {
